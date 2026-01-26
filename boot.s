@@ -1,36 +1,41 @@
-[org 0x7c00]; 0x7c00 is location of kernel
+[org 0x7c00]; setting origin to 0x7c00 which is location of kernel 
 
 start:
 	xor ax, ax ;set ax to 0
-	mov ds, ax ; point DS to 0 where IVT lives
+	mov ds, ax ; point data segment to 0 where IVT lives  
 	
-	;Interrupt 9 is at address 0x24 (9*4 bytes)
-	mov word [0x24], _keyboard_handler ;storing our label's address
-	mov word [0x26], 0 ; storing our segment
+	mov es, ax ; es = 0
+	mov ss, ax ; stack segment = 0
+	mov sp, 0x7c00 ; stack grows down from bootloader
 
-	mov esp, 0x7e00 ; setting up stack
+
+	;Interrupt 9 is at address 0x24  ( 24 in hex is 36, intterupt 9 in IVT * 4 bytes per interrupr)
+	mov word [0x24], _keyboard_handler ;storing our label's address
+	mov word [0x26], 0x0000 ; storing our segment
+
 	;TODO: remap PIC and Load IDT
 	sti ;enables interrupts
 loop:
-    jmp loop
+	hlt ; halt until intterupt
+	jmp loop
 
 _keyboard_handler:
 	pusha ;save all registers
-	;read the scancode from keyboard controller
+	;read the scancode from keyboard controller ( PIC stores scancode in port 60)
 	in al, 0x60 
 
-	;base address into register
-	mov ax, 0xB800
-	mov es, ax ; increases register to 0xB8000
+	push ax ; save scancode
+	mov bx, 0xB800
+	mov es, bx ; increases register to 0xB8000
 	mov byte [es:0], "A"
-	mov byte [es:2], 0x0F ;white text on black background
+	mov byte [es:1], 0x0F ;white text on black background
 
  	;sending end of interrupt to keyboard PIC
 	mov al, 0x20 
 	out 0x20, al
 	
 	popa ; reverse of pushad to restore register states
-	iretd ; interrupt return
+	iret ; interrupt return
 
 
 ; Fill the rest of the 510 bytes with zeros

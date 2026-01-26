@@ -24,18 +24,28 @@ _keyboard_handler:
 	;read the scancode from keyboard controller ( PIC stores scancode in port 60)
 	in al, 0x60 
 
-	push ax ; save scancode
-	mov bx, 0xB800
-	mov es, bx ; increases register to 0xB8000
-	mov byte [es:0], "A"
-	mov byte [es:1], 0x0F ;white text on black background
+	test al, 0x80 ;scancodes over 0x80 are key releases so this checks for key presses only
+	jnz .done ;jumps to done
 
- 	;sending end of interrupt to keyboard PIC
-	mov al, 0x20 
-	out 0x20, al
+	movzx bx, al ;moves scancode into bx for padded indexing
+	mov al, [scancode_table + bx] ;accessing ascii char
 	
-	popa ; reverse of pushad to restore register states
-	iret ; interrupt return
+	mov bx, 0xB800
+	mov es, bx ; increases register to 0xB8000 ( VGA Memory )
+	mov byte [es:0], al
+	mov byte [es:1], 0x1F ;white text on blue background
+
+.done:
+	mov al, 0x20 ;end of interrupt
+	out 0x20, al
+	popa
+	iret
+
+scancode_table: ;allows for O(1) lookups on every character
+	db 0, 0, '1' , '2' , '3' , '4' , '5' , '6' , '7' , '8' , '9' , '0' , '-' , '=' , 0 ; 0x00-0x0E
+	db 0, 'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']', 0    ; 0x0F-0x1C
+	db 0, 'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', "'", '`', 0    ; 0x1D-0x29
+	db 0, '\', 'z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/', 0         ; 0x2A-0x35	
 
 
 ; Fill the rest of the 510 bytes with zeros

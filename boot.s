@@ -6,7 +6,7 @@ start:
 	
 	mov es, ax ; es = 0
 	mov ss, ax ; stack segment = 0
-	mov sp, 0x7c00 ; stack grows down from bootloader
+	mov sp, 0x7e00 ; stack grows down from bootloader
 
 
 	;Interrupt 9 is at address 0x24  ( 24 in hex is 36, intterupt 9 in IVT * 4 bytes per interrupr)

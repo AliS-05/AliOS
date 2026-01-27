@@ -1,6 +1,9 @@
 bits 16
 [org 0x7c00] ;kernel location
 
+section.data:
+	cursor_pos dw 0
+
 start:
 	xor ax, ax ;ax = 0
 	mov ds, ax ; ds = 0 for offsets
@@ -9,7 +12,7 @@ start:
 
 	mov sp, 0x7e00 ; - 0x9FBFF is safe memory initialize stack pointer
 	
-	cli
+	cli ;disables interrupts
 	mov word [0x24], _keyboard_handler ; initalize IVT not IDT since in real mode
 	mov word [0x26], ax
 	sti ;enables interrupts
@@ -25,20 +28,25 @@ _keyboard_handler:
 	in al, 0x60 ;read scancode from port 60
 	cmp al, 0x80
 	jae .done
+
 	mov bx, 0xB800
 
-	mov es, bx
-	
+	mov es, bx ; memory address offset for VGA
+
 	movzx bx, al ;moves scancode into base register
 	mov al, [scancode_table + bx] ;reading ASCII char
 
-	mov byte [es:0], al
-	mov byte [es:1], 0x1F
-
+	mov di, [cursor_pos] ;cursor offset
+	
+	mov byte [es:di], al
+	add di, 1 ; char + char color
+	mov byte [es:di], 0x1F
+	add di, 1
+	mov [cursor_pos], di ; next char in 2 bytes
 .done:
 	mov al, 0x20
 	out 0x20, al ;tell keyboard PIC we have recieved the keypress
-
+	
 	pop es
 	popa
 	iret

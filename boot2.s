@@ -51,6 +51,9 @@ _keyboard_handler:
 	cmp al, 0x0E
 	je .handle_backspace ;checking for backspace
 
+	cmp al, 0x1C
+	je .handle_enter ;checks for enter
+
 	mov bx, 0xB800
 	mov es, bx ; memory address offset for VGA
 
@@ -66,8 +69,30 @@ _keyboard_handler:
 	mov [cursor_pos], di ; next char in 2 bytes
 	jmp .done
 
+;tab 0x0F (0x8F)
+; caps 0x3A (0xBA)
+
+.handle_enter:
+	mov bx, 0xB800
+	mov es, bx
+	mov bx, 160
+	xor ax, ax
+	xor dx, dx
+	;push ax ; ax is required for div ax is currently storing keypressed but obv we already know its enter so we can discard
+
+	;formula for new line is ((cur_line / 160) + 1) * (160)
+	mov ax, [cursor_pos] ; ie [cursor_pos]
+	div bx
+	add ax, 1
+	mul bx
+
+	mov [cursor_pos], ax ; beginning of new line
+	mov di, [cursor_pos]
+	mov word [es:di], 0x1F00 ; empty blue square
+	jmp .done ; all done !
+	
 .handle_backspace:
-	cmp di, 0
+	cmp di, 0 ;doesnt go off screen (wont go up a line either)
 	je .done
 	mov bx, 0xB800
 	mov es, bx ;correct memory segment

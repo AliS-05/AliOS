@@ -56,7 +56,6 @@ times 510-($-$$) db 0
 dw 0xAA55
 
 [bits 32]
-[org 0x8000]
 kernel:
 	
 	mov byte [0xB8000], "H"
@@ -106,7 +105,7 @@ idtr:
 
 
 keyboard_handler:
-	pusha ;save all registers
+	pushad ;save all registers
 	;read the scancode from keyboard controller ( PIC stores scancode in port 60)
 	in al, 0x60 
 
@@ -122,8 +121,8 @@ keyboard_handler:
 .done:
 	mov al, 0x20 ;end of interrupt
 	out 0x20, al
-	popa
-	iret
+	popad
+	iretd
 
 scancode_table: ;allows for O(1) lookups on every character
 	db 0, 0, '1' , '2' , '3' , '4' , '5' , '6' , '7' , '8' , '9' , '0' , '-' , '=' , 0 ; 0x00-0x0E

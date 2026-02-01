@@ -1,47 +1,48 @@
 bits 32
 [org 0x8000]
 kernel:
-    mov ax, 0x10
-    mov ds, ax
-    mov es, ax
-    mov ss, ax
-    mov fs, ax
-    mov gs, ax
-    mov esp, 0x90000
+	cli
+	call remap_pic
+	call init_screen
+	sti
+	jmp $
 
-    ; Remap PIC
-    mov al, 0x11
-    out 0x20, al
-    out 0xA0, al
+remap_pic:
+	mov ax, 0x10
+	mov ds, ax
+	mov es, ax
+	mov ss, ax
+	mov fs, ax
+	mov gs, ax
+	mov esp, 0x90000
 
-    mov al, 0x20 
-    out 0x21, al
-    mov al, 0x28 
-    out 0xA1, al
-    
-    mov al, 0x04
-    out 0x21, al
-    mov al, 0x02
-    out 0xA1, al
+	; Remap PIC
+	mov al, 0x11
+	out 0x20, al
+	out 0xA0, al
 
-    mov al, 0x01
-    out 0x21, al
-    out 0xA1, al
+	mov al, 0x20 
+	out 0x21, al
+	mov al, 0x28 
+	out 0xA1, al
 
-    ; Enable Keyboard IRQ only
-    mov al, 0xFD 
-    out 0x21, al 
-    mov al, 0xFF 
-    out 0xA1, al
-    
-    lidt [idtr]
-    sti 
+	mov al, 0x04
+	out 0x21, al
+	mov al, 0x02
+	out 0xA1, al
 
-    ; Print 'S' to show we entered the kernel
-    mov byte [0xB8000], 'H'
-    mov byte [0xB8001], 0x1F
+	mov al, 0x01
+	out 0x21, al
+	out 0xA1, al
 
-    jmp $
+	; Enable Keyboard IRQ only
+	mov al, 0xFD 
+	out 0x21, al 
+	mov al, 0xFF 
+	out 0xA1, al
+
+	lidt [idtr]
+	ret
 
 
 idt_start:
@@ -129,9 +130,22 @@ scancode_table:
     db 0, 'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']', 0  
     db 0, 'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', "'", '`', 0 
     db 0, '\', 'z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/', 0 
-; Pad kernel to exactly 4KB
+
+init_screen:
+	pushad
+	xor ebx, ebx
+	mov ecx, 2000
+.draw:
+	mov byte [0xB8000 + ebx], ' '
+	mov byte [0xB8001 + ebx], 0x00 ;black
+	add ebx, byte 2
+	loop .draw
+	popad
+	ret
+
 
 section .data
 	cursor_pos dw 0
 
+; Pad kernel to exactly 4KB
 times 4096-($-$$) db 0

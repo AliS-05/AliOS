@@ -5,6 +5,11 @@ kernel:
 	call remap_pic
 	call init_screen
 	sti
+	
+	mov esi, shell_prompt
+	movzx edi, word [cursor_pos]
+	call print_string
+
 	jmp $
 
 remap_pic:
@@ -88,9 +93,13 @@ keyboard_handler:
 
     movzx ebx, al ;padding scancode in ebx register
     mov al, [scancode_table + ebx] ; finding actual character
-
+    
+    ;NOTE also disables space... need to work around this.
+    ;test al, al ; checks if printable character ie not a character defined as 0 in the scancode table
+    ;jz .done
+    
     mov byte [0xB8000 + edi], al
-    mov byte [0xB8001 + edi], 0x1F 
+    mov byte [0xB8001 + edi], 0x0F 
 
     add word [cursor_pos], 2 ;moving to next section
 
@@ -107,29 +116,35 @@ keyboard_handler:
 	sub word [cursor_pos], 2 ;because we're always infront of the previous character
 	mov edi, [cursor_pos]
 	mov byte [0xB8000 + edi], ' '
-	mov byte [0xB8001 + edi], 0x1F
+	mov byte [0xB8001 + edi], 0x0F
 	
 	jmp .done
 
 .handle_enter:
 	; next line = (cursor_pos / 160) + 1 * (160)
-	xor dx ,dx
+	xor dx ,dx ; need to zero out bc stores remainder
 	mov ax, [cursor_pos]
 	mov bx, 160
 	div bx
 	add ax, 1
 	mul bx
 
+	
 	mov word [cursor_pos], ax ;new location stored in ax
-	mov edi, [cursor_pos] 
-	mov word [0xB8000 + edi], 0x1F00
+	mov esi, shell_prompt
+	movzx edi, word [cursor_pos]
+	call print_string
+
+	;mov edi, [cursor_pos] 
+	;mov word [0xB8000 + edi], 0x1F00
 	jmp .done
 
-scancode_table:
-    db 0, 0, '1' , '2' , '3' , '4' , '5' , '6' , '7' , '8' , '9' , '0' , '-' , '=' , 0 
-    db 0, 'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']', 0  
-    db 0, 'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', "'", '`', 0 
-    db 0, '\', 'z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/', 0 
+scancode_table: ; NOTE need to fix this is there some replacement for the zeros ? its just printing blank spaces
+	db 0, 0, '1' , '2' , '3' , '4' , '5' , '6' , '7' , '8' , '9' , '0' , '-' , '=' , 0 
+	db 0, 'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']', '\\'  
+	db '\\', 'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', "'", '`', 0 
+	db 0, 'z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/', 0, 0         ; 0x2A-0x35	
+	db 0, ' ' ; 0x39 = spacebar
 
 init_screen:
 	pushad
@@ -143,9 +158,27 @@ init_screen:
 	popad
 	ret
 
+print_string:
+	cld
+	; assumes the caller has string stored in esi , cursor location in edi
+	push eax
+	push esi
+	.loop:
+		lodsb ; loads char into al
+		test al, al ;  checks if current character is 0 ie string terminator
+		jz .done
+		mov byte [0xB8000 + edi], al
+		mov byte [0xB8001 + edi], 0x0F
+		add edi, 2
+		jmp .loop
+.done:
+	mov [cursor_pos], di
+	pop esi
+	pop eax
+	ret
 
 section .data
 	cursor_pos dw 0
-
+	shell_prompt db "Enter command -> ", 0 ;null terminated string
 ; Pad kernel to exactly 4KB
 times 4096-($-$$) db 0

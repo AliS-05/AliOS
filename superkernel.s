@@ -1,6 +1,5 @@
 bits 32
 [org 0x8000]
-
 kernel:
     mov ax, 0x10
     mov ds, ax
@@ -36,13 +35,14 @@ kernel:
     out 0xA1, al
     
     lidt [idtr]
-    sti
+    sti 
 
     ; Print 'S' to show we entered the kernel
-    mov byte [0xB8000], 'S'
-    mov byte [0xB8001], 0x0F
+    mov byte [0xB8000], 'H'
+    mov byte [0xB8001], 0x1F
 
     jmp $
+
 
 idt_start:
     times 32 dq 0 ; Exceptions
@@ -62,38 +62,76 @@ idtr:
     dd idt_start
 
 timer_handler:
-    pushad
+    push eax
     mov al, 0x20
     out 0x20, al
-    popad
+    pop eax
     iretd
 
 keyboard_handler:
     pushad
     mov ax, 0x10
     mov ds, ax
-
-    in al, 0x60
-    test al, 0x80
+    movzx edi, word [cursor_pos] ;saving cursor pos in register
+    
+    in al, 0x60 ; reading scancode
+    test al, 0x80 ; if scancode is a relase we skip
     jnz .done
 
-    movzx ebx, al
-    mov al, [scancode_table + ebx]
+    cmp al, 0x0E ;backspace
+    je .handle_backspace
 
-    mov [0xB8000], al
-    mov byte [0xB8001], 0x1F
+    cmp al, 0x1C ;enter
+    je .handle_enter
+    
+
+    movzx ebx, al ;padding scancode in ebx register
+    mov al, [scancode_table + ebx] ; finding actual character
+
+    mov byte [0xB8000 + edi], al
+    mov byte [0xB8001 + edi], 0x1F 
+
+    add word [cursor_pos], 2 ;moving to next section
 
 .done:
-    mov al, 0x20
+    mov al, 0x20 ;telling pic we received the message
     out 0x20, al
     popad
     iretd
+
+.handle_backspace:
+	cmp edi, 0
+	je .done ;at 0,0 theres nowhere to go
+
+	sub word [cursor_pos], 2 ;because we're always infront of the previous character
+	mov edi, [cursor_pos]
+	mov byte [0xB8000 + edi], ' '
+	mov byte [0xB8001 + edi], 0x1F
+	
+	jmp .done
+
+.handle_enter:
+	; next line = (cursor_pos / 160) + 1 * (160)
+	xor dx ,dx
+	mov ax, [cursor_pos]
+	mov bx, 160
+	div bx
+	add ax, 1
+	mul bx
+
+	mov word [cursor_pos], ax ;new location stored in ax
+	mov edi, [cursor_pos] 
+	mov word [0xB8000 + edi], 0x1F00
+	jmp .done
 
 scancode_table:
     db 0, 0, '1' , '2' , '3' , '4' , '5' , '6' , '7' , '8' , '9' , '0' , '-' , '=' , 0 
     db 0, 'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']', 0  
     db 0, 'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', "'", '`', 0 
-    db 0, '\\', 'z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/', 0 
-
+    db 0, '\', 'z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/', 0 
 ; Pad kernel to exactly 4KB
+
+section .data
+	cursor_pos dw 0
+
 times 4096-($-$$) db 0

@@ -6,9 +6,13 @@ kernel:
 	call init_screen
 	sti
 	
+	;prints command prompt
 	mov esi, shell_prompt
 	movzx edi, word [cursor_pos]
 	call print_string
+
+	;need to store user input in buffer
+	
 
 	jmp $
 
@@ -75,33 +79,39 @@ timer_handler:
     iretd
 
 keyboard_handler:
-    pushad
-    mov ax, 0x10
-    mov ds, ax
-    movzx edi, word [cursor_pos] ;saving cursor pos in register
-    
-    in al, 0x60 ; reading scancode
-    test al, 0x80 ; if scancode is a relase we skip
-    jnz .done
+	pushad
+	mov ax, 0x10
+	mov ds, ax
+	movzx edi, word [cursor_pos] ;saving cursor pos in register
 
-    cmp al, 0x0E ;backspace
-    je .handle_backspace
+	in al, 0x60 ; reading scancode
+	test al, 0x80 ; if scancode is a relase we skip
+	jnz .done
 
-    cmp al, 0x1C ;enter
-    je .handle_enter
-    
+	cmp al, 0x0E ;backspace
+	je .handle_backspace
 
-    movzx ebx, al ;padding scancode in ebx register
-    mov al, [scancode_table + ebx] ; finding actual character
-    
-    ;NOTE also disables space... need to work around this.
-    ;test al, al ; checks if printable character ie not a character defined as 0 in the scancode table
-    ;jz .done
-    
-    mov byte [0xB8000 + edi], al
-    mov byte [0xB8001 + edi], 0x0F 
+	cmp al, 0x1C ;enter
+	je .handle_enter
+	
+	cmp edi, 160
+	je .done
 
-    add word [cursor_pos], 2 ;moving to next section
+	movzx ebx, al ;padding scancode in ebx register
+	mov al, [scancode_table + ebx] ; finding actual character
+
+	;NOTE also disables space... need to work around this.
+	;test al, al ; checks if printable character ie not a character defined as 0 in the scancode table
+	;jz .done
+
+	mov byte [0xB8000 + edi], al
+	mov byte [0xB8001 + edi], 0x0F 
+
+	add word [cursor_pos], 2 ;moving to next section
+	
+	movzx edi, word [buffer_pos] ; writing to buffer
+	inc byte [buffer_pos]
+	mov [input_buffer + edi], al ;COMMAND BUFFER
 
 .done:
     mov al, 0x20 ;telling pic we received the message
@@ -118,9 +128,16 @@ keyboard_handler:
 	mov byte [0xB8000 + edi], ' '
 	mov byte [0xB8001 + edi], 0x0F
 	
+	;adjust buffer
+	dec byte [buffer_pos] ;
+	movzx edi, word [buffer_pos]
+	mov [input_buffer + edi], byte 0 ;replacing with 0
+	
 	jmp .done
 
 .handle_enter:
+
+
 	; next line = (cursor_pos / 160) + 1 * (160)
 	xor dx ,dx ; need to zero out bc stores remainder
 	mov ax, [cursor_pos]
@@ -128,23 +145,70 @@ keyboard_handler:
 	div bx
 	add ax, 1
 	mul bx
-
-	
 	mov word [cursor_pos], ax ;new location stored in ax
+	
+	movzx edi, word [buffer_pos] ;end of buffer
+	mov [input_buffer + edi], byte 0 ; null terminate buffer
+
+	call .parse_command
+	
+	; going to next next line
+	; next line for output , next next for prompt
+	xor dx ,dx 
+	mov ax, [cursor_pos]
+	mov bx, 160
+	div bx
+	add ax, 1
+	mul bx
+	mov word [cursor_pos], ax 
+	
+	;reset buffer
+	mov word [buffer_pos], 0
 	mov esi, shell_prompt
 	movzx edi, word [cursor_pos]
 	call print_string
-
-	;mov edi, [cursor_pos] 
-	;mov word [0xB8000 + edi], 0x1F00
 	jmp .done
 
+.parse_command:
+	pushad
+	mov esi, input_buffer ;string 1
+	mov edi, cmd_help ; string 2
+	
+.strcmp_loop:
+	mov al, [esi]
+	mov bl, [edi]
+	cmp al, bl
+	jne .not_equal
+	test al, al ;null terminator ?
+	jz .equal
+	inc esi
+	inc edi
+	jmp .strcmp_loop
+.equal:
+	;print help screen
+	mov esi, help_response
+	movzx edi, word [cursor_pos]
+	call print_string
+	popad
+	ret
+
+.not_equal:
+	;print error message
+	cmp byte [input_buffer], 0
+	je .skip_error
+	mov esi, unknown_response
+	movzx edi, word [cursor_pos]
+	call print_string
+.skip_error:
+	popad
+	ret
+
 scancode_table: ; NOTE need to fix this is there some replacement for the zeros ? its just printing blank spaces
-	db 0, 0, '1' , '2' , '3' , '4' , '5' , '6' , '7' , '8' , '9' , '0' , '-' , '=' , 0 
-	db 0, 'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']', '\\'  
-	db '\\', 'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', "'", '`', 0 
-	db 0, 'z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/', 0, 0         ; 0x2A-0x35	
-	db 0, ' ' ; 0x39 = spacebar
+	db 0, 27, '1' , '2' , '3' , '4' , '5' , '6' , '7' , '8' , '9' , '0' , '-' , '='
+	db 0x08, 0x09, 'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']'
+	db 13, 0, 'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', "'", '`'
+	db 0, '\', 'z','x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/', 0
+	db 0, 0, 0, ' ' ; 0x39 = spacebar
 
 init_screen:
 	pushad
@@ -177,8 +241,23 @@ print_string:
 	pop eax
 	ret
 
+section .bss
+	input_buffer resb 80 ;reserve 80 bytes for user inputs (line length)
+	command_buffer resb 10 ; 10 character command should be more than enough
+
 section .data
 	cursor_pos dw 0
+	buffer_pos dw 0
+	
+
+	;commands
+	cmd_help db "help", 0
+	cmd_clear db "clear", 0
+	cmd_reboot db "reboot", 0
+	
+	;responses
 	shell_prompt db "Enter command -> ", 0 ;null terminated string
+	help_response db "Supported Commands: clear, reboot", 0
+	unknown_response db "Unknown Command", 0
 ; Pad kernel to exactly 4KB
 times 4096-($-$$) db 0

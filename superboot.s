@@ -2,34 +2,35 @@ bits 16
 [org 0x7c00]
 
 start:
-    ; Set up segment registers + stack
-    xor ax, ax
-    mov ds, ax
-    mov ss, ax
-    mov es, ax
-    mov sp, 0x9000 
+	;
+	xor ax, ax
+	mov ds, ax
+	mov ss, ax
+	mov es, ax
+	mov sp, 0x9000  ;stack pointer
+	
+	; loading kernel from 'disk'
+	mov ah, 0x02    
+	mov al, 8       ; 8 sectors
+	mov ch, 0       
+	mov dh, 0       
+	mov cl, 2       
+	mov bx, 0x8000  
+	int 0x13 ;bios call
 
-    ; Load Kernel from disk
-    mov ah, 0x02    ; BIOS read sectors
-    mov al, 8       ; Let's read 8 sectors (4KB) to be safe
-    mov ch, 0       ; Cylinder 0
-    mov dh, 0       ; Head 0
-    mov cl, 2       ; Sector 2 (Kernel starts here)
-    mov bx, 0x8000  ; Load kernel to address 0x8000
-    int 0x13
+	; Enter Protected Mode
+	cli
+	 
+	in al, 0x92  ;flipping a20 line
+	or al, 2
+	out 0x92, al
 
-    ; Enter Protected Mode
-    cli
-    in al, 0x92 
-    or al, 2
-    out 0x92, al
+	lgdt [gdtr]
+	mov eax, cr0 ;flipping cr0 bit 
+	or eax, 1
+	mov cr0, eax
 
-    lgdt [gdtr]
-    mov eax, cr0
-    or eax, 1
-    mov cr0, eax
-
-    jmp 0x08:0x8000 ; Jump directly to kernel address
+	jmp 0x08:0x8000 ; jumping to kernel
 
 gdt_start:
     dq 0 

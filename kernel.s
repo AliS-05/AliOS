@@ -11,9 +11,6 @@ kernel:
 	movzx edi, word [cursor_pos]
 	call print_string
 
-	;need to store user input in buffer
-	
-
 	jmp $
 
 remap_pic:
@@ -227,13 +224,6 @@ keyboard_handler:
 .enter_done:
 	popad
 	ret
-
-;.empty_new_line:
-;	mov esi, shell_prompt
-;	movzx edi, word [cursor_pos]
-;	call print_string
-;	jmp .enter_done
-
 strcmp:
 	mov al, [esi]
 	mov bl, [edi]

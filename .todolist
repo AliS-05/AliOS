@@ -1,0 +1,9 @@
+0. possible C++ rewrite ? (dont see a real need but claude keeps recommending it so maybe ? prob keep what i have for now)
+
+1. heap allocator (unlocks data structures, dynamic arrays lots of nice QOL C++ stuff) 
+
+2. process management (fork() exec(), simple scheduler, memory isolation) this sounds hard asffff but obviously might be the single most important part of an OS
+
+3. filesystem (persistence, reboot wont reset everything, not limited to ram. directories {cd, ls, mkdir}, read/write files {open, read, write , close})
+
+4. compiler. this is the big one and last for a reason. once we have all 4 of these we will be able to compile programs on the OS and basically bootstrap from there

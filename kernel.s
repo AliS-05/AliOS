@@ -1,5 +1,8 @@
 bits 32
-[org 0x8000]
+extern kernel_main
+global kernel
+global print_string
+
 kernel:
 	cli
 	call remap_pic
@@ -7,10 +10,7 @@ kernel:
 	sti
 	
 	;prints command prompt
-	mov esi, shell_prompt
-	movzx edi, word [cursor_pos]
-	call print_string
-
+	call kernel_main
 	jmp $
 
 remap_pic:
@@ -265,9 +265,13 @@ init_screen:
 
 print_string:
 	cld
-	; assumes the caller has string stored in esi , cursor location in edi
+	push ebp
+	mov ebp, esp
 	push eax
 	push esi
+	push edi
+	mov esi, [ebp + 8] ;string location on stack frame
+	mov edi, [ebp + 12] ;cursor position
 	.loop:
 		lodsb ; loads char into al
 		test al, al ;  checks if current character is 0 ie string terminator
@@ -279,8 +283,10 @@ print_string:
 .done:
 	mov ax, di
 	mov [cursor_pos], ax
+	pop edi
 	pop esi
 	pop eax
+	pop ebp
 	ret
 
 

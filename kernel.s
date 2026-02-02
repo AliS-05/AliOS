@@ -107,12 +107,11 @@ keyboard_handler:
 	mov byte [0xB8000 + edi], al
 	mov byte [0xB8001 + edi], 0x0F 
 
-	add word [cursor_pos], 2 ;moving to next section
-	
+	add word [cursor_pos], 2 ;moving to next character
+
 	movzx edi, word [buffer_pos] ; writing to buffer
 	inc byte [buffer_pos]
 	mov [input_buffer + edi], al ;COMMAND BUFFER
-
 .done:
     mov al, 0x20 ;telling pic we received the message
     out 0x20, al
@@ -132,21 +131,33 @@ keyboard_handler:
 	dec byte [buffer_pos] ;
 	movzx edi, word [buffer_pos]
 	mov [input_buffer + edi], byte 0 ;replacing with 0
-	
 	jmp .done
 
 .handle_enter:
 	movzx edi, word [buffer_pos] ;end of buffer
 	mov [input_buffer + edi], byte 0 ; null terminate buffer
 	
-	cmp word [buffer_pos], 0
+	cmp word [buffer_pos], 0 ;empty new line if no command and press enter
 	je .empty_line
 
 	call .newline
 
 	call .parse_command
 
+	cmp byte [skip_newline], 1
+	je .skip_nl
+
+	call .newline
+
 	mov word [buffer_pos], 0 ;resetting buffer
+	mov esi, shell_prompt
+	movzx edi, word [cursor_pos]
+	call print_string
+	jmp .done
+
+.skip_nl:
+	mov byte [skip_newline], 0
+	mov word [buffer_pos] , 0
 	mov esi, shell_prompt
 	movzx edi, word [cursor_pos]
 	call print_string
@@ -157,7 +168,6 @@ keyboard_handler:
 	mov esi, shell_prompt
 	movzx edi, word [cursor_pos]
 	call print_string
-
 	jmp .done
 .newline:
 	xor dx, dx
@@ -199,11 +209,12 @@ keyboard_handler:
 	call print_string
 	jmp .enter_done
 .clear_cmd:
+	call init_screen
 	xor ax, ax
 	mov [cursor_pos], ax
-	call init_screen
-	mov esi, shell_prompt
-	movzx edi, word [cursor_pos]
+	mov byte [skip_newline], 1
+	;mov esi, shell_prompt
+	;movzx edi, word [cursor_pos]
 	;call print_string
 	jmp .enter_done
 .reboot_cmd:
@@ -251,6 +262,7 @@ scancode_table: ; NOTE need to fix this is there some replacement for the zeros 
 
 init_screen:
 	pushad
+
 	xor ebx, ebx
 	mov ecx, 2000
 .draw:
@@ -275,10 +287,12 @@ print_string:
 		add edi, 2
 		jmp .loop
 .done:
-	mov [cursor_pos], di
+	mov ax, di
+	mov [cursor_pos], ax
 	pop esi
 	pop eax
 	ret
+
 
 section .bss
 	input_buffer resb 80 ;reserve 80 bytes for user inputs (line length)
@@ -287,7 +301,7 @@ section .bss
 section .data
 	cursor_pos dw 0
 	buffer_pos dw 0
-	
+	skip_newline db 0	
 
 	;commands
 	cmd_help db "help", 0

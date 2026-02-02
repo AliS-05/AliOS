@@ -124,9 +124,9 @@ keyboard_handler:
 	je .done ;at 0,0 theres nowhere to go
 
 	sub word [cursor_pos], 2 ;because we're always infront of the previous character
-	mov edi, [cursor_pos]
+	movzx edi, word [cursor_pos]
 	mov byte [0xB8000 + edi], ' '
-	mov byte [0xB8001 + edi], 0x0F
+	mov byte [0xB8001 + edi], 0x00
 	
 	;adjust buffer
 	dec byte [buffer_pos] ;
@@ -136,45 +136,94 @@ keyboard_handler:
 	jmp .done
 
 .handle_enter:
-
-
-	; next line = (cursor_pos / 160) + 1 * (160)
-	xor dx ,dx ; need to zero out bc stores remainder
-	mov ax, [cursor_pos]
-	mov bx, 160
-	div bx
-	add ax, 1
-	mul bx
-	mov word [cursor_pos], ax ;new location stored in ax
-	
 	movzx edi, word [buffer_pos] ;end of buffer
 	mov [input_buffer + edi], byte 0 ; null terminate buffer
+	
+	cmp word [buffer_pos], 0
+	je .empty_line
+
+	call .newline
 
 	call .parse_command
-	
-	; going to next next line
-	; next line for output , next next for prompt
-	xor dx ,dx 
-	mov ax, [cursor_pos]
-	mov bx, 160
-	div bx
-	add ax, 1
-	mul bx
-	mov word [cursor_pos], ax 
-	
-	;reset buffer
-	mov word [buffer_pos], 0
+
+	mov word [buffer_pos], 0 ;resetting buffer
 	mov esi, shell_prompt
 	movzx edi, word [cursor_pos]
 	call print_string
 	jmp .done
 
+.empty_line:
+	call .newline
+	mov esi, shell_prompt
+	movzx edi, word [cursor_pos]
+	call print_string
+
+	jmp .done
+.newline:
+	xor dx, dx
+	mov ax, [cursor_pos]
+	mov bx, 160
+	div bx
+	inc ax
+	mul bx
+	mov word [cursor_pos], ax
+	ret
+
 .parse_command:
 	pushad
+	;since its less than 20 commands we can just search every single one without too big a hit of performance
+
+	;checking help command
 	mov esi, input_buffer ;string 1
 	mov edi, cmd_help ; string 2
+	call strcmp
+	je .help_cmd
 	
-.strcmp_loop:
+	;checking clear command
+	mov esi, input_buffer
+	mov edi, cmd_clear
+	call strcmp
+	je .clear_cmd
+
+	;checking reboot command
+	mov esi, input_buffer
+	mov edi, cmd_reboot
+	call strcmp
+	je .reboot_cmd
+
+	jmp .unknown_cmd
+
+.help_cmd:
+	mov esi, help_response
+	movzx edi, word [cursor_pos]
+	call print_string
+	jmp .enter_done
+.clear_cmd:
+	xor ax, ax
+	mov [cursor_pos], ax
+	call init_screen
+	mov esi, shell_prompt
+	movzx edi, word [cursor_pos]
+	;call print_string
+	jmp .enter_done
+.reboot_cmd:
+	jmp 0xFFFF:0 ;osdevwiki says this is the easiest way and it works so ...
+.unknown_cmd:
+	mov esi, unknown_response
+	movzx edi, word [cursor_pos]
+	call print_string
+
+.enter_done:
+	popad
+	ret
+
+;.empty_new_line:
+;	mov esi, shell_prompt
+;	movzx edi, word [cursor_pos]
+;	call print_string
+;	jmp .enter_done
+
+strcmp:
 	mov al, [esi]
 	mov bl, [edi]
 	cmp al, bl
@@ -183,24 +232,14 @@ keyboard_handler:
 	jz .equal
 	inc esi
 	inc edi
-	jmp .strcmp_loop
+	jmp strcmp
 .equal:
-	;print help screen
-	mov esi, help_response
-	movzx edi, word [cursor_pos]
-	call print_string
-	popad
+	cmp al, al ;sets 0 flag so we know whatever command was most recently check is a match
 	ret
 
 .not_equal:
 	;print error message
-	cmp byte [input_buffer], 0
-	je .skip_error
-	mov esi, unknown_response
-	movzx edi, word [cursor_pos]
-	call print_string
-.skip_error:
-	popad
+	or al, 1; this command was not a match clear zero flag
 	ret
 
 scancode_table: ; NOTE need to fix this is there some replacement for the zeros ? its just printing blank spaces
@@ -257,7 +296,8 @@ section .data
 	
 	;responses
 	shell_prompt db "Enter command -> ", 0 ;null terminated string
+	shell_prompt_len equ $-shell_prompt
 	help_response db "Supported Commands: clear, reboot", 0
-	unknown_response db "Unknown Command", 0
+	unknown_response db "Unknown Command. Try typing 'help'", 0
 ; Pad kernel to exactly 4KB
 times 4096-($-$$) db 0

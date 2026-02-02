@@ -4,15 +4,8 @@ SECTIONS
 {
 	. = 0x8000; /*origin*/
 
-	.text : {
-		*(.text)
-	}
-
-	.data : {
-		*(.data)
-	}
-
-	.bss : {
-		*(.bss)
-	}
+	.text : { *(.text) }
+	.rodata : { *(.rodata) }  
+	.data ALIGN(4): { *(.data) }
+	.bss ALIGN(4) : { *(.bss) }
 }

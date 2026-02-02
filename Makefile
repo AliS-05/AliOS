@@ -46,7 +46,7 @@ $(BINARY): $(BOOT_BIN) $(KERNEL_BIN)
 	cat $(BOOT_BIN) $(KERNEL_BIN) > $(BINARY)
 
 run: $(BINARY)
-	qemu-system-i386 -drive format=raw,file=$(BINARY)
+	qemu-system-x86_64 -drive format=raw,file=$(BINARY)
 
 debug: $(BINARY)
 	qemu-system-i386 -s -S -drive format=raw,file=$(BINARY)

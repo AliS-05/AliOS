@@ -11,7 +11,7 @@ start:
 	
 	; loading kernel from 'disk'
 	mov ah, 0x02    
-	mov al, 8       ; 8 sectors
+	mov al, 20       ; 16 sectors
 	mov ch, 0       
 	mov dh, 0       
 	mov cl, 2       

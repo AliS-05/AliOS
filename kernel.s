@@ -1,9 +1,19 @@
 bits 32
 extern kernel_main
+extern parse_command
 global kernel
-global print_string
-
+extern print_string
+global init_screen
+global skip_newline
 kernel:
+	mov ax, 0x10
+	mov ds, ax
+	mov es, ax
+	mov ss, ax
+	mov fs, ax
+	mov gs, ax
+	mov esp, 0x90000
+
 	cli
 	call remap_pic
 	call init_screen
@@ -14,13 +24,7 @@ kernel:
 	jmp $
 
 remap_pic:
-	mov ax, 0x10
-	mov ds, ax
-	mov es, ax
-	mov ss, ax
-	mov fs, ax
-	mov gs, ax
-	mov esp, 0x90000
+	
 
 	; Remap PIC
 	mov al, 0x11
@@ -77,6 +81,7 @@ timer_handler:
 
 keyboard_handler:
 	pushad
+	cld
 	mov ax, 0x10
 	mov ds, ax
 	movzx edi, word [cursor_pos] ;saving cursor pos in register
@@ -91,7 +96,7 @@ keyboard_handler:
 	cmp al, 0x1C ;enter
 	je .handle_enter
 	
-	cmp edi, 160
+	cmp edi, 160 ;end of line
 	je .done
 
 	movzx ebx, al ;padding scancode in ebx register
@@ -107,7 +112,7 @@ keyboard_handler:
 	add word [cursor_pos], 2 ;moving to next character
 
 	movzx edi, word [buffer_pos] ; writing to buffer
-	inc byte [buffer_pos]
+	inc word [buffer_pos]
 	mov [input_buffer + edi], al ;COMMAND BUFFER
 .done:
     mov al, 0x20 ;telling pic we received the message
@@ -125,7 +130,7 @@ keyboard_handler:
 	mov byte [0xB8001 + edi], 0x00
 	
 	;adjust buffer
-	dec byte [buffer_pos] ;
+	dec word [buffer_pos] ;
 	movzx edi, word [buffer_pos]
 	mov [input_buffer + edi], byte 0 ;replacing with 0
 	jmp .done
@@ -139,7 +144,7 @@ keyboard_handler:
 
 	call .newline
 
-	call .parse_command
+	call parse_command
 
 	cmp byte [skip_newline], 1
 	je .skip_nl
@@ -147,24 +152,32 @@ keyboard_handler:
 	call .newline
 
 	mov word [buffer_pos], 0 ;resetting buffer
-	mov esi, shell_prompt
-	movzx edi, word [cursor_pos]
+
+	movzx eax, word [cursor_pos]
+	push eax
+	push shell_prompt
 	call print_string
+	add esp, 8
 	jmp .done
 
 .skip_nl:
 	mov byte [skip_newline], 0
 	mov word [buffer_pos] , 0
-	mov esi, shell_prompt
-	movzx edi, word [cursor_pos]
+	movzx eax, word [cursor_pos]
+	push eax	
+	push shell_prompt
 	call print_string
+	add esp, 8
+
 	jmp .done
 
 .empty_line:
 	call .newline
-	mov esi, shell_prompt
-	movzx edi, word [cursor_pos]
+	movzx eax, word [cursor_pos]
+	push eax
+	push shell_prompt
 	call print_string
+	add esp, 8
 	jmp .done
 .newline:
 	xor dx, dx
@@ -176,72 +189,6 @@ keyboard_handler:
 	mov word [cursor_pos], ax
 	ret
 
-.parse_command:
-	pushad
-	;since its less than 20 commands we can just search every single one without too big a hit of performance
-
-	;checking help command
-	mov esi, input_buffer ;string 1
-	mov edi, cmd_help ; string 2
-	call strcmp
-	je .help_cmd
-	
-	;checking clear command
-	mov esi, input_buffer
-	mov edi, cmd_clear
-	call strcmp
-	je .clear_cmd
-
-	;checking reboot command
-	mov esi, input_buffer
-	mov edi, cmd_reboot
-	call strcmp
-	je .reboot_cmd
-
-	jmp .unknown_cmd
-
-.help_cmd:
-	mov esi, help_response
-	movzx edi, word [cursor_pos]
-	call print_string
-	jmp .enter_done
-.clear_cmd:
-	call init_screen
-	xor ax, ax
-	mov [cursor_pos], ax
-	mov byte [skip_newline], 1
-	;mov esi, shell_prompt
-	;movzx edi, word [cursor_pos]
-	;call print_string
-	jmp .enter_done
-.reboot_cmd:
-	jmp 0xFFFF:0 ;osdevwiki says this is the easiest way and it works so ...
-.unknown_cmd:
-	mov esi, unknown_response
-	movzx edi, word [cursor_pos]
-	call print_string
-
-.enter_done:
-	popad
-	ret
-strcmp:
-	mov al, [esi]
-	mov bl, [edi]
-	cmp al, bl
-	jne .not_equal
-	test al, al ;null terminator ?
-	jz .equal
-	inc esi
-	inc edi
-	jmp strcmp
-.equal:
-	cmp al, al ;sets 0 flag so we know whatever command was most recently check is a match
-	ret
-
-.not_equal:
-	;print error message
-	or al, 1; this command was not a match clear zero flag
-	ret
 
 scancode_table: ; NOTE need to fix this is there some replacement for the zeros ? its just printing blank spaces
 	db 0, 27, '1' , '2' , '3' , '4' , '5' , '6' , '7' , '8' , '9' , '0' , '-' , '='
@@ -263,31 +210,31 @@ init_screen:
 	popad
 	ret
 
-print_string:
-	cld
-	push ebp
-	mov ebp, esp
-	push eax
-	push esi
-	push edi
-	mov esi, [ebp + 8] ;string location on stack frame
-	mov edi, [ebp + 12] ;cursor position
-	.loop:
-		lodsb ; loads char into al
-		test al, al ;  checks if current character is 0 ie string terminator
-		jz .done
-		mov byte [0xB8000 + edi], al
-		mov byte [0xB8001 + edi], 0x0F
-		add edi, 2
-		jmp .loop
-.done:
-	mov ax, di
-	mov [cursor_pos], ax
-	pop edi
-	pop esi
-	pop eax
-	pop ebp
-	ret
+;print_string:
+;	cld
+;	push ebp
+;	mov ebp, esp
+;	push eax
+;	push esi
+;	push edi
+;	mov esi, [ebp + 8] ;string location on stack frame
+;	mov edi, [ebp + 12] ;cursor position
+;	.loop:
+;		lodsb ; loads char into al
+;		test al, al ;  checks if current character is 0 ie string terminator
+;		jz .done
+;		mov byte [0xB8000 + edi], al
+;		mov byte [0xB8001 + edi], 0x0F
+;		add edi, 2
+;		jmp .loop
+;.done:
+;	mov ax, di
+;	mov [cursor_pos], ax
+;	pop edi
+;	pop esi
+;	pop eax
+;	pop ebp
+;	ret
 
 
 section .bss
@@ -309,5 +256,10 @@ section .data
 	shell_prompt_len equ $-shell_prompt
 	help_response db "Supported Commands: clear, reboot", 0
 	unknown_response db "Unknown Command. Try typing 'help'", 0
-; Pad kernel to exactly 4KB
-times 4096-($-$$) db 0
+
+global cursor_pos
+global buffer_pos
+global shell_prompt
+global input_buffer
+global help_response
+global unknown_response

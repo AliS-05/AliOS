@@ -1,3 +1,5 @@
+#define NULL 0
+
 
 extern "C" {
     extern unsigned short cursor_pos; //2 bytes
@@ -116,43 +118,61 @@ void print_num(int num){
 	strtonum(num, buf);
 	print_string(buf, cursor_pos);
 }
-
-char* heap_start = (char*)0x100000;
-char* heap_current=(char*)0x100000;
-
 struct MemoryBlock{
 	int size;
 	int available; // 0 = available , 1 = in use. basically a bool
 	MemoryBlock* next;
 	MemoryBlock* prev;
+};
+
+MemoryBlock* heap_start = (MemoryBlock*)0x100000;
+
+void init_heap(){
+	heap_start->size = 0x100000;
+	heap_start->available = 0;
+	heap_start->next = NULL;
+	heap_start->prev = NULL;
 }
 
+
 void* malloc(int size){
-	// first we need to set up a 'header' struct for each block
-	MemoryBlock* newBlock = (MemoryBlock*)heap_current; //this puts it directly on the stack
-	newBlock->size = size;
-	newBlock->available = 1; //in use
-	newBlock->next = (MemoryBlock)(heap_current + sizeof(MemoryBlock));
-	// how do we implement prev ? calculations ?
-	if((int n = (heap_current - sizeof(MemoryBlock))) > 0x100000){
-		newBlock->prev = (MemoryBlock)(n);
-	}else{
-		newBlock->prev = NULL;
+	MemoryBlock* current = heap_start;
+	
+	while(current != NULL){//ie until the first suitable block
+		//if statement to check for size ?
+		if(current->available == 0 && current->size >= size + sizeof(MemoryBlock)){
+			//we want to return current and create a new header AFTER current that gives us access to the rest of the heap
+
+			//new header
+			MemoryBlock* block = (MemoryBlock*)((char*)current + sizeof(MemoryBlock) + size);
+			block->size = current->size - size - sizeof(MemoryBlock);
+			block->available = 0;
+			block->next = current->next;
+			block->prev = current;
+			
+			if(current->next != NULL){
+				current->next->prev = block;
+			}
+
+			current->size = size;
+			current->available = 1;
+			current->next = block;
+			return (void*)((char*)current + sizeof(MemoryBlock));
+		}
+		
+		current = current->next;
 	}
 
-	//update heap_current
-	heap_current += size + (sizeof(MemoryBlock));
-
-
-	//and a search function which should run first but well implement that last
-
-
-	return newBlock;
+	//no suitable block found
+	return NULL;
 }
 
 
 
 extern "C" void kernel_main(){
+	init_heap();
+	print_string("Hi", 0);
 	print_string("BOOT OK", 0);
 	print_string(shell_prompt, 160);
+	print_num((int)malloc(100));
 }

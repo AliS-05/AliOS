@@ -1,6 +1,9 @@
 0. possible C++ rewrite ? (dont see a real need but claude keeps recommending it so maybe ? prob keep what i have for now)
 
+
+0.9. implement an echo feature  for testing and mroe interactivity
 1. heap allocator (unlocks data structures, dynamic arrays lots of nice QOL C++ stuff) 
+
 
 2. process management (fork() exec(), simple scheduler, memory isolation) this sounds hard asffff but obviously might be the single most important part of an OS
 

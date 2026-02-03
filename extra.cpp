@@ -82,7 +82,7 @@ int atoi(const char* str){
 	return res * sign;
 }
 
-void itoa(int num, char* buf){
+void strtonum(int num, char* buf){
 	if (num == 0){
 		buf[0] = '0';
 		buf[1] = 0;
@@ -113,17 +113,41 @@ void itoa(int num, char* buf){
 
 void print_num(int num){
 	char buf[12];
-	itoa(num, buf);
+	strtonum(num, buf);
 	print_string(buf, cursor_pos);
 }
 
 char* heap_start = (char*)0x100000;
-char* heap_current =heap_start;
+char* heap_current=(char*)0x100000;
+
+struct MemoryBlock{
+	int size;
+	int available; // 0 = available , 1 = in use. basically a bool
+	MemoryBlock* next;
+	MemoryBlock* prev;
+}
 
 void* malloc(int size){
-	void* ptr = heap_current;
-	heap_current += size;
-	return ptr;
+	// first we need to set up a 'header' struct for each block
+	MemoryBlock* newBlock = (MemoryBlock*)heap_current; //this puts it directly on the stack
+	newBlock->size = size;
+	newBlock->available = 1; //in use
+	newBlock->next = (MemoryBlock)(heap_current + sizeof(MemoryBlock));
+	// how do we implement prev ? calculations ?
+	if((int n = (heap_current - sizeof(MemoryBlock))) > 0x100000){
+		newBlock->prev = (MemoryBlock)(n);
+	}else{
+		newBlock->prev = NULL;
+	}
+
+	//update heap_current
+	heap_current += size + (sizeof(MemoryBlock));
+
+
+	//and a search function which should run first but well implement that last
+
+
+	return newBlock;
 }
 
 
@@ -131,7 +155,4 @@ void* malloc(int size){
 extern "C" void kernel_main(){
 	print_string("BOOT OK", 0);
 	print_string(shell_prompt, 160);
-
-	print_num(1677);
-
 }

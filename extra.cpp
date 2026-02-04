@@ -1,5 +1,5 @@
 #define NULL 0
-
+typedef unsigned int uintptr_t;
 
 extern "C" {
     extern unsigned short cursor_pos; //2 bytes
@@ -15,24 +15,24 @@ extern "C" {
 
 
 extern "C" void print_string(const char *s1, unsigned short pos){
-	unsigned char* screen = (unsigned char*) (0xB8000 + pos);
+	volatile unsigned char* screen = (volatile unsigned char*) (0xB8000 + pos);
 	int count = 0;
-	while( *s1 != 0 ){
+	while( *s1 != 0 && pos < 4000){
 		*screen = *s1;
 		*(screen + 1) = 0x0F;
 		s1++;
 		screen += 2;
-		count += 2;
+		pos += 2;
 	}
-	cursor_pos = pos + count;
+	cursor_pos = pos;
 }
 
 extern "C" int strcmp(char* s1, const char* s2){
-	while (*s1 && (*s1 == *s2)){
+	while (*s1 && *s2 && (*s1 == *s2)){
 		s1++;
 		s2++;
 	}
-	return *s1 - *s2; // returns non zero value if no match?
+	return (unsigned char)*s1 - (unsigned char)*s2; // returns non zero value if no match?
 }
 void cmd_help() {
     print_string(help_response, cursor_pos);
@@ -84,7 +84,7 @@ int atoi(const char* str){
 	return res * sign;
 }
 
-void strtonum(int num, char* buf){
+void strtonum(unsigned int num, char* buf){
 	if (num == 0){
 		buf[0] = '0';
 		buf[1] = 0;
@@ -113,11 +113,13 @@ void strtonum(int num, char* buf){
 	}
 }
 
-void print_num(int num){
-	char buf[12];
+void print_num(unsigned int num){
+	char buf[20];
 	strtonum(num, buf);
 	print_string(buf, cursor_pos);
 }
+
+
 struct MemoryBlock{
 	int size;
 	int available; // 0 = available , 1 = in use. basically a bool
@@ -125,22 +127,25 @@ struct MemoryBlock{
 	MemoryBlock* prev;
 };
 
-MemoryBlock* heap_start = (MemoryBlock*)0x100000;
+void* malloc(int size) {
+	static char* heap_ptr = (char*)0x100000;
+	static int first_call = 1;
 
-void init_heap(){
-	heap_start->size = 0x100000;
-	heap_start->available = 0;
-	heap_start->next = NULL;
-	heap_start->prev = NULL;
-}
+	if (first_call) {
+		// First time: set up initial block
+		MemoryBlock* initial = (MemoryBlock*)0x100000;
+		initial->size = 1048576 - sizeof(MemoryBlock);
+		initial->available = 0;
+		initial->next = NULL;
+		initial->prev = NULL;
+		first_call = 0;
+	}
 
-
-void* malloc(int size){
-	MemoryBlock* current = heap_start;
-	
+	// Now do malloc logic starting from 0x100000
+	MemoryBlock* current = (MemoryBlock*)0x100000;
 	while(current != NULL){//ie until the first suitable block
 		//if statement to check for size ?
-		if(current->available == 0 && current->size >= size + sizeof(MemoryBlock)){
+		if(current->available == 0 && current->size >= size + sizeof(MemoryBlock) + 1){
 			//we want to return current and create a new header AFTER current that gives us access to the rest of the heap
 
 			//new header
@@ -168,11 +173,24 @@ void* malloc(int size){
 }
 
 
+void free(void* memBlock){
+	MemoryBlock* block = (MemoryBlock*)((char*)memBlock - sizeof(MemoryBlock));
+	block->available = 0;
+	// add merge logic if prev and next are also available
+}
+
 
 extern "C" void kernel_main(){
-	init_heap();
-	print_string("Hi", 0);
-	print_string("BOOT OK", 0);
-	print_string(shell_prompt, 160);
-	print_num((int)malloc(100));
+	print_string("First: ", 0);
+	void* ptr1 = malloc(100);
+	print_num((uintptr_t)ptr1);
+	
+	print_string("Freeing.. ", 160);
+	free(ptr1);
+
+	print_string("Second: ", 320);
+	void* ptr2 = malloc(100);
+	print_num((int)ptr2);
+
+
 }

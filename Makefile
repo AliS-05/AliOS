@@ -15,7 +15,7 @@ KERNEL_BIN = kernel.bin
 
 CXXFLAGS = -m32 -ffreestanding -fno-exceptions -fno-rtti \
            -nostdlib -fno-builtin -fno-stack-protector \
-           -Wall -Wextra -O2
+           -Wall -Wextra -O0
 
 LDFLAGS = -m elf_i386 -T linker.ld
 

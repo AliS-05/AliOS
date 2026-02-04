@@ -16,6 +16,7 @@ void cmd_reboot();
 int isDigit(char digit);
 int atoi(const char* str);
 void itoa(int num, char* buf);
+unsigned short newLine(unsigned short cursor_pos);
 
 void print_char(const char c);
 void print_num(int num);

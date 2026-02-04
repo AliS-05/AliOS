@@ -7,7 +7,7 @@ void* malloc(int size) {
 	if (first_call) {
 		// First time: set up initial block
 		MemoryBlock* initial = (MemoryBlock*)0x100000;
-		initial->size = 1048576 - sizeof(MemoryBlock);
+		initial->size = (size_t)1048576 - sizeof(MemoryBlock);
 		initial->available = 0;
 		initial->next = NULL;
 		initial->prev = NULL;

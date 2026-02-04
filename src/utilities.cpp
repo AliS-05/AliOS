@@ -1,4 +1,5 @@
 #include "utilities.hpp"
+#include "string.hpp"
 
 extern "C" {
     extern unsigned short cursor_pos; //2 bytes
@@ -142,7 +143,8 @@ void print_num(int num){
 
 
 void print_hex(unsigned int hex){
-	char* chars = "0123456789ABCDEF";
+	size_t len = strlen("0123456789ABCDEF");
+	char chars[len];
 	
 	print_char('0');
 	print_char('x');

@@ -2,8 +2,11 @@
 #define STRUCTURES_H
 
 #define NULL 0
+
 typedef unsigned int uintptr_t;
 typedef signed int intptr_t;
+
+
 extern "C" {
     extern unsigned short cursor_pos; //2 bytes
     extern unsigned short buffer_pos; //2 bytes
@@ -12,10 +15,9 @@ extern "C" {
     extern char shell_prompt[];
     extern char help_response[];
     extern char unknown_response[];
-    extern void print_string(const char* str, unsigned short pos);
+    extern void print(const char* str);
     extern void init_screen();
 }
-
 
 
 struct MemoryBlock{

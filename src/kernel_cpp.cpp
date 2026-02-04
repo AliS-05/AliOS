@@ -4,18 +4,12 @@
 
 
 extern "C" void kernel_main(){
-	print_string("First: ", 0);
-	void* ptr1 = malloc(100);
-	print_num((uintptr_t)ptr1);
+	print(shell_prompt);
+	print_char('Y');
+	char* msg = "YES\n";
+	print(msg);
 	
-	print_string("Freeing.. ", 160);
-	free(ptr1);
+	print_num(-1234);
 
-	print_string("Second: ", 320);
-	void* ptr2 = malloc(100);
-	print_num((int)ptr2);
-
-	print_string("Negative number test: ", 800);
-
-
+	print_hex(0xABCD098);
 }

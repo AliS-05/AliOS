@@ -18,8 +18,8 @@ KERNEL_BIN = $(BUILD_DIR)/kernel.bin
 CPP_SOURCES := $(wildcard $(SRC_DIR)/*.cpp)
 CPP_OBJECTS := $(patsubst $(SRC_DIR)/%.cpp,$(BUILD_DIR)/%.o,$(CPP_SOURCES))
 
-CXXFLAGS = -m32 -ffreestanding -fno-exceptions -fno-rtti \
-           -nostdlib -fno-builtin -fno-stack-protector \
+CXXFLAGS = -m32 -ffreestanding -fno-exceptions -fno-rtti -fno-builtin \
+           -nostdlib -fno-builtin -fno-pic -fno-stack-protector \
            -Wall -Wextra -O0
 
 LDFLAGS = -m elf_i386 -T linker.ld

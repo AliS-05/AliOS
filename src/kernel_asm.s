@@ -2,7 +2,7 @@ bits 32
 extern kernel_main
 extern parse_command
 global kernel
-extern print_string
+extern print
 global init_screen
 global skip_newline
 kernel:
@@ -96,8 +96,8 @@ keyboard_handler:
 	cmp al, 0x1C ;enter
 	je .handle_enter
 	
-	cmp edi, 160 ;end of line
-	je .done
+	;cmp edi, 160 ;end of line
+	;je .done
 
 	movzx ebx, al ;padding scancode in ebx register
 	mov al, [scancode_table + ebx] ; finding actual character
@@ -156,7 +156,7 @@ keyboard_handler:
 	movzx eax, word [cursor_pos]
 	push eax
 	push shell_prompt
-	call print_string
+	call print
 	add esp, 8
 	jmp .done
 
@@ -166,7 +166,7 @@ keyboard_handler:
 	movzx eax, word [cursor_pos]
 	push eax	
 	push shell_prompt
-	call print_string
+	call print
 	add esp, 8
 
 	jmp .done
@@ -176,7 +176,7 @@ keyboard_handler:
 	movzx eax, word [cursor_pos]
 	push eax
 	push shell_prompt
-	call print_string
+	call print
 	add esp, 8
 	jmp .done
 .newline:
@@ -210,7 +210,7 @@ init_screen:
 	popad
 	ret
 
-;print_string:
+;print:
 ;	cld
 ;	push ebp
 ;	mov ebp, esp

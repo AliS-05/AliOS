@@ -8,22 +8,38 @@ extern "C" {
     extern char shell_prompt[];
     extern char help_response[];
     extern char unknown_response[];
-    extern void print_string(const char* str, unsigned short pos);
+    extern void print(const char* str);
     extern void init_screen();
 }
 
 
-extern "C" void print_string(const char *s1, unsigned short pos){
-	volatile unsigned char* screen = (volatile unsigned char*) (0xB8000 + pos);
-	while( *s1 != 0 && pos < 4000){
-		*screen = *s1;
-		*(screen + 1) = 0x0F;
-		s1++;
-		screen += 2;
-		pos += 2;
-	}
-	cursor_pos = pos;
+void print_char(const char c){
+	if(cursor_pos >= 4000) return;
+
+	volatile unsigned char* vga = (volatile unsigned char*)0xB8000;
+	vga[cursor_pos] = (unsigned char)c;
+	vga[cursor_pos+1] = 0x0F;
+	cursor_pos += 2;
 }
+
+
+unsigned short newLine(unsigned short cursor_pos){
+	unsigned short next_line = (((cursor_pos / 160) + 1) * 160);
+	return next_line;
+}
+
+
+extern "C" void print(const char *s1){
+	while( *s1 != 0 ){
+		if(*s1 == '\n'){
+			cursor_pos = newLine(cursor_pos);
+		}else{
+			print_char(*s1);
+		}
+		s1++;
+	}
+}
+
 
 extern "C" int strcmp(char* s1, const char* s2){
 	while (*s1 && *s2 && (*s1 == *s2)){
@@ -33,7 +49,7 @@ extern "C" int strcmp(char* s1, const char* s2){
 	return (unsigned char)*s1 - (unsigned char)*s2; // returns non zero value if no match?
 }
 void cmd_help() {
-    print_string(help_response, cursor_pos);
+    print(help_response);
 }
 
 void cmd_clear() {
@@ -54,7 +70,7 @@ extern "C" void parse_command() {
     } else if (strcmp(input_buffer, "reboot") == 0) {
         cmd_reboot();
     } else {
-        print_string(unknown_response, cursor_pos);
+        print(unknown_response);
     }
 }
 
@@ -82,37 +98,58 @@ int atoi(const char* str){
 	return res * sign;
 }
 
-void strtonum(unsigned int num, char* buf){
-	if (num == 0){
-		buf[0] = '0';
-		buf[1] = 0;
-		return;
-	}
+void itoa(int num, char* buf) {
+    int i = 0;
+    unsigned int n; // Use unsigned to handle INT_MIN safely
 
-	int i = 0;
-	int is_neg = 0;
-	if(num < 0){
-		is_neg = 1;
-		num = -num;
-	}
+    if (num == 0) {
+        buf[i++] = '0';
+        buf[i] = 0;
+        return;
+    }
 
-	while(num > 0){
-		buf[i++] = (num % 10) + '0'; //increments i
-		num /= 10;
-	}
+    if (num < 0) {
+        buf[i++] = '-';
+        n = (unsigned int)(-num);
+    } else {
+        n = (unsigned int)num;
+    }
 
-	if(is_neg) buf[i++] = '-';
-	buf[i] = 0;
+    // Now work with 'n' (unsigned)
+    int start_index = i; // Save where the digits actually start
+    while (n > 0) {
+        buf[i++] = (n % 10) + '0';
+        n /= 10;
+    }
+    buf[i] = 0;
 
-	for (int j = 0; j < i/2 ;j++){ // 
-		char temp = buf[j];
-		buf[j] = buf[i-1-j];
-		buf[i-1-j] = temp;
+    // Reverse ONLY the digits, leave the '-' alone at buf[0]
+    int end_index = i - 1;
+    while (start_index < end_index) {
+        char temp = buf[start_index];
+        buf[start_index] = buf[end_index];
+        buf[end_index] = temp;
+        start_index++;
+        end_index--;
+    }
+}
+
+void print_num(int num){
+	static char buf[32];
+	itoa(num, buf);
+	print(buf);
+}
+
+
+void print_hex(unsigned int hex){
+	char* chars = "0123456789ABCDEF";
+	
+	print_char('0');
+	print_char('x');
+	for (int i = 6; i >= 0; i--) {
+		// Shift and mask to get each 4-bit nibble
+		print_char(chars[(hex >> (i * 4)) & 0xF]);
 	}
 }
 
-void print_num(unsigned int num){
-	char buf[20];
-	strtonum(num, buf);
-	print_string(buf, cursor_pos);
-}
+

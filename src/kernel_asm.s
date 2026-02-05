@@ -123,16 +123,16 @@ keyboard_handler:
 .handle_backspace:
 	cmp edi, 0
 	je .done ;at 0,0 theres nowhere to go
-
+	;adjust buffer
+	dec word [buffer_pos] ;
 	sub word [cursor_pos], 2 ;because we're always infront of the previous character
-	movzx edi, word [cursor_pos]
+	movzx edi, word [cursor_pos];
+
 	mov byte [0xB8000 + edi], ' '
 	mov byte [0xB8001 + edi], 0x00
 	
-	;adjust buffer
-	dec word [buffer_pos] ;
-	movzx edi, word [buffer_pos]
-	mov [input_buffer + edi], byte 0 ;replacing with 0
+	
+	;mov [input_buffer + edi], byte 0 ;replacing with 0
 	jmp .done
 
 .handle_enter:
@@ -153,31 +153,25 @@ keyboard_handler:
 
 	mov word [buffer_pos], 0 ;resetting buffer
 
-	movzx eax, word [cursor_pos]
-	push eax
 	push shell_prompt
 	call print
-	add esp, 8
+	add esp, 4
 	jmp .done
 
 .skip_nl:
 	mov byte [skip_newline], 0
 	mov word [buffer_pos] , 0
-	movzx eax, word [cursor_pos]
-	push eax	
 	push shell_prompt
 	call print
-	add esp, 8
+	add esp, 4
 
 	jmp .done
 
 .empty_line:
 	call .newline
-	movzx eax, word [cursor_pos]
-	push eax
 	push shell_prompt
 	call print
-	add esp, 8
+	add esp, 4
 	jmp .done
 .newline:
 	xor dx, dx
@@ -195,7 +189,7 @@ scancode_table: ; NOTE need to fix this is there some replacement for the zeros 
 	db 0x08, 0x09, 'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']'
 	db 13, 0, 'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', "'", '`'
 	db 0, '\', 'z','x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/', 0
-	db 0, 0, 0, ' ' ; 0x39 = spacebar
+	db 0, 0, ' ', 0 ; 0x39 = spacebar
 
 init_screen:
 	pushad

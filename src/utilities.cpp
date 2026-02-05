@@ -42,39 +42,6 @@ extern "C" void print(const char *s1){
 }
 
 
-extern "C" int strcmp(char* s1, const char* s2){
-	while (*s1 && *s2 && (*s1 == *s2)){
-		s1++;
-		s2++;
-	}
-	return (unsigned char)*s1 - (unsigned char)*s2; // returns non zero value if no match?
-}
-void cmd_help() {
-    print(help_response);
-}
-
-void cmd_clear() {
-    init_screen();
-    cursor_pos = 0;
-    skip_newline = 1;
-}
-
-void cmd_reboot() {
-    asm("jmp $0xFFFF, $0");
-}
-
-extern "C" void parse_command() {
-    if (strcmp(input_buffer, "help") == 0) {
-        cmd_help();
-    } else if (strcmp(input_buffer, "clear") == 0) {
-        cmd_clear();
-    } else if (strcmp(input_buffer, "reboot") == 0) {
-        cmd_reboot();
-    } else {
-        print(unknown_response);
-    }
-}
-
 int isDigit(char digit){
 	if(digit >= '0'&& digit <= '9'){
 		return 1;
@@ -154,4 +121,9 @@ void print_hex(unsigned int hex){
 	}
 }
 
-
+void clearBuf(void*ptr, size_t size){
+	unsigned char* p = (unsigned char*)ptr;
+	for(size_t i = 0; i < size; i++){
+		p[i] = 0;
+	}
+}

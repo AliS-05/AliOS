@@ -13,6 +13,7 @@ void itoa(int num, char* buf);
 unsigned short newLine(unsigned short cursor_pos);
 void clearBuf(void* ptr, size_t size);
 
+char* token(char* str, const char delim);
 
 void print_char(const char c);
 void print_num(int num);

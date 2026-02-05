@@ -49,7 +49,7 @@ int isDigit(char digit){
 	return 0;
 }
 
-int atoi(const char* str){
+int atoi(const char* str){ //converts a string to an integer
 	int res = 0;
 	while(*str == ' ') str++;
 	int sign = 1;
@@ -66,7 +66,7 @@ int atoi(const char* str){
 	return res * sign;
 }
 
-void itoa(int num, char* buf) {
+void itoa(int num, char* buf) { //converts an integer to a string
     int i = 0;
     unsigned int n; // Use unsigned to handle INT_MIN safely
 
@@ -127,3 +127,23 @@ void clearBuf(void*ptr, size_t size){
 		p[i] = 0;
 	}
 }
+
+
+char* token(char* str, const char delim){ //basically strtok 
+	static char* saved_pos;
+
+	if(str != NULL){ //if str == NULL we want to token the same string again
+		saved_pos = str;
+	}
+
+	char* token_start = saved_pos;
+
+	while(*saved_pos != delim){
+		saved_pos++;
+	}
+
+	//savedpos now at first / next ' '
+	*saved_pos = '\0';
+	return token_start;
+}
+

@@ -18,17 +18,6 @@ void cmd_reboot() {
     asm("jmp $0xFFFF, $0");
 }
 
-int tokenize(char* buffer){
-	int count = 1;
-	char* c = buffer;
-	size_t len = strlen(buffer);
-	print_num((int)len);
-	for(int i = 0; i < 80; i++){
-		print_char(*c);
-		c++;
-	}
-	return count;
-}
 
 void cmd_echo(){
 	char* c = &input_buffer[5];

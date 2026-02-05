@@ -88,7 +88,16 @@ keyboard_handler:
 
 	in al, 0x60 ; reading scancode
 	test al, 0x80 ; if scancode is a relase we skip
-	jnz .done
+	jnz .check_release ; NOTE need to implement key release for shift and ctrl
+
+	cmp al, 0x2A ;left shift
+	je .shift_press
+
+	cmp al, 0x36 ;right shift
+	je .shift_press
+
+	cmp al, 0x1D ;left ctrl
+	je .ctrl_press
 
 	cmp al, 0x0E ;backspace
 	je .handle_backspace
@@ -100,12 +109,19 @@ keyboard_handler:
 	;je .done
 
 	movzx ebx, al ;padding scancode in ebx register
-	mov al, [scancode_table + ebx] ; finding actual character
 
 	;NOTE also disables space... need to work around this.
 	;test al, al ; checks if printable character ie not a character defined as 0 in the scancode table
 	;jz .done
 
+	cmp byte [shift_pressed], 1
+	je .use_shifted
+
+	mov al, [scancode_table + ebx] ; finding actual character
+	jmp .got_char
+.use_shifted:
+	mov byte al, [scancode_table_shifted + ebx]
+.got_char:
 	mov byte [0xB8000 + edi], al
 	mov byte [0xB8001 + edi], 0x0F 
 
@@ -114,6 +130,35 @@ keyboard_handler:
 	movzx edi, word [buffer_pos] ; writing to buffer
 	inc word [buffer_pos]
 	mov [input_buffer + edi], al ;COMMAND BUFFER
+	jmp .done
+
+.check_release:
+	cmp al, 0xAA; left shift release
+	je .shift_release 
+	cmp al, 0xB6;right shift release
+	je .shift_release 
+	
+	cmp al, 0x9D
+	je .ctrl_release
+	jmp .done
+
+.shift_press:
+	mov byte [shift_pressed], 1
+	jmp .done
+
+.shift_release:
+	mov byte [shift_pressed], 0
+	jmp .done
+
+.ctrl_press:
+	mov byte [ctrl_pressed], 1
+	jmp .done
+
+.ctrl_release:
+	mov byte [ctrl_pressed], 0
+	jmp .done
+
+
 .done:
     mov al, 0x20 ;telling pic we received the message
     out 0x20, al
@@ -184,12 +229,9 @@ keyboard_handler:
 	ret
 
 
-scancode_table: ; NOTE need to fix this is there some replacement for the zeros ? its just printing blank spaces
-	db 0, 27, '1' , '2' , '3' , '4' , '5' , '6' , '7' , '8' , '9' , '0' , '-' , '='
-	db 0x08, 0x09, 'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']'
-	db 13, 0, 'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', "'", '`'
-	db 0, '\', 'z','x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/', 0
-	db 0, 0, ' ', 0 ; 0x39 = spacebar
+
+
+
 
 init_screen:
 	pushad
@@ -203,33 +245,6 @@ init_screen:
 	loop .draw
 	popad
 	ret
-
-;print:
-;	cld
-;	push ebp
-;	mov ebp, esp
-;	push eax
-;	push esi
-;	push edi
-;	mov esi, [ebp + 8] ;string location on stack frame
-;	mov edi, [ebp + 12] ;cursor position
-;	.loop:
-;		lodsb ; loads char into al
-;		test al, al ;  checks if current character is 0 ie string terminator
-;		jz .done
-;		mov byte [0xB8000 + edi], al
-;		mov byte [0xB8001 + edi], 0x0F
-;		add edi, 2
-;		jmp .loop
-;.done:
-;	mov ax, di
-;	mov [cursor_pos], ax
-;	pop edi
-;	pop esi
-;	pop eax
-;	pop ebp
-;	ret
-
 
 section .bss
 	input_buffer resb 80 ;reserve 80 bytes for user inputs (line length)
@@ -248,8 +263,27 @@ section .data
 	;responses
 	shell_prompt db "Enter command -> ", 0 ;null terminated string
 	shell_prompt_len equ $-shell_prompt
-	help_response db "Supported Commands: clear, reboot", 0
+	help_response db "Supported Commands: clear, reboot, echo, calc", 0
 	unknown_response db "Unknown Command. Try typing 'help'", 0
+
+	shift_pressed db 0
+	ctrl_pressed db 0
+
+	scancode_table:
+		db 0, 27, '1' , '2' , '3' , '4' , '5' , '6' , '7' , '8' , '9' , '0' , '-' , '='
+		db 0x08, 0x09, 'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']'
+		db 13, 0, 'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', "'", '`'
+		db 0, '\', 'z','x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/', 0
+		db 0, 0, ' ', 0 ; 0x39 = spacebar
+
+	scancode_table_shifted:
+		db 0, 27, '!' , '@' , '#' , '$' , '%' , '^' , '&' , '*' , '(' , ')' , '_' , '+'
+		db 0x08, 0x09, 'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', '{', '}'
+		db 13, 0, 'A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', ':', '"', '~'
+		db 0, '|', 'Z','X', 'C', 'V', 'B', 'N', 'M', '<', '>', '?', 0
+		db 0, 0, ' '
+
+
 
 global cursor_pos
 global buffer_pos
@@ -257,3 +291,5 @@ global shell_prompt
 global input_buffer
 global help_response
 global unknown_response
+global shift_pressed
+global ctrl_pressed

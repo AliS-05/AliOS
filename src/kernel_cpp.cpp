@@ -5,11 +5,6 @@
 #include "string.hpp"
 
 
-boolean test(){
-	return (' ' == 0);
-}
-
-
 extern "C" void kernel_main(){
 	print(shell_prompt);
 //	boolean wonder = test();

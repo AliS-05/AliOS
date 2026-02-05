@@ -3,20 +3,27 @@
 
 
 
-void calc(const char* buf){ //assuming input is calc 3+4 no whitespace 
-	int x = buf[5] - '0';
-	//char op = buf[6]; need to implement shift
-	char op = '+';
-	int y = buf[7] - '0';
+void calc(char* buf){ //assuming input is calc 3+4 no whitespace 
+	token(buf, ' ');
+	char xbuf[32];
+	xbuf[0] = '\0';
+
+	char ybuf[32];
+	ybuf[0] = '\0';
+
+	char *x = token(buf, ' ');
+	int realx = atoi(x);
 	
-	switch(op){
-		case('+'): {
-			int sum = [](int a, int b) {return a + b;}(x,y);
-			print_num(sum);
-			break;
-		}
-		default:
-			print("Usage calc x+y note whitespace");
-			break;
+	char* op = token(buf, ' ');
+
+	char *y = token(buf, ' ');
+	int realy = atoi(y);
+
+	if(strcmp(op, (const char*)'+') == 0){
+		int sum = [](int a, int b) {return a + b;}(realx,realy);
+		print_num(sum);
+	}
+	else{
+		print("Usage calc x+y note whitespace");
 	}
 }

@@ -10,7 +10,7 @@ extern "C" int strcmp(const char* s1, const char* s2);
 int isDigit(char digit);
 int atoi(const char* str);
 void itoa(int num, char* buf);
-unsigned short newLine(unsigned short cursor_pos);
+int newLine(int cursor_pos);
 void clearBuf(void* ptr, size_t size);
 
 char* token(char* str, const char delim);

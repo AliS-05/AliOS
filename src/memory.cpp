@@ -51,3 +51,6 @@ void free(void* memBlock){
 	block->available = 0;
 	// add merge logic if prev and next are also available
 }
+
+
+

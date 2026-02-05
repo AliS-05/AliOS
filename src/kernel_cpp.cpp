@@ -7,6 +7,7 @@
 
 extern "C" void kernel_main(){
 	print(shell_prompt);
+	print("\n Test\n Hi");
 //	boolean wonder = test();
 //	print_num((int)wonder);
 //

@@ -29,6 +29,12 @@ void cmd_echo(){
 }
 
 
+void print_buf(char* input_buffer){
+	for(int i = 0; i < 80; i++){
+		print_char(input_buffer[i]);
+	}
+}
+
 extern "C" void parse_command() {
 	if (strcmp(input_buffer, "help") == 0) {
 		cmd_help();
@@ -40,6 +46,8 @@ extern "C" void parse_command() {
 		cmd_echo();
 	} else if (strncmp(input_buffer, "calc", 4) == 0){
 		calc(input_buffer);
+	} else if (strcmp(input_buffer, "printbuf") == 0){
+		print_buf(input_buffer);
 	}
 	else {
 		print(unknown_response);

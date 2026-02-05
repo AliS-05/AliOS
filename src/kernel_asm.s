@@ -84,7 +84,7 @@ keyboard_handler:
 	cld
 	mov ax, 0x10
 	mov ds, ax
-	movzx edi, word [cursor_pos] ;saving cursor pos in register
+	mov edi, [cursor_pos] ;saving cursor pos in register
 
 	in al, 0x60 ; reading scancode
 	test al, 0x80 ; if scancode is a relase we skip
@@ -125,10 +125,10 @@ keyboard_handler:
 	mov byte [0xB8000 + edi], al
 	mov byte [0xB8001 + edi], 0x0F 
 
-	add word [cursor_pos], 2 ;moving to next character
+	add dword [cursor_pos], 2 ;moving to next character
 
-	movzx edi, word [buffer_pos] ; writing to buffer
-	inc word [buffer_pos]
+	mov edi, [buffer_pos] ; writing to buffer
+	inc dword [buffer_pos]
 	mov [input_buffer + edi], al ;COMMAND BUFFER
 	jmp .done
 
@@ -169,9 +169,9 @@ keyboard_handler:
 	cmp edi, 0
 	je .done ;at 0,0 theres nowhere to go
 	;adjust buffer
-	dec word [buffer_pos] ;
-	sub word [cursor_pos], 2 ;because we're always infront of the previous character
-	movzx edi, word [cursor_pos];
+	dec dword [buffer_pos] ;
+	sub dword [cursor_pos], 2 ;because we're always infront of the previous character
+	mov edi, [cursor_pos];
 
 	mov byte [0xB8000 + edi], ' '
 	mov byte [0xB8001 + edi], 0x00
@@ -181,10 +181,10 @@ keyboard_handler:
 	jmp .done
 
 .handle_enter:
-	movzx edi, word [buffer_pos] ;end of buffer
+	mov edi, [buffer_pos] ;end of buffer
 	mov [input_buffer + edi], byte 0 ; null terminate buffer
 	
-	cmp word [buffer_pos], 0 ;empty new line if no command and press enter
+	cmp dword [buffer_pos], 0 ;empty new line if no command and press enter
 	je .empty_line
 
 	call .newline
@@ -196,7 +196,7 @@ keyboard_handler:
 
 	call .newline
 
-	mov word [buffer_pos], 0 ;resetting buffer
+	mov dword [buffer_pos], 0 ;resetting buffer
 
 	push shell_prompt
 	call print
@@ -205,7 +205,7 @@ keyboard_handler:
 
 .skip_nl:
 	mov byte [skip_newline], 0
-	mov word [buffer_pos] , 0
+	mov dword [buffer_pos] , 0
 	push shell_prompt
 	call print
 	add esp, 4
@@ -220,12 +220,12 @@ keyboard_handler:
 	jmp .done
 .newline:
 	xor dx, dx
-	mov ax, [cursor_pos]
+	mov eax, [cursor_pos]
 	mov bx, 160
 	div bx
 	inc ax
 	mul bx
-	mov word [cursor_pos], ax
+	mov [cursor_pos], eax
 	ret
 
 
@@ -251,8 +251,8 @@ section .bss
 	command_buffer resb 10 ; 10 character command should be more than enough
 
 section .data
-	cursor_pos dw 0
-	buffer_pos dw 0
+	cursor_pos dd 0
+	buffer_pos dd 0
 	skip_newline db 0	
 
 	;commands

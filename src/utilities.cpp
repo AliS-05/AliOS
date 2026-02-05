@@ -2,8 +2,8 @@
 #include "string.hpp"
 
 extern "C" {
-    extern unsigned short cursor_pos; //2 bytes
-    extern unsigned short buffer_pos; //2 bytes
+    extern int cursor_pos; //2 bytes
+    extern int buffer_pos; //2 bytes
     extern unsigned char skip_newline; //1 byte
     extern char input_buffer[80];
     extern char shell_prompt[];
@@ -24,14 +24,14 @@ void print_char(const char c){
 }
 
 
-unsigned short newLine(unsigned short cursor_pos){
-	unsigned short next_line = (((cursor_pos / 160) + 1) * 160);
+int newLine(int cursor_pos){
+	int next_line = (((cursor_pos / 160) + 1) * 160);
 	return next_line;
 }
 
 
 extern "C" void print(const char *s1){
-	while( *s1 != 0 ){
+	while( *s1 != '\0' ){
 		if(*s1 == '\n'){
 			cursor_pos = newLine(cursor_pos);
 		}else{

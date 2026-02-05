@@ -9,8 +9,8 @@ typedef signed int intptr_t;
 typedef unsigned int size_t;
 
 extern "C" {
-    extern unsigned short cursor_pos; //2 bytes
-    extern unsigned short buffer_pos; //2 bytes
+    extern int cursor_pos; //2 bytes
+    extern int buffer_pos; //2 bytes
     extern unsigned char skip_newline; //1 byte
     extern char input_buffer[80];
     extern char shell_prompt[];

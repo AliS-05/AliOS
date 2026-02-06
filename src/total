@@ -1,0 +1,808 @@
+#include "structures.hpp"
+#include "utilities.hpp"
+#include "string.hpp"
+#include "tools.hpp"
+
+
+void cmd_help() {
+    print(help_response);
+}
+
+void cmd_clear() {
+    init_screen();
+    cursor_pos = 0;
+    skip_newline = 1;
+}
+
+void cmd_reboot() {
+    asm("jmp $0xFFFF, $0");
+}
+
+
+void cmd_echo(){
+	char* c = &input_buffer[5];
+	while(*c){
+		print_char(*c);
+		c++;
+	}
+	//print(&input_buffer[12]);
+}
+
+
+void print_buf(char* input_buffer){
+	for(int i = 0; i < buffer_pos; i++){
+		print_char(input_buffer[i]);
+	}
+}
+
+extern "C" void parse_command() {
+	if (strcmp(input_buffer, "help") == 0) {
+		cmd_help();
+	} else if (strcmp(input_buffer, "clear") == 0) {
+		cmd_clear();
+	} else if (strcmp(input_buffer, "reboot") == 0) {
+		cmd_reboot();
+	} else if (strncmp(input_buffer, "echo", 4) == 0 || strcmp(input_buffer, "echo") == 0) {
+		cmd_echo();
+	} else if (strncmp(input_buffer, "calc", 4) == 0){
+		calc(input_buffer);
+	} else if (strcmp(input_buffer, "printbuf") == 0){
+		print_buf(input_buffer);
+	}
+	else {
+		print(unknown_response);
+	}
+}
+
+#ifndef COMMANDS_H
+#define COMMANDS_H
+
+extern "C" void parse_command();
+void cmd_help();
+void cmd_clear();
+void cmd_reboot();
+void cmd_echo();
+
+#endif
+bits 32
+
+extern bss_start
+extern bss_end
+extern kernel_main
+extern parse_command
+extern print
+
+global kernel
+global init_screen
+global skip_newline
+kernel:
+	mov ax, 0x10
+	mov ds, ax
+	mov es, ax
+	mov ss, ax
+	mov fs, ax
+	mov gs, ax
+	mov esp, 0x90000
+
+	cld
+	mov edi, bss_start    ; start address
+	mov ecx, bss_end
+	sub ecx, edi          ; ecx = size
+	xor eax, eax		; AL = 0
+	rep stosb             ; write ECX zeros to [EDI]
+
+	cli
+	call remap_pic
+	call init_screen
+	sti
+	
+	;prints command prompt
+	call kernel_main
+	jmp $
+
+remap_pic:
+	
+
+	; Remap PIC
+	mov al, 0x11
+	out 0x20, al
+	out 0xA0, al
+
+	mov al, 0x20 
+	out 0x21, al
+	mov al, 0x28 
+	out 0xA1, al
+
+	mov al, 0x04
+	out 0x21, al
+	mov al, 0x02
+	out 0xA1, al
+
+	mov al, 0x01
+	out 0x21, al
+	out 0xA1, al
+
+	; Enable Keyboard IRQ only
+	mov al, 0xFD 
+	out 0x21, al 
+	mov al, 0xFF 
+	out 0xA1, al
+
+	lidt [idtr]
+	ret
+
+
+
+idt_start:
+    times 32 dq 0 ; Exceptions
+    ;int 0x20 timer
+    dw timer_handler
+    dw 0x08
+    db 0, 10001110b
+    dw 0x0000
+     ;int 0x21 keyboard
+    dw keyboard_handler, 0x08
+    db 0, 10001110b
+    dw 0x0000
+    times (256-34) dq 0
+idt_end:
+
+idtr:
+    dw idt_end - idt_start - 1
+    dd idt_start
+
+timer_handler:
+    push eax
+    mov al, 0x20
+    out 0x20, al
+    pop eax
+    iretd
+
+keyboard_handler:
+	pushad
+	cld
+	mov ax, 0x10
+	mov ds, ax
+	mov edi, [cursor_pos] ;saving cursor pos in register
+
+	in al, 0x60 ; reading scancode
+	test al, 0x80 ; if scancode is a relase we skip
+	jnz .check_release ; NOTE need to implement key release for shift and ctrl
+
+	cmp al, 0x2A ;left shift
+	je .shift_press
+
+	cmp al, 0x36 ;right shift
+	je .shift_press
+
+	cmp al, 0x1D ;left ctrl
+	je .ctrl_press
+
+	cmp al, 0x0E ;backspace
+	je .handle_backspace
+
+	cmp al, 0x1C ;enter
+	je .handle_enter
+	
+	;cmp edi, 160 ;end of line
+	;je .done
+
+	movzx ebx, al ;padding scancode in ebx register
+
+	;NOTE also disables space... need to work around this.
+	;test al, al ; checks if printable character ie not a character defined as 0 in the scancode table
+	;jz .done
+
+	cmp byte [shift_pressed], 1
+	je .use_shifted
+
+	mov al, [scancode_table + ebx] ; finding actual character
+	jmp .got_char
+.use_shifted:
+	mov byte al, [scancode_table_shifted + ebx]
+.got_char:
+	mov byte [0xB8000 + edi], al
+	mov byte [0xB8001 + edi], 0x0F 
+
+	add dword [cursor_pos], 2 ;moving to next character
+
+	mov edi, [buffer_pos] ; writing to buffe
+	cmp edi, 79
+	jae .done
+
+	mov [input_buffer + edi], al ;COMMAND BUFFER
+	inc dword [buffer_pos]
+
+	jmp .done
+
+.check_release:
+	cmp al, 0xAA; left shift release
+	je .shift_release 
+	cmp al, 0xB6;right shift release
+	je .shift_release 
+	
+	cmp al, 0x9D
+	je .ctrl_release
+	jmp .done
+
+.shift_press:
+	mov byte [shift_pressed], 1
+	jmp .done
+
+.shift_release:
+	mov byte [shift_pressed], 0
+	jmp .done
+
+.ctrl_press:
+	mov byte [ctrl_pressed], 1
+	jmp .done
+
+.ctrl_release:
+	mov byte [ctrl_pressed], 0
+	jmp .done
+
+
+.done:
+    mov al, 0x20 ;telling pic we received the message
+    out 0x20, al
+    popad
+    iretd
+
+.handle_backspace:
+
+	cmp dword [buffer_pos], 0
+	je .done
+	cmp edi, 0
+	je .done ;at 0,0 theres nowhere to go
+	;adjust buffer
+	dec dword [buffer_pos] ;
+	push edi
+	mov edi, [buffer_pos]
+	mov byte [input_buffer + edi], 0
+	pop edi
+	sub dword [cursor_pos], 2 ;because we're always infront of the previous character
+	mov edi, [cursor_pos];
+
+	mov byte [0xB8000 + edi], ' '
+	mov byte [0xB8001 + edi], 0x00
+	
+	
+	;mov [input_buffer + edi], byte 0 ;replacing with 0
+	jmp .done
+
+.handle_enter:
+	mov edi, [buffer_pos] ;end of buffer
+	mov [input_buffer + edi], byte 0 ; null terminate buffer
+	
+	cmp dword [buffer_pos], 0 ;empty new line if no command and press enter
+	je .empty_line
+
+	call .newline
+
+	call parse_command
+
+	cmp byte [skip_newline], 1
+	je .skip_nl
+
+	call .newline
+
+	mov dword [buffer_pos], 0 ;resetting buffer
+
+	push shell_prompt
+	call print
+	add esp, 4
+	jmp .done
+
+.skip_nl:
+	mov byte [skip_newline], 0
+	mov dword [buffer_pos] , 0
+	push shell_prompt
+	call print
+	add esp, 4
+
+	jmp .done
+
+.empty_line:
+	call .newline
+	push shell_prompt
+	call print
+	add esp, 4
+	jmp .done
+.newline:
+	mov eax, [cursor_pos]
+	xor edx, edx
+	mov ebx, 160
+	div ebx
+	inc eax
+	mul ebx
+	mov [cursor_pos], eax
+	ret
+
+init_screen:
+	pushad
+
+	xor ebx, ebx
+	mov ecx, 2000
+.draw:
+	mov byte [0xB8000 + ebx], ' '
+	mov byte [0xB8001 + ebx], 0x00 ;black
+	add ebx, byte 2
+	loop .draw
+	popad
+	ret
+
+section .bss
+	input_buffer resb 80 ;reserve 80 bytes for user inputs (line length)
+	command_buffer resb 10 ; 10 character command should be more than enough
+
+section .data
+	cursor_pos dd 0
+	buffer_pos dd 0
+	skip_newline db 0	
+
+	;commands
+	cmd_help db "help", 0
+	cmd_clear db "clear", 0
+	cmd_reboot db "reboot", 0
+	
+	;responses
+	shell_prompt db "Enter command -> ", 0 ;null terminated string
+	shell_prompt_len equ $-shell_prompt
+	help_response db "Supported Commands: clear, reboot, echo, calc", 0
+	unknown_response db "Unknown Command. Try typing 'help'", 0
+
+	shift_pressed db 0
+	ctrl_pressed db 0
+
+	scancode_table:
+		db 0, 27, '1' , '2' , '3' , '4' , '5' , '6' , '7' , '8' , '9' , '0' , '-' , '='
+		db 0x08, 0x09, 'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']'
+		db 13, 0, 'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', "'", '`'
+		db 0, '\', 'z','x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/', 0
+		db 0, 0, ' ', 0 ; 0x39 = spacebar
+
+	scancode_table_shifted:
+		db 0, 27, '!' , '@' , '#' , '$' , '%' , '^' , '&' , '*' , '(' , ')' , '_' , '+'
+		db 0x08, 0x09, 'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', '{', '}'
+		db 13, 0, 'A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', ':', '"', '~'
+		db 0, '|', 'Z','X', 'C', 'V', 'B', 'N', 'M', '<', '>', '?', 0
+		db 0, 0, ' '
+
+
+
+global cursor_pos
+global buffer_pos
+global shell_prompt
+global input_buffer
+global help_response
+global unknown_response
+global shift_pressed
+global ctrl_pressed
+#include "structures.hpp"
+#include "commands.hpp"
+#include "utilities.hpp"
+#include "memory.hpp"
+#include "string.hpp"
+
+
+extern "C" void kernel_main(){
+	print("Hi");
+}
+#include "structures.hpp"
+
+void* malloc(int size) {
+	//static char* heap_ptr = (char*)0x100000;
+	static int first_call = 1;
+
+	if (first_call) {
+		// First time: set up initial block
+		MemoryBlock* initial = (MemoryBlock*)0x100000;
+		initial->size = (size_t)1048576 - sizeof(MemoryBlock);
+		initial->available = 0;
+		initial->next = NULL;
+		initial->prev = NULL;
+		first_call = 0;
+	}
+
+	// Now do malloc logic starting from 0x100000
+	MemoryBlock* current = (MemoryBlock*)0x100000;
+	while(current != NULL){//ie until the first suitable block
+		//if statement to check for size ?
+		if(current->available == 0 && current->size >= size + sizeof(MemoryBlock) + 1){
+			//we want to return current and create a new header AFTER current that gives us access to the rest of the heap
+
+			//new header
+			MemoryBlock* block = (MemoryBlock*)((char*)current + sizeof(MemoryBlock) + size);
+			block->size = current->size - size - sizeof(MemoryBlock);
+			block->available = 0;
+			block->next = current->next;
+			block->prev = current;
+			
+			if(current->next != NULL){
+				current->next->prev = block;
+			}
+
+			current->size = size;
+			current->available = 1;
+			current->next = block;
+			return (void*)((char*)current + sizeof(MemoryBlock));
+		}
+		
+		current = current->next;
+	}
+
+	//no suitable block found
+	return NULL;
+}
+
+
+void free(void* memBlock){
+	MemoryBlock* block = (MemoryBlock*)((char*)memBlock - sizeof(MemoryBlock));
+	block->available = 0;
+	// add merge logic if prev and next are also available
+}
+
+
+
+#ifndef MEMORY_H
+#define MEMORY_H
+
+void* malloc(int size);
+void free(void* MemoryBlock);
+
+#endif
+#include "utilities.hpp"
+//prob going to need malloc as well for better string methods but i dont think my malloc is quite there yet
+
+
+
+extern "C" int strcmp(const char* s1, const char* s2){
+	while (*s1 && *s2 && (*s1 == *s2)){
+		s1++;
+		s2++;
+	}
+	return (unsigned char)*s1 - (unsigned char)*s2; // returns non zero value if no match?
+}
+
+
+int strncmp(const char* s1, const char* s2, size_t n) {
+	while (n > 0 && *s1 && (*s1 == *s2)) {
+		s1++;
+		s2++;
+		n--;
+	}
+	if (n == 0) return 0;
+	return (unsigned char)*s1 - (unsigned char)*s2;
+}
+
+size_t strlen(const char* str){
+	if(str == nullptr){
+		print("CRITICAL ERROR STRLEN RECEIVED NULLPTR\n");
+		return 0;
+	}
+	size_t count = 0;
+	while(*str != '\0'){
+		count++;
+		str++;
+	}
+	return count;
+}
+
+char* strcat(char* dst, const char* src){ 
+	size_t len1 = strlen(dst);
+	size_t len2 = strlen(src);
+
+	for(size_t i = len1; i < len1 + len2; i++){
+		dst[i] = *src;
+		src++;
+	}
+	dst[len1+len2] = '\0';
+	return dst;
+}
+#ifndef STRING_H
+#define STRING_H
+
+#include "structures.hpp"
+
+
+// string info functions
+size_t strlen(const char* str);
+extern "C" int strcmp(const char* s1, const char* s2);
+int strncmp(const char* s1, const char* s2, size_t n);
+
+//string modifying functions
+char* strcat(char* dst, const char* src);
+
+#endif 
+#ifndef STRUCTURES_H
+#define STRUCTURES_H
+
+#define NULL 0
+
+typedef unsigned int uintptr_t;
+typedef int boolean; 
+typedef signed int intptr_t;
+typedef unsigned int size_t;
+
+
+struct MemoryBlock{
+	size_t size;
+	boolean available; // 0 = available , 1 = in use. basically a bool
+	MemoryBlock* next;
+	MemoryBlock* prev;
+};
+
+#endif
+bits 16
+[org 0x7c00]
+
+start:
+	;
+	xor ax, ax
+	mov ds, ax
+	mov ss, ax
+	mov es, ax
+	mov sp, 0x9000  ;stack pointer
+	
+	; loading kernel from 'disk'
+	mov ah, 0x02    
+	mov al, 100 ; 100 sectors
+	mov ch, 0       
+	mov dh, 0       
+	mov cl, 2       
+	mov bx, 0x8000  
+	int 0x13 ;bios call
+
+	; Enter Protected Mode
+	cli
+	 
+	in al, 0x92  ;flipping a20 line
+	or al, 2
+	out 0x92, al
+
+	lgdt [gdtr]
+	mov eax, cr0 ;flipping cr0 bit 
+	or eax, 1
+	mov cr0, eax
+
+	jmp 0x08:0x8000 ; jumping to kernel
+
+gdt_start:
+    dq 0 
+gdt_code:
+    dw 0xFFFF, 0
+    db 0, 10011010b, 11001111b, 0
+gdt_data:
+    dw 0xFFFF, 0
+    db 0, 10010010b, 11001111b, 0
+gdt_end:
+gdtr:
+    dw gdt_end - gdt_start - 1
+    dd gdt_start
+
+times 510-($-$$) db 0
+dw 0xAA55
+#include "utilities.hpp"
+#include "string.hpp"
+
+
+
+void calc(char* buf){ //assuming input is calc 3+4 no whitespace 
+	token(buf, ' ');
+
+	const char *x = token(NULL, ' ');
+	int realx = atoi(x);
+
+	const char* op = token(NULL, ' ');
+
+	char *y = token(NULL, ' ');
+	int realy = atoi(y);
+
+	if(strcmp(op, "+") == 0){
+		int sum = [](int a, int b) {return a + b;}(realx,realy);
+		print_num(sum);
+	}
+	else{
+		print("Usage calc x+y note whitespace");
+	}
+}
+#ifndef TOOLS_H
+#define TOOLS_H
+
+void calc(char* input);
+
+#endif
+#include "utilities.hpp"
+#include "string.hpp"
+
+extern "C" {
+    extern int cursor_pos;
+    extern int buffer_pos;
+    extern unsigned char skip_newline; //1 byte
+    extern char input_buffer[80];
+    extern char shell_prompt[];
+    extern char help_response[];
+    extern char unknown_response[];
+    extern void print(const char* str);
+}
+
+
+void print_char(const char c){
+	if(cursor_pos >= 3998) return;
+
+	volatile unsigned char* vga = (volatile unsigned char*)0xB8000;
+	vga[cursor_pos] = (unsigned char)c;
+	vga[cursor_pos+1] = 0x0F;
+	cursor_pos += 2;
+}
+
+
+int newLine(int cursor_pos){
+	int next_line = (((cursor_pos / 160) + 1) * 160);
+	return next_line;
+}
+
+
+extern "C" void print(const char *s1){
+	while( *s1 != '\0' ){
+		if(*s1 == '\n'){
+			cursor_pos = newLine(cursor_pos);
+		}else{
+			print_char(*s1);
+		}
+		s1++;
+	}
+}
+
+
+int isDigit(char digit){
+	if(digit >= '0'&& digit <= '9'){
+		return 1;
+	}
+	return 0;
+}
+
+int atoi(const char* str){ //converts a string to an integer
+	int res = 0;
+	while(*str == ' ') str++;
+	int sign = 1;
+	
+	if(*str == '-'){
+		sign = -1;
+		str++;
+	}
+	
+	while (isDigit(*str)) {
+		res = res * 10 + (*str - '0'); // considers digit place and adds ones place
+		str++;
+	}
+	return res * sign;
+}
+
+void itoa(int num, char* buf) { //converts an integer to a string
+    int i = 0;
+    unsigned int n; // Use unsigned to handle INT_MIN safely
+
+    if (num == 0) {
+        buf[i++] = '0';
+        buf[i] = 0;
+        return;
+    }
+
+    if (num < 0) {
+        buf[i++] = '-';
+        n = (unsigned int)(-num);
+    } else {
+        n = (unsigned int)num;
+    }
+
+    // Now work with 'n' (unsigned)
+    int start_index = i; // Save where the digits actually start
+    while (n > 0) {
+        buf[i++] = (n % 10) + '0';
+        n /= 10;
+    }
+    buf[i] = 0;
+
+    // Reverse ONLY the digits, leave the '-' alone at buf[0]
+    int end_index = i - 1;
+    while (start_index < end_index) {
+        char temp = buf[start_index];
+        buf[start_index] = buf[end_index];
+        buf[end_index] = temp;
+        start_index++;
+        end_index--;
+    }
+}
+
+void print_num(int num){
+	static char buf[32];
+	buf[0] = '\0';
+	itoa(num, buf);
+	print(buf);
+}
+
+
+void print_hex(unsigned int hex){
+	const char* chars = "0123456789ABCDEF";
+	//size_t len = strlen("0123456789ABCDEF");
+	//char chars[len];
+	
+	print_char('0');
+	print_char('x');
+	for (int i = 6; i >= 0; i--) {
+		// Shift and mask to get each 4-bit nibble
+		print_char(chars[(hex >> (i * 4)) & 0xF]);
+	}
+}
+
+void clearBuf(void*ptr, size_t size){
+	unsigned char* p = (unsigned char*)ptr;
+	for(size_t i = 0; i < size; i++){
+		p[i] = 0;
+	}
+}
+
+
+char* token(char* str, const char delim){ //basically strtok 
+	static char* saved_pos = NULL;
+
+	if(str != NULL){ //if str == NULL we want to token the same string again
+		saved_pos = str;
+	}
+	
+	if(saved_pos == NULL) return NULL;
+
+	char* token_start = saved_pos;
+
+	while(*saved_pos && *saved_pos != delim){
+		saved_pos++;
+	}
+
+	if(*saved_pos){
+		*saved_pos = '\0';
+		saved_pos++;
+	}
+
+	//savedpos now at first / next ' '
+	return token_start;
+}
+
+#ifndef UTILITIES_H
+#define UTILITIES_H
+
+#include "structures.hpp"
+
+extern "C" void print(const char *s1);
+extern "C" int strcmp(const char* s1, const char* s2);
+extern "C" void init_screen();
+
+
+extern "C" {
+    extern int cursor_pos;
+    extern int buffer_pos;
+    extern unsigned char skip_newline; //1 byte
+    extern char input_buffer[80];
+    extern char shell_prompt[];
+    extern char help_response[];
+    extern char unknown_response[];
+}
+
+
+
+
+
+int isDigit(char digit);
+int atoi(const char* str);
+void itoa(int num, char* buf);
+int newLine(int cursor_pos);
+void clearBuf(void* ptr, size_t size);
+
+char* token(char* str, const char delim);
+
+void print_char(const char c);
+void print_num(int num);
+void print_hex(unsigned int hex);
+void print_address(uintptr_t address);
+
+#endif

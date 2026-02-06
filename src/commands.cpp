@@ -28,9 +28,12 @@ void cmd_echo(){
 	//print(&input_buffer[12]);
 }
 
+void cmd_calc(char* input_buffer){
+	calc(input_buffer);
+}
 
 void print_buf(char* input_buffer){
-	for(int i = 0; i < 80; i++){
+	for(int i = 0; i < buffer_pos; i++){
 		print_char(input_buffer[i]);
 	}
 }

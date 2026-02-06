@@ -2,20 +2,19 @@
 #include "string.hpp"
 
 extern "C" {
-    extern int cursor_pos; //2 bytes
-    extern int buffer_pos; //2 bytes
+    extern int cursor_pos;
+    extern int buffer_pos;
     extern unsigned char skip_newline; //1 byte
     extern char input_buffer[80];
     extern char shell_prompt[];
     extern char help_response[];
     extern char unknown_response[];
     extern void print(const char* str);
-    extern void init_screen();
 }
 
 
 void print_char(const char c){
-	if(cursor_pos >= 4000) return;
+	if(cursor_pos >= 3998) return;
 
 	volatile unsigned char* vga = (volatile unsigned char*)0xB8000;
 	vga[cursor_pos] = (unsigned char)c;
@@ -29,6 +28,10 @@ int newLine(int cursor_pos){
 	return next_line;
 }
 
+
+void updateCursorPos(int newPos){
+	cursor_pos = newPos;
+}
 
 extern "C" void print(const char *s1){
 	while( *s1 != '\0' ){
@@ -104,14 +107,16 @@ void itoa(int num, char* buf) { //converts an integer to a string
 
 void print_num(int num){
 	static char buf[32];
+	buf[0] = '\0';
 	itoa(num, buf);
 	print(buf);
 }
 
 
 void print_hex(unsigned int hex){
-	size_t len = strlen("0123456789ABCDEF");
-	char chars[len];
+	const char* chars = "0123456789ABCDEF";
+	//size_t len = strlen("0123456789ABCDEF");
+	//char chars[len];
 	
 	print_char('0');
 	print_char('x');
@@ -121,7 +126,7 @@ void print_hex(unsigned int hex){
 	}
 }
 
-void clearBuf(void*ptr, size_t size){
+extern "C" void clearBuf(void*ptr, size_t size){
 	unsigned char* p = (unsigned char*)ptr;
 	for(size_t i = 0; i < size; i++){
 		p[i] = 0;
@@ -130,20 +135,25 @@ void clearBuf(void*ptr, size_t size){
 
 
 char* token(char* str, const char delim){ //basically strtok 
-	static char* saved_pos;
+	static char* saved_pos = NULL;
 
 	if(str != NULL){ //if str == NULL we want to token the same string again
 		saved_pos = str;
 	}
+	
+	if(saved_pos == NULL) return NULL;
 
 	char* token_start = saved_pos;
 
-	while(*saved_pos != delim){
+	while(*saved_pos && *saved_pos != delim){
+		saved_pos++;
+	}
+
+	if(*saved_pos){
+		*saved_pos = '\0';
 		saved_pos++;
 	}
 
 	//savedpos now at first / next ' '
-	*saved_pos = '\0';
 	return token_start;
 }
-

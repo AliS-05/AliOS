@@ -1,14 +1,11 @@
 #include "utilities.hpp"
-//prob going to need malloc as well for better string methods but i dont think my malloc is quite there yet
-
-
 
 extern "C" int strcmp(const char* s1, const char* s2){
 	while (*s1 && *s2 && (*s1 == *s2)){
 		s1++;
 		s2++;
 	}
-	return (unsigned char)*s1 - (unsigned char)*s2; // returns non zero value if no match?
+	return (unsigned char)*s1 - (unsigned char)*s2; // how different each string is ie non-zero means no match
 }
 
 

@@ -6,7 +6,7 @@ void* malloc(int size) {
 
 	if (first_call) {
 		// First time: set up initial block
-		MemoryBlock* initial = (MemoryBlock*)0x100000;
+		MemoryBlock* initial = (MemoryBlock*)0x100000; //this might need to be static, actually no ? can we just cast memblock in seperate scopes and still access further nodes?
 		initial->size = (size_t)1048576 - sizeof(MemoryBlock);
 		initial->available = 0;
 		initial->next = NULL;
@@ -53,4 +53,13 @@ void free(void* memBlock){
 }
 
 
-
+void* memcpy(void* dst, void* src, size_t n){ 
+	// copies from src to dst memcpy(arr1, arr2, 10)
+	// copies 10 bytes from arr1 to arr2
+	char* srcBuf = (char*)src;
+	char* dstBuf = (char*)dst;
+	for(size_t i = 0; i < n; i++){
+		dstBuf[i] = srcBuf[i];
+	}
+	return dst;
+}

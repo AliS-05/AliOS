@@ -3,7 +3,7 @@
 
 
 void calc(char* input);
-
+void hexdump(void* mem, size_t len);
 
 #endif
 

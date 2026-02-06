@@ -29,3 +29,17 @@ void calc(char* buf){
     }
 }
 
+
+void hexdump(void* mem, size_t len){ 
+	// goal :"0x100000: 0000 0000 0000 0000 0000 0000 0000 0000 -> Ascii: '1234567812345678'\n"
+
+	uintptr_t addr = (uintptr_t)mem; // numerical value of memory location passed
+	unsigned char* val = (unsigned char*)mem;
+	print_addr(addr); //printing the numerical value
+	print(": ");
+	for(uintptr_t i = addr; i < addr+len; i++){
+		print_byte(*val);
+		val++;
+	}
+
+}

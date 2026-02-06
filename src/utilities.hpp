@@ -22,17 +22,24 @@ extern "C" {
 
 
 void updateCursorPos(int newPos);
-int isDigit(char digit);
+boolean isDigit(char digit);
+boolean isHex(char digit);
+
 int atoi(const char* str);
 void itoa(int num, char* buf);
+uintptr_t stoh(const char* str);
 int newLine(int cursor_pos);
+
 extern "C" void clearBuf(void* ptr, size_t size);
 
 char* token(char* str, const char delim);
 
 void print_char(const char c);
 void print_num(int num);
-void print_hex(unsigned int hex);
-void print_address(uintptr_t address);
-
+void print_hex_n(unsigned int hex, int nibbles);
+void print_hex8(unsigned char b);
+void print_hex16(unsigned short b);
+void print_hex32(unsigned int b);
+void print_addr(uintptr_t addr);
+void print_byte(unsigned char b);
 #endif

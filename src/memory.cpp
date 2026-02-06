@@ -20,11 +20,10 @@ void* malloc(int size) {
 		//if statement to check for size ?
 		if(current->available == 0 && current->size >= size + sizeof(MemoryBlock) + 1){
 			//we want to return current and create a new header AFTER current that gives us access to the rest of the heap
-
-			//new header
 			MemoryBlock* block = (MemoryBlock*)((char*)current + sizeof(MemoryBlock) + size);
+			//basically reducing size of heap
 			block->size = current->size - size - sizeof(MemoryBlock);
-			block->available = 0;
+			block->available = 0; //its available
 			block->next = current->next;
 			block->prev = current;
 			
@@ -56,10 +55,31 @@ void free(void* memBlock){
 void* memcpy(void* dst, void* src, size_t n){ 
 	// copies from src to dst memcpy(arr1, arr2, 10)
 	// copies 10 bytes from arr1 to arr2
-	char* srcBuf = (char*)src;
-	char* dstBuf = (char*)dst;
+	unsigned char* srcBuf = (unsigned char*)src;
+	unsigned char* dstBuf = (unsigned char*)dst;
 	for(size_t i = 0; i < n; i++){
 		dstBuf[i] = srcBuf[i];
 	}
 	return dst;
 }
+
+
+void* memset(void* dst, int c, size_t n){
+	unsigned char* dstBuf = (unsigned char*)dst;
+	for(size_t i = 0; i < n; i++){
+		dstBuf[i] = c;
+	}
+	return dstBuf;
+}
+
+int memcmp(void* mem1, void* mem2){
+	unsigned char* m1 = (unsigned char*)mem1;
+	unsigned char* m2 = (unsigned char*)mem2;
+	while(*m1 && *m2 && (*m1 == *m2)){
+		m1++;
+		m2++;
+	}
+	return (*m1 - *m2);
+}
+
+

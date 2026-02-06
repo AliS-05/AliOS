@@ -6,17 +6,7 @@
 
 extern "C" void kernel_main(){
 	print(shell_prompt);
-	char* test = (char*)malloc(100);
-	char* test2 = (char*)malloc(100);
-	
-	strcat(test, "Hello\0");
-	strcat(test2, "TESTS");
-	print(test);
+	char* str = (char*)malloc(5);
+	strcat(str, "12345");
 
-	(char*)memcpy(test2, test, strlen(test));
-	
-	print("\n");
-
-	//strcat(test2, "World");
-	print(test2);
 }

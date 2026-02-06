@@ -38,6 +38,32 @@ void print_buf(char* input_buffer){
 	}
 }
 
+
+void cmd_hexdump(char* input_buffer){
+	//usages
+	//hexdump -- defaults to 256 bytes
+	// hexdump 0x100000 -- 
+	token(input_buffer, ' ');
+	const char* arg1 = token(NULL, ' ');
+	if(strlen(arg1) < 1){ // ie no arg
+		hexdump((void*)0x100000, (size_t)256);
+	} else if(strlen(arg1) >= 3 && (arg1[0] == '0' && (arg1[1] == 'x' || arg1[1] == 'X'))){ //checking for x ie 0x123
+		uintptr_t address = stoh(arg1); //converting address
+
+		const char* arg2 = token(NULL, ' ');
+		if(strlen(arg2) < 1){
+			hexdump((void*)address, 256);
+		}else{
+			int size = atoi(arg2);
+			hexdump((void*)address, (size_t)size);
+		}
+	}
+	else{
+		print("Usage hexdump <address> <size>");
+	}
+}
+
+
 extern "C" void parse_command() {
 	if (strcmp(input_buffer, "help") == 0) {
 		cmd_help();
@@ -51,6 +77,8 @@ extern "C" void parse_command() {
 		calc(input_buffer);
 	} else if (strcmp(input_buffer, "printbuf") == 0){
 		print_buf(input_buffer);
+	} else if (strncmp(input_buffer, "hexdump", 7) == 0) {
+		cmd_hexdump(input_buffer);
 	}
 	else {
 		print(unknown_response);

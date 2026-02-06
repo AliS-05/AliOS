@@ -74,7 +74,7 @@ remap_pic:
 
 	ret
 
-;
+;this is why you never let ai do anything
 ;setup_idt:
 ;	; entry 32 — timer (0x20)
 ;	mov eax, timer_handler

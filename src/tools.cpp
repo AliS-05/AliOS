@@ -13,10 +13,18 @@ void calc(char* buf){
     int realy = atoi(y);
 
     if(strcmp(op, "+") == 0){
-        int sum = realx + realy;
-        print_num(sum);
-    }
-    else{
+        auto sum = [](int a, int b){return a+b;};
+        print_num((int)sum(realx,realy));
+    } else if (strcmp(op, "-") == 0){
+	    auto res = [](int a, int b){return a - b;};
+	    print_num((int)res(realx,realy));
+    } else if (strcmp(op, "*") == 0){
+	    auto res = [](int a, int b){return a * b;};
+	    print_num((int)res(realx,realy));
+    } else if (strcmp(op, "/") == 0){
+	    auto res = [](int a, int b){ return a / b; };
+	    print_num((int)res(realx,realy));
+    } else{
         print("Usage: calc x + y");
     }
 }

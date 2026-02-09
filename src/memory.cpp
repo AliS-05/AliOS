@@ -63,7 +63,7 @@ void* memcpy(void* dst, void* src, size_t n){
 	return dst;
 }
 
-
+//sets n bytes to value of c in dst buffer
 void* memset(void* dst, int c, size_t n){
 	unsigned char* dstBuf = (unsigned char*)dst;
 	for(size_t i = 0; i < n; i++){

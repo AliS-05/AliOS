@@ -3,10 +3,11 @@
 #include "utilities.hpp"
 #include "string.hpp"
 #include "memory.hpp"
+#include "fs/io.hpp"
+#include "fs/ata.hpp"
+#include "fs/fs.hpp"
 
 extern "C" void kernel_main(){
-	print(shell_prompt);
-	char* str = (char*)malloc(5);
-	strcat(str, "12345");
-
+	listfiles();
+	read_file("hello.txt");
 }

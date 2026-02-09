@@ -4,9 +4,10 @@ LD = ld
 
 SRC_DIR = ../src
 BUILD_DIR = .
-
+VPATH := $(SRC_DIR) $(SRC_DIR)/fs
 
 BINARY = $(BUILD_DIR)/os.bin
+DRIVE = $(SRC_DIR)/fs/disk.img
 BOOT = $(SRC_DIR)/superboot.s
 KERNEL_ASM = $(SRC_DIR)/kernel_asm.s
 
@@ -15,12 +16,14 @@ KERNEL_ASM_OBJ = $(BUILD_DIR)/kernel_asm.o
 KERNEL_ELF = $(BUILD_DIR)/kernel.elf
 KERNEL_BIN = $(BUILD_DIR)/kernel.bin
 
-CPP_SOURCES := $(wildcard $(SRC_DIR)/*.cpp)
-CPP_OBJECTS := $(patsubst $(SRC_DIR)/%.cpp,$(BUILD_DIR)/%.o,$(CPP_SOURCES))
+CPP_SOURCES := $(wildcard $(SRC_DIR)/*.cpp) \
+	       $(wildcard $(SRC_DIR)/fs/*.cpp)
 
-CXXFLAGS = -m32 -ffreestanding -fno-exceptions -fno-rtti -fno-builtin \
+CPP_OBJECTS := $(CPP_SOURCES:$(SRC_DIR)/%.cpp=$(BUILD_DIR)/%.o)
+
+CXXFLAGS = -m32 -ffreestanding -fno-exceptions -fno-rtti \
            -nostdlib -fno-builtin -fno-pic -fno-stack-protector \
-           -Wall -Wextra -O0
+           -Wall -Wextra -O0 -I$(SRC_DIR)
 
 LDFLAGS = -m elf_i386 -T linker.ld
 
@@ -35,7 +38,8 @@ $(KERNEL_ASM_OBJ): $(KERNEL_ASM)
 	$(AS) -f elf32 $(KERNEL_ASM) -o $(KERNEL_ASM_OBJ)
 
 # Link kernel
-$(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp
+$(BUILD_DIR)/%.o: %.cpp
+	@mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 
@@ -51,12 +55,13 @@ $(BINARY): $(BOOT_BIN) $(KERNEL_BIN)
 	cat $^ > $@
 
 run: $(BINARY)
-	qemu-system-x86_64 -drive format=raw,file=$(BINARY)
+	qemu-system-x86_64 \
+		-drive format=raw,file=$(BINARY) \
+		-drive format=raw,file=$(DRIVE)
 
 debug: $(BINARY)
-	qemu-system-i386 -s -S -drive format=raw,file=$(BINARY)
+	qemu-system-x86_64 -s -S -drive format=raw,file=$(BINARY)
 
 clean:
-	rm -f *.bin *.o *.elf
-
+	rm -rf $(BUILD_DIR)/*.bin $(BUILD_DIR)/*.elf $(BUILD_DIR)/*.o $(BUILD_DIR)/fs
 .PHONY: all run debug clean

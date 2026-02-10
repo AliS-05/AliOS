@@ -14,8 +14,11 @@ struct FileObject{
 
 void initfs();
 
+uint32_t fileSize(const char* filename);
 void listfiles();
 void read_file(const char* filename);
 void write_file(const char* filename, uint8_t *buffer, size_t size);
 boolean delete_file(const char* filename);
+uint8_t* cpy_file_buffer(const char* filename, uint8_t* buffer, size_t bufferSize);
+
 #endif

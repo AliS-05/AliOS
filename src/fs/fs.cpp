@@ -21,6 +21,19 @@ void initfs(){
 	
 }
 
+size_t fileSize(const char* filename){
+	uint8_t sector[SECTORSIZE];
+	disk_read_sector(0, sector);
+	FileObject* files = (FileObject*)sector;
+
+	for(int i = 0; i < MAXFILES; i++){
+		if(strcmp(files[i].name, filename) == 0){
+			return files[i].size;
+			}
+	}
+	return -1;
+}
+
 uint32_t calcSectorsUsed(size_t size){
 	return (size + SECTORSIZE - 1) / SECTORSIZE;
 }
@@ -129,3 +142,38 @@ boolean delete_file(const char* filename){
 	}
 	return FAILURE;
 }
+
+
+uint8_t* cpy_file_buffer(const char* filename, uint8_t* buffer, size_t bufferSize){
+
+	uint8_t sector[SECTORSIZE];
+	disk_read_sector(0, sector);
+	FileObject* files = (FileObject*)sector;
+
+	for(uint32_t i = 0; i < MAXFILES; i++){
+		if(strncmp(files[i].name,filename, 32) == 0){
+
+			uint32_t start = files[i].startSector;
+			size_t size = files[i].size;
+			if(bufferSize < size) return NULL;
+			//buffer not spacious enough
+			uint32_t totalSectors = calcSectorsUsed(size);
+			size_t bytes_copied = 0; //need this to accurately move through the buffer and not overwrite ourselves
+			uint8_t curSector[SECTORSIZE];
+			//looping over sectors, need to memcpy read_sector to buffer
+			for(uint32_t x = 0; x < totalSectors; x++){
+				disk_read_sector(start + x, curSector);
+				//
+				size_t bytes_to_copy = (size - bytes_copied > SECTORSIZE) ? SECTORSIZE : (size - bytes_copied);
+				memcpy(buffer + bytes_copied, curSector, SECTORSIZE);
+				bytes_copied += bytes_to_copy;
+			}
+			return buffer;
+		}
+	}
+
+	print("File Not Found\n");
+	return NULL;
+}
+
+

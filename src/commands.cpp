@@ -117,7 +117,12 @@ void cmd_run(char* input_buffer){
 		return;
 	}
 	uint8_t* memory = (uint8_t*)0x200000; 
-	read_file();
+	cpy_file_buffer(filename, memory, fileSize(filename));
+	
+	typedef void (*Program)();
+	Program program = (Program)memory;
+	program();
+	print("Program finished");
 }
 
 
@@ -144,6 +149,8 @@ extern "C" void parse_command() {
 		cmd_makefile(input_buffer);
 	} else if (strncmp(input_buffer, "read", 4) == 0){
 		cmd_readfile(input_buffer);
+	} else if (strncmp(input_buffer, "run", 3) == 0){
+		cmd_run(input_buffer);
 	} else {
 		print(unknown_response);
 	}

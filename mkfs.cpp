@@ -37,6 +37,22 @@ int main(){
 	files[2].start_sector = 3;
 	files[2].size_bytes = 600;  // More than one sector
 
+
+	FILE* binfile = fopen("./bin/test.bin", "rb");
+	if(binfile){
+		// file size
+		fseek(binfile, 0, SEEK_END);
+		long bin_size = ftell(binfile);
+		fseek(binfile, 0, SEEK_SET);
+		
+		strcpy(files[3].name, "test.bin");
+		files[3].start_sector = 5;
+		files[3].size_bytes = bin_size;
+		fclose(binfile);
+	} else{
+		printf("Error: test.bin not found");
+	}
+
 	// Write sector 0
 	fwrite(files, SECTOR_SIZE, 1, disk);
 
@@ -57,17 +73,27 @@ int main(){
 	}
 	fwrite(big_data, SECTOR_SIZE, 2, disk);
 
-	// Fill rest of disk with zeros (10MB total)
+	binfile = fopen("./bin/test.bin", "rb");
+	if(binfile) {
+		fseek(disk, 5 * SECTOR_SIZE, SEEK_SET);  // Go to sector 5
+		// Read and write in chunks
+		char buffer[SECTOR_SIZE];
+		size_t bytes_read;
+		while((bytes_read = fread(buffer, 1, SECTOR_SIZE, binfile)) > 0) {
+			// Pad with zeros if less than sector size
+			if(bytes_read < SECTOR_SIZE) {
+			    memset(buffer + bytes_read, 0, SECTOR_SIZE - bytes_read);
+			}
+			fwrite(buffer, SECTOR_SIZE, 1, disk);
+		}
+		fclose(binfile);
+		printf("  test.bin  - %ld bytes at sector 5\n", files[3].size_bytes);
+	} 
+	// Fill rest of disk with zeros (10MB total) 
 	fseek(disk, 10 * 1024 * 1024 - 1, SEEK_SET);
 	fputc(0, disk);
 
 	fclose(disk);
-
-	printf("Created disk.img with 3 files:\n");
-	printf("  hello.txt - 13 bytes at sector 1\n");
-	printf("  test.txt  - 28 bytes at sector 2\n");
-	printf("  big.txt   - 600 bytes at sector 3\n");
-
 	return 0;
 
 }

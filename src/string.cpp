@@ -43,3 +43,4 @@ char* strcat(char* dst, const char* src){
 	dst[len1+len2] = '\0';
 	return dst;
 }
+

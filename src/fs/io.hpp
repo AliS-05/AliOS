@@ -18,6 +18,13 @@ static inline void insw(uint16_t port, void* addr, int count) {
                   : "memory");
 }
 
+static inline void outsw(uint16_t port, void* addr, int count){
+	asm volatile("rep outsw"
+			: "+S"(addr), "+c"(count)
+			: "d"(port)
+			: "memory");
+}
+
 static void ata_wait_busy() {
     while (inb(0x1F7) & 0x80); // BSY bit
 }

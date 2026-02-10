@@ -10,6 +10,9 @@
 #define ATA_STATUS     0x1F7
 #define ATA_COMMAND    0x1F7
 #define ATA_CMD_READ   0x20
+#define ATA_CMD_WRITE  0x30
+
+
 
 void disk_read_sector(uint32_t lba, uint8_t* buffer){
 	ata_wait_busy();
@@ -25,4 +28,23 @@ void disk_read_sector(uint32_t lba, uint8_t* buffer){
 
 	insw(ATA_DATA, buffer, 256);
 
+}
+
+void disk_write_sector(uint32_t lba, uint8_t* buffer){
+	
+	ata_wait_busy();
+	outb(ATA_DRIVE, 0xF0 | ((lba >> 24) & 0x0F));
+	outb(ATA_SECCOUNT, 1);
+	outb(ATA_LBA_LOW, (uint8_t)lba);
+	outb(ATA_LBA_MID, (uint8_t)(lba >> 8));
+	outb(ATA_LBA_HIGH, (uint8_t)(lba >> 16));
+	outb(ATA_COMMAND, ATA_CMD_WRITE); //write command
+
+	ata_wait_busy();
+	ata_wait_drq();
+	
+	//sending data to disk
+	outsw(ATA_DATA, buffer, 256);
+	outb(ATA_COMMAND, 0xE7); //cache flush command
+	ata_wait_busy();
 }

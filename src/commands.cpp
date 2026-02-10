@@ -2,7 +2,7 @@
 #include "utilities.hpp"
 #include "string.hpp"
 #include "tools.hpp"
-
+#include "fs/fs.hpp"
 
 void cmd_help() {
     print(help_response);
@@ -63,6 +63,63 @@ void cmd_hexdump(char* input_buffer){
 	}
 }
 
+void cmd_ls(){
+	listfiles();
+}
+
+void cmd_makefile(char* input_buffer){
+	size_t inputSize = strlen(input_buffer);
+	const char* buf1 = token(input_buffer, ' ');
+
+	const char* filename = token(NULL, ' ');
+	if(filename == NULL){
+		print("Error finding file to delete");
+		return;
+	}
+	
+	uint8_t buffer[SECTORSIZE];
+	buffer[0] = '\0';
+
+	size_t offset = strlen(buf1) + strlen(filename) + 2; //i think +2 because of spaces ?
+	
+	strcpy((char*)buffer, &input_buffer[offset]); //this is how we will write the remaining buffer to disk
+					      
+	size_t size = inputSize - offset;
+	write_file(filename, buffer, size);
+}
+
+void cmd_delfile(char* input_buffer){
+	token(input_buffer, ' ');
+	const char* filename = token(NULL, ' ');
+	if(filename == NULL){
+		print("Error finding file to delete");
+		return;
+	}
+	delete_file(filename);
+}
+
+void cmd_readfile(char* input_buffer){
+	token(input_buffer, ' ');
+	const char* filename = token(NULL, ' ');
+	if(filename == NULL){
+		print("Error finding file to delete");
+		return;
+	}
+	read_file(filename);
+}
+
+
+void cmd_run(char* input_buffer){
+	token(input_buffer, ' ');
+	const char* filename = token(NULL, ' ');
+	if(filename == NULL){
+		print("Error finding file to delete");
+		return;
+	}
+	uint8_t* memory = (uint8_t*)0x200000; 
+	read_file();
+}
+
 
 extern "C" void parse_command() {
 	if (strcmp(input_buffer, "help") == 0) {
@@ -79,8 +136,15 @@ extern "C" void parse_command() {
 		print_buf(input_buffer);
 	} else if (strncmp(input_buffer, "hexdump", 7) == 0) {
 		cmd_hexdump(input_buffer);
-	}
-	else {
+	} else if (strncmp(input_buffer, "ls", 2) == 0) {
+		cmd_ls();
+	} else if(strncmp(input_buffer, "del", 3) == 0){
+		cmd_delfile(input_buffer);
+	} else if (strncmp(input_buffer, "write", 5) == 0){
+		cmd_makefile(input_buffer);
+	} else if (strncmp(input_buffer, "read", 4) == 0){
+		cmd_readfile(input_buffer);
+	} else {
 		print(unknown_response);
 	}
 }

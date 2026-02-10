@@ -5,6 +5,8 @@
 #include "memory.hpp"
 #include "string.hpp"
 
+#define SUCCESS true
+#define FAILURE false
 #define SECTORSIZE 512
 #define MAXFILES 12
 
@@ -96,4 +98,34 @@ void write_file(const char* filename, uint8_t* buffer, size_t size){
 	}
 
 	print("Error writing to file");
+}
+
+//read sector table, find startSector, calcSectorsUsed, zero out with memset() by looping, write sector table back
+boolean delete_file(const char* filename){
+	uint8_t sector[SECTORSIZE];
+	disk_read_sector(0, sector);
+	FileObject* files = (FileObject*)sector;
+
+	for(int i = 0; i < MAXFILES; i++){
+		if(strcmp(files[i].name, filename) == 0){
+			
+			uint8_t zeroBuffer[SECTORSIZE];
+			memset(zeroBuffer, 0, SECTORSIZE);
+			uint32_t secStart = files[i].startSector;
+			uint32_t secs = calcSectorsUsed(files[i].size);
+			
+			//looping over all sectors used and writing zeroes
+			//might not be strictly necessary to zero out the disk but im going to do it for now
+			for(int j = 0; j < secs; j++){
+				disk_write_sector(secStart + j, zeroBuffer);
+			}
+
+			strcpy(files[i].name, "0");;
+			files[i].startSector = 0;
+			files[i].size = 0;
+			disk_write_sector(0, sector);
+			return SUCCESS;
+		}
+	}
+	return FAILURE;
 }

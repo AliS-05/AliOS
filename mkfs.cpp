@@ -13,7 +13,7 @@ struct FileEntry{
 
 
 int main(){
-	FILE* disk = fopen("disk.img", "wb");
+	FILE* disk = fopen("./src/fs/disk.img", "wb");
 	if(!disk){
 		printf("Error opening disk image");
 		return 1;

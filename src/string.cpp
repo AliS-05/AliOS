@@ -44,3 +44,13 @@ char* strcat(char* dst, const char* src){
 	return dst;
 }
 
+char* strcpy(char* dst, const char* src){
+	size_t len = strlen(src);
+	for(size_t i = 0; i < len; i++){
+		dst[i] = *src;
+		src++;
+	}
+	dst[len] = '\0';
+	return dst;
+}
+

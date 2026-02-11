@@ -1,9 +1,11 @@
-#include "structures.hpp"
-#include "utilities.hpp"
-#include "string.hpp"
-#include "tools.hpp"
-#include "fs/fs.hpp"
-#include "edit.hpp"
+#include <structures.hpp>
+#include <utilities.hpp>
+#include <string.hpp>
+#include <tools.hpp>
+#include <fs.hpp>
+#include <edit.hpp>
+
+extern "C" volatile uint8_t enter_editor_flag;
 
 void cmd_help() {
     print(help_response);
@@ -127,7 +129,7 @@ void cmd_run(char* input_buffer){
 }
 
 void cmd_edit(char* input_buffer){
-	edit_loop();
+	enter_editor_flag = 1;
 }
 
 extern "C" void parse_command() {

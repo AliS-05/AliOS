@@ -1,5 +1,5 @@
-#include "utilities.hpp"
-#include "string.hpp"
+#include <utilities.hpp>
+#include <string.hpp>
 
 extern "C" {
     extern int cursor_pos;
@@ -10,6 +10,7 @@ extern "C" {
     extern char help_response[];
     extern char unknown_response[];
     extern void print(const char* str);
+    extern uint8_t vga_color;
 }
 
 
@@ -29,7 +30,7 @@ void print_char(const char c){
 
 	volatile unsigned char* vga = (volatile unsigned char*)0xB8000;
 	vga[cursor_pos] = (unsigned char)c;
-	vga[cursor_pos+1] = 0x0F;
+	vga[cursor_pos+1] = vga_color;
 	cursor_pos += 2;
 }
 

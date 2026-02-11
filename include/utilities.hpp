@@ -1,7 +1,7 @@
 #ifndef UTILITIES_H
 #define UTILITIES_H
 
-#include "structures.hpp"
+#include <structures.hpp>
 
 extern "C" void print(const char *s1);
 extern "C" int strcmp(const char* s1, const char* s2);

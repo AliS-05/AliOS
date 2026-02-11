@@ -1,5 +1,5 @@
-#include "utilities.hpp"
-#include "string.hpp"
+#include <utilities.hpp>
+#include <string.hpp>
 
 void calc(char* buf){ 
     token(buf, ' ');

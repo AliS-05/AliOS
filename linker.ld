@@ -21,4 +21,3 @@ SECTIONS
 		bss_end = .;        /* <-- ADD THIS */
 	}
 }
-

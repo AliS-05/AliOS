@@ -1,9 +1,9 @@
-#include "structures.hpp"
-#include "math.hpp"
-#include "ata.hpp"
-#include "utilities.hpp"
-#include "memory.hpp"
-#include "string.hpp"
+#include <structures.hpp>
+#include <math.hpp>
+#include <ata.hpp>
+#include <utilities.hpp>
+#include <memory.hpp>
+#include <string.hpp>
 
 #define SUCCESS true
 #define FAILURE false

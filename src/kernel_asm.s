@@ -5,6 +5,7 @@ extern bss_end
 extern kernel_main
 extern parse_command
 extern print
+extern edit_loop
 
 global kernel
 global init_screen
@@ -17,6 +18,10 @@ global help_response
 global unknown_response
 global shift_pressed
 global ctrl_pressed
+global vga_color
+global in_editor
+global esc_pressed
+global enter_editor_flag
 
 kernel:
 	mov ax, 0x10
@@ -42,8 +47,18 @@ kernel:
 	
 	;prints command prompt
 	call kernel_main
-	jmp $
-
+	.idle:
+	    sti
+	    hlt
+	    cmp byte [enter_editor_flag], 1
+	    jne .idle
+	    mov byte [enter_editor_flag], 0
+	    call edit_loop
+	    ; restore shell after editor exits
+	    push shell_prompt
+	    call print
+	    add esp, 4
+	    jmp .idle
 remap_pic:
 	
 
@@ -74,29 +89,6 @@ remap_pic:
 
 	ret
 
-;this is why you never let ai do anything
-;setup_idt:
-;	; entry 32 — timer (0x20)
-;	mov eax, timer_handler
-;	mov word [idt_start + 32*8], ax        ; offset low
-;	mov word [idt_start + 32*8 + 2], 0x08  ; code segment
-;	mov byte [idt_start + 32*8 + 4], 0
-;	mov byte [idt_start + 32*8 + 5], 10001110b
-;	shr eax, 16
-;	mov word [idt_start + 32*8 + 6], ax    ; offset high
-;
-;	; entry 33 — keyboard (0x21)
-;	mov eax, keyboard_handler
-;	mov word [idt_start + 33*8], ax
-;	mov word [idt_start + 33*8 + 2], 0x08
-;	mov byte [idt_start + 33*8 + 4], 0
-;	mov byte [idt_start + 33*8 + 5], 10001110b
-;	shr eax, 16
-;	mov word [idt_start + 33*8 + 6], ax
-;
-;	lidt [idtr]
-;	ret
-;
 
 idt_start:
     times 32 dq 0 ; Exceptions
@@ -136,6 +128,11 @@ keyboard_handler:
 	test al, 0x80 ; if scancode is a relase we skip
 	jnz .check_release ; NOTE need to implement key release for shift and ctrl
 
+	cmp al, 0x01 ;escape key
+	jne .normal
+	mov byte [esc_pressed] , 1
+	jmp .done
+.normal:
 	cmp al, 0x2A ;left shift
 	je .shift_press
 
@@ -151,8 +148,6 @@ keyboard_handler:
 	cmp al, 0x1C ;enter
 	je .handle_enter
 	
-	;cmp edi, 160 ;end of line
-	;je .done
 
 	movzx ebx, al ;padding scancode in ebx register
 	
@@ -167,9 +162,14 @@ keyboard_handler:
 	mov byte al, [scancode_table_shifted + ebx]
 .got_char:
 	mov byte [0xB8000 + edi], al
-	mov byte [0xB8001 + edi], 0x0F 
+	mov byte ah, [vga_color]
+	mov byte [0xB8001 + edi], ah
 
 	add dword [cursor_pos], 2 ;moving to next character
+
+	; not filling in buffer if in editor
+	cmp byte [in_editor], 1
+	je .done
 
 	mov edi, [buffer_pos] ; writing to buffe
 	cmp edi, 79 ;leave room for 0 at end of buffer
@@ -218,6 +218,9 @@ keyboard_handler:
 
 .handle_backspace:
 
+	cmp byte [in_editor], 1
+	je .editor_backspace
+	
 	cmp dword [buffer_pos], 0
 	je .done
 
@@ -236,13 +239,27 @@ keyboard_handler:
 	mov edi, [cursor_pos];
 
 	mov byte [0xB8000 + edi], ' '
-	mov byte [0xB8001 + edi], 0x00
+	mov byte ah, [vga_color]
+	mov byte [0xB8001 + edi], ah
 	
 	
 	;mov [input_buffer + edi], byte 0 ;replacing with 0
 	jmp .done
 
+.editor_backspace: ;need special logic for editor backspace
+	cmp edi, 0
+	je .done
+
+	sub dword [cursor_pos], 2
+	mov edi, [cursor_pos]
+	mov byte [0xB8000 + edi], ' '
+	mov ah, [vga_color]
+	mov byte [0xB8001 + edi], ah
+	jmp .done
+
 .handle_enter:
+	cmp byte [in_editor], 1
+	je .editor_enter
 
 	;buffer = echo hello[enter]
 	;goal = echo hello0
@@ -266,10 +283,17 @@ keyboard_handler:
 	call .newline
 
 	mov dword [buffer_pos], 0 ;resetting buffer
+	
+	cmp byte [in_editor], 1 ;ie in editor so dont want to print shell_prompt
+	je .done
 
 	push shell_prompt
 	call print
 	add esp, 4
+	jmp .done
+
+.editor_enter:
+	call .newline
 	jmp .done
 
 .skip_nl:
@@ -307,7 +331,8 @@ init_screen:
 	mov ecx, 2000
 .draw:
 	mov byte [0xB8000 + ebx], ' '
-	mov byte [0xB8001 + ebx], 0x00 ;black
+	mov byte ah, [vga_color]
+	mov byte [0xB8001 + ebx], ah ;black
 	add ebx, byte 2
 	loop .draw
 	popad
@@ -324,6 +349,8 @@ section .data
 	buffer_pos dd 0
 	skip_newline db 0	
 	
+	vga_color db 0x0F
+
 	;responses
 	shell_prompt db "Enter command -> ", 0 ;null terminated string
 	shell_prompt_len equ $-shell_prompt
@@ -332,6 +359,9 @@ section .data
 
 	shift_pressed db 0
 	ctrl_pressed db 0
+	in_editor db 0 ;flag specifically for whether or not to print shell_prompt on enter press
+	esc_pressed db 0
+	enter_editor_flag db 0
 
 	scancode_table:
 		db 0, 27, '1' , '2' , '3' , '4' , '5' , '6' , '7' , '8' , '9' , '0' , '-' , '='

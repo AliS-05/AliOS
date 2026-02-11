@@ -1,7 +1,7 @@
 #ifndef STRING_H
 #define STRING_H
 
-#include "structures.hpp"
+#include <structures.hpp>
 
 
 // string info functions

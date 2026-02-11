@@ -3,6 +3,7 @@
 #include "string.hpp"
 #include "tools.hpp"
 #include "fs/fs.hpp"
+#include "edit.hpp"
 
 void cmd_help() {
     print(help_response);
@@ -125,6 +126,9 @@ void cmd_run(char* input_buffer){
 	print("Program finished");
 }
 
+void cmd_edit(char* input_buffer){
+	edit_loop();
+}
 
 extern "C" void parse_command() {
 	if (strcmp(input_buffer, "help") == 0) {
@@ -151,7 +155,10 @@ extern "C" void parse_command() {
 		cmd_readfile(input_buffer);
 	} else if (strncmp(input_buffer, "run", 3) == 0){
 		cmd_run(input_buffer);
-	} else {
+	} else if (strncmp(input_buffer, "edit", 4) == 0){
+		cmd_edit(input_buffer);
+	}
+	else {
 		print(unknown_response);
 	}
 }

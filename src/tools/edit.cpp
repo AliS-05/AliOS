@@ -90,14 +90,21 @@ char sc2char(uint8_t sc) {
 }
 
 void redraw(uint8_t color) {
-	unsigned char* vga = (unsigned char*)0xB8000;
-	for(int i = 0; i < 24; i++) {
-	   for(int j = 0; j < 80; j++) {
-		  vga[(i*160) + j*2] = (i < num_lines) ? (lines[i][j] ?: ' ') : ' ';
-		  vga[(i*160) + j*2 + 1] = color;
-	   }
-	}
-	cursor_pos = cursor_row * 160 + cursor_col * 2;
+    unsigned char* vga = (unsigned char*)0xB8000;
+    for(int i = 0; i < 24; i++) {
+        for(int j = 0; j < 80; j++) {
+            int vga_pos = (i*160) + j*2;
+            vga[vga_pos] = (i < num_lines) ? (lines[i][j] ?: ' ') : ' ';
+            
+            // Highlight cursor position in normal mode
+            if(i == cursor_row && j == cursor_col && editor_mode == 0) {
+                vga[vga_pos + 1] = 0xF0;  // Inverted colors (white bg, black text)
+            } else {
+                vga[vga_pos + 1] = color;
+            }
+        }
+    }
+    cursor_pos = cursor_row * 160 + cursor_col * 2;
 }
 
 extern "C" void edit_loop(const char* filename) {
@@ -129,8 +136,8 @@ extern "C" void edit_loop(const char* filename) {
 		}
 	}
 
-	cursor_row = 0;
-	cursor_col = 0;
+	cursor_row = (num_lines > 0) ? num_lines - 1: 0;
+	cursor_col = strlen(lines[cursor_row]);
 
 	
      in_editor = 1;

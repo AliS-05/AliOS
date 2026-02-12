@@ -87,7 +87,39 @@ size_t read_file(const char* filename){
 	print("File Not Found\n");
 }
 
-// want to throw error if file not found
+
+
+//this just finds the next open sector and writes there use overwrite_file to overwrite
+void write_file(const char* filename, uint8_t* buffer, size_t size){
+	//idea, read sector table, find next open sector write to that
+	uint8_t sector[SECTORSIZE];
+	disk_read_sector(0, sector);
+	FileObject* files = (FileObject*)sector;
+	uint32_t prevSector = 0;
+	for(int i = 0; i < MAXFILES; i++){
+		if(files[i].name[0] == 0){
+			strcpy(files[i].name,filename);
+			files[i].startSector = ++prevSector;
+			files[i].size = size;
+
+			//updating file table
+			disk_write_sector(0, sector);
+			//writing to file sector location
+			uint32_t secs = calcSectorsUsed(size);
+			for(uint32_t j = 0; j < secs; j++){
+				disk_write_sector(prevSector, buffer);
+			}
+			return;
+		}
+
+		//otherwise sector wasnt found
+		prevSector += calcSectorsUsed(files[i].size);
+	}
+
+	print("Error writing to file");
+}
+
+
 void overwrite_file(const char* filename, uint8_t* buffer, size_t newSize){
 	uint8_t sector[SECTORSIZE];
 	disk_read_sector(0, sector);
@@ -105,35 +137,7 @@ void overwrite_file(const char* filename, uint8_t* buffer, size_t newSize){
 			return;
 		}
 	}
-	print("ERROR FILE TO BE OVERWRITTEN NOT FOUND");
-}
-
-
-//this just finds the next open sector and writes there use overwrite_file to overwrite
-void write_file(const char* filename, uint8_t* buffer, size_t size){
-	//idea, read sector table, find next open sector write to that
-	uint8_t sector[SECTORSIZE];
-	disk_read_sector(0, sector);
-	FileObject* files = (FileObject*)sector;
-	uint8_t prevSector = 0;
-	for(int i = 0; i < MAXFILES; i++){
-		if(files[i].name[0] == 0){
-			strcpy(files[i].name,filename);
-			files[i].startSector = ++prevSector;
-			files[i].size = size;
-
-			//updating file table
-			disk_write_sector(0, sector);
-			//writing to file sector location
-			disk_write_sector(prevSector, buffer);
-			return;
-		}
-
-		//otherwise sector wasnt found
-		prevSector += calcSectorsUsed(files[i].size);
-	}
-
-	print("Error writing to file");
+	write_file(filename, buffer, newSize);
 }
 
 //read sector table, find startSector, calcSectorsUsed, zero out with memset() by looping, write sector table back

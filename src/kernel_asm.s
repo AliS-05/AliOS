@@ -50,18 +50,19 @@ kernel:
 	
 	;prints command prompt
 	call kernel_main
-	.idle:
-	    sti
-	    hlt
-	    cmp byte [enter_editor_flag], 1
-	    jne .idle
-	    mov byte [enter_editor_flag], 0
-	    call edit_loop
-	    ; restore shell after editor exits
-	    push shell_prompt
-	    call print
-	    add esp, 4
-	    jmp .idle
+	jmp $
+;	.idle:
+;	    sti
+;	    hlt
+;	    cmp byte [enter_editor_flag], 1
+;	    jne .idle
+;	    mov byte [enter_editor_flag], 0
+;	    call edit_loop
+;	    ; restore shell after editor exits
+;	    push shell_prompt
+;	    call print
+;	    add esp, 4
+;	    jmp .idle
 remap_pic:
 	
 

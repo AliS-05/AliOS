@@ -23,7 +23,7 @@ int main(){
 	memset(files, 0, sizeof(files));
 
  	// File 1: "hello.txt" at sector 1
-	strcpy(files[0].name, "hello.txt");
+	strcpy(files[0].name, "hello.txt\n");
 	files[0].start_sector = 1;
 	files[0].size_bytes = 13;
 

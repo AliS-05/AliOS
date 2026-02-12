@@ -129,7 +129,10 @@ void cmd_run(char* input_buffer){
 }
 
 void cmd_edit(char* input_buffer){
-	enter_editor_flag = 1;
+	token(input_buffer, ' ');
+	const char* filename =  token(NULL, ' ');
+	edit_loop(filename);
+	//enter_editor_flag = 1;
 }
 
 extern "C" void parse_command() {

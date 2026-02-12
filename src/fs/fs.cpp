@@ -45,8 +45,10 @@ void listfiles(){
 	FileObject* files = (FileObject*)sector;
 	print("Files: \n");
 	for(int i = 0; i < MAXFILES; i++){
-		print(files[i].name);
-		print("\n");
+		if(files[i].name[0] != '0'){
+			print(files[i].name);
+			print("\n");
+		}
 	}
 }
 
@@ -85,7 +87,27 @@ size_t read_file(const char* filename){
 	print("File Not Found\n");
 }
 
+// want to throw error if file not found
+void overwrite_file(const char* filename, uint8_t* buffer){
+	uint8_t sector[SECTORSIZE];
+	disk_read_sector(0, sector);
+	FileObject* files = (FileObject*)sector;
+	for(int i = 0; i < MAXFILES; i++){
+		if(strcmp(filename, files[i].name) == 0){//found file
+			uint8_t curSector = files[i].startSector;
+			size_t secs = calcSectorsUsed(files[i].size);
+			for(size_t i = 0; i < secs; i++){
+				disk_write_sector(curSector, buffer + (i * SECTORSIZE)); // moving through buffer correctly
+				curSector++;
+			}
+			return;
+		}
+	}
+	print("ERROR FILE TO BE OVERWRITTEN NOT FOUND");
+}
 
+
+//this just finds the next open sector and writes there use overwrite_file to overwrite
 void write_file(const char* filename, uint8_t* buffer, size_t size){
 	//idea, read sector table, find next open sector write to that
 	uint8_t sector[SECTORSIZE];
@@ -94,8 +116,7 @@ void write_file(const char* filename, uint8_t* buffer, size_t size){
 	uint8_t prevSector = 0;
 	for(int i = 0; i < MAXFILES; i++){
 		if(files[i].name[0] == 0){
-			//NOTE need to implement strcpy this is not correct
-			strcat(files[i].name,filename);
+			strcpy(files[i].name,filename);
 			files[i].startSector = ++prevSector;
 			files[i].size = size;
 
@@ -119,11 +140,11 @@ boolean delete_file(const char* filename){
 	disk_read_sector(0, sector);
 	FileObject* files = (FileObject*)sector;
 
+	uint8_t zeroBuffer[SECTORSIZE];
+	memset(zeroBuffer, 0, SECTORSIZE);
+
 	for(int i = 0; i < MAXFILES; i++){
 		if(strcmp(files[i].name, filename) == 0){
-			
-			uint8_t zeroBuffer[SECTORSIZE];
-			memset(zeroBuffer, 0, SECTORSIZE);
 			uint32_t secStart = files[i].startSector;
 			uint32_t secs = calcSectorsUsed(files[i].size);
 			

@@ -2,7 +2,7 @@
 #include <utilities.hpp>
 #include <string.hpp>
 #include <memory.hpp>
-
+#include <fs.hpp>
 
 //color reference 
 
@@ -51,15 +51,24 @@ void init_editor_screen(uint8_t colorByte){
 	cursor_pos = 0;
 }
 
-extern "C" volatile uint8_t vga_color;
-extern "C" volatile uint8_t in_editor;
-extern "C" volatile uint8_t editor_scancode;
-extern "C" volatile uint8_t editor_mode;  // 0=normal, 1=insert
-
-char lines[25][80];
+char lines[50][80];
 int cursor_row = 0, cursor_col = 0, num_lines = 1;
 char cmd[80];
 int cmd_len = 0;
+
+void save_editor_content(const char* filename) {
+    // 50 lines * 80 chars = 4000 bytes
+    uint8_t save_buffer[4000]; 
+    
+    // Flatten the 2D 'lines' array into 'save_buffer'
+    for (int r = 0; r < 50; r++) {
+        for (int c = 0; c < 80; c++) {
+            save_buffer[r * 80 + c] = (uint8_t)lines[r][c];
+        }
+    }
+
+    overwrite_file(filename, save_buffer);
+}
 
 uint8_t getkey() {
 	editor_scancode = 0;
@@ -77,12 +86,12 @@ char sc2char(uint8_t sc) {
 	return sc < sizeof(map) ? map[sc] : 0;
 }
 
-void redraw() {
+void redraw(uint8_t color) {
 	unsigned char* vga = (unsigned char*)0xB8000;
 	for(int i = 0; i < 24; i++) {
 	   for(int j = 0; j < 80; j++) {
 		  vga[(i*160) + j*2] = (i < num_lines) ? (lines[i][j] ?: ' ') : ' ';
-		  vga[(i*160) + j*2 + 1] = 0x0F;
+		  vga[(i*160) + j*2 + 1] = color;
 	   }
 	}
 	cursor_pos = cursor_row * 160 + cursor_col * 2;
@@ -90,35 +99,55 @@ void redraw() {
 
 extern "C" void edit_loop(const char* filename) {
 	memset(lines, 0, sizeof(lines));
+
+	uint8_t load_buffer[50000];
+	if(cpy_file_buffer(filename, load_buffer, 50000) != NULL) {
+		// Unflatten the buffer back into the 2D lines array
+		for (int r = 0; r < 50; r++) {
+		    for (int c = 0; c < 80; c++) {
+			lines[r][c] = load_buffer[r * 80 + c];
+		    }
+		}
+	}
+
+
 	in_editor = 1;
 	editor_mode = 0;
 	
 	while(in_editor) {
-	   redraw();
+	   redraw(vga_color);
 	   uint8_t k = getkey();
 	   if(k & 0x80) continue;  // Release
 	   
 	   if(editor_mode == 0) {  // NORMAL
 		
-		  if(k == KEY_H && cursor_col > 0) cursor_col--;			// h
-		  else if(k == KEY_J && cursor_row < num_lines-1) cursor_row++; // j
-		  else if(k == KEY_K && cursor_row > 0) cursor_row--;		// k
-		  else if(k == KEY_L && cursor_col < 79) cursor_col++;		// l
-		  else if(k == KEY_I) editor_mode = 1;					// i
-		  else if(k == KEY_COLOR) { editor_mode = 2; cmd_len = 0; }	  // :
+		  if(k == KEY_H && cursor_col > 0) cursor_col--;		
+		  else if(k == KEY_J && cursor_row < num_lines-1) cursor_row++;
+		  else if(k == KEY_K && cursor_row > 0) cursor_row--;		
+		  else if(k == KEY_L && cursor_col < 79) cursor_col++;	
+		  else if(k == KEY_I) editor_mode = 1;				
+		  else if(k == KEY_COLON) { editor_mode = 2; cmd_len = 0; }	 
+		  vga_color = 0xF0;
+		  print_char(' ');
+		  vga_color = 0x0F;
 	   }
 	   else if(editor_mode == 1) {  // INSERT
-		  if(k == KEY_ESC) editor_mode = 0;						// ESC
+		  if(k == KEY_ESC) editor_mode = 0;						
 		  else if(k == KEY_ENTER) { cursor_row++; cursor_col = 0; if(cursor_row >= num_lines) num_lines++; }
-		  else if(k == KEY_BACKSPACE && cursor_col > 0) cursor_col--;		// Backspace
+		  else if(k == KEY_BACKSPACE && cursor_col > 0) cursor_col--;		
 		  else { char c = sc2char(k); if(c) lines[cursor_row][cursor_col++] = c; }
 	   }
 	   else {  // COMMAND
 		  if(k == KEY_ESC) editor_mode = 0;						
 		  else if(k == KEY_ENTER) {							  
 			 cmd[cmd_len] = 0;
-			 if(!strcmp(cmd, "wq") || !strcmp(cmd, "q") || !strcmp(cmd, "q!")) 
+			 if(strcmp(cmd, "wq") == 0) {
+				save_editor_content(filename); 
 				in_editor = 0;
+			 } 
+			 else if(strcmp(cmd, "q") == 0 || strcmp(cmd, "q!") == 0) {
+				in_editor = 0;
+			 }
 			 editor_mode = 0;
 		  }
 		  else if(k == 0x0E && cmd_len > 0) cmd_len--;			// Backspace
@@ -127,6 +156,6 @@ extern "C" void edit_loop(const char* filename) {
 	}
 	
 	in_editor = 0;
-	init_editor_screen(0x0F);
+	init_editor_screen(vga_color);
 }
 

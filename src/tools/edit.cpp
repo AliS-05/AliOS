@@ -67,12 +67,15 @@ void save_editor_content(const char* filename) {
         }
     }
 
-    overwrite_file(filename, save_buffer);
+    overwrite_file(filename, save_buffer, 4000);
 }
 
 uint8_t getkey() {
 	editor_scancode = 0;
-	while(!editor_scancode) asm("hlt");
+	while(!editor_scancode){
+		asm("sti");
+		asm("hlt");
+	}
 	uint8_t k = editor_scancode;
 	editor_scancode = 0;
 	return k;
@@ -98,22 +101,41 @@ void redraw(uint8_t color) {
 }
 
 extern "C" void edit_loop(const char* filename) {
-	memset(lines, 0, sizeof(lines));
+	in_editor = 0;
+	editor_scancode = 0;
+	editor_mode = 0;
 
-	uint8_t load_buffer[50000];
-	if(cpy_file_buffer(filename, load_buffer, 50000) != NULL) {
+	init_editor_screen(0x0E);
+
+	memset(lines, 0, sizeof(lines));
+	
+
+	static uint8_t load_buffer[4000];
+	if(cpy_file_buffer(filename, load_buffer, 4000) != NULL) {
 		// Unflatten the buffer back into the 2D lines array
 		for (int r = 0; r < 50; r++) {
+		    boolean line_has_data = false;
 		    for (int c = 0; c < 80; c++) {
-			lines[r][c] = load_buffer[r * 80 + c];
+			char val = load_buffer[r * 80 + c];
+			lines[r][c] = val;
+
+			if(val != 0 && val != ' '){
+				line_has_data = true;
+			}
+		    }
+		    if(line_has_data){
+			    num_lines = r + 1;
 		    }
 		}
 	}
 
+	cursor_row = 0;
+	cursor_col = 0;
 
-	in_editor = 1;
-	editor_mode = 0;
 	
+     in_editor = 1;
+    init_editor_screen(0x0F);
+
 	while(in_editor) {
 	   redraw(vga_color);
 	   uint8_t k = getkey();
@@ -134,7 +156,14 @@ extern "C" void edit_loop(const char* filename) {
 	   else if(editor_mode == 1) {  // INSERT
 		  if(k == KEY_ESC) editor_mode = 0;						
 		  else if(k == KEY_ENTER) { cursor_row++; cursor_col = 0; if(cursor_row >= num_lines) num_lines++; }
-		  else if(k == KEY_BACKSPACE && cursor_col > 0) cursor_col--;		
+		  else if(k == KEY_BACKSPACE && cursor_col > 0){
+			  char* line = lines[cursor_row];
+			  int len = strlen(line);
+			  for(int i = cursor_col - 1; i < len; i++){
+				  line[i] = line[i+1];
+			  }
+			  cursor_col--;		
+		  }
 		  else { char c = sc2char(k); if(c) lines[cursor_row][cursor_col++] = c; }
 	   }
 	   else {  // COMMAND

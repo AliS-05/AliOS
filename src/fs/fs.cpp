@@ -88,18 +88,20 @@ size_t read_file(const char* filename){
 }
 
 // want to throw error if file not found
-void overwrite_file(const char* filename, uint8_t* buffer){
+void overwrite_file(const char* filename, uint8_t* buffer, size_t newSize){
 	uint8_t sector[SECTORSIZE];
 	disk_read_sector(0, sector);
 	FileObject* files = (FileObject*)sector;
 	for(int i = 0; i < MAXFILES; i++){
 		if(strcmp(filename, files[i].name) == 0){//found file
+			files[i].size = newSize;
 			uint8_t curSector = files[i].startSector;
-			size_t secs = calcSectorsUsed(files[i].size);
+			size_t secs = calcSectorsUsed(newSize);
 			for(size_t i = 0; i < secs; i++){
 				disk_write_sector(curSector, buffer + (i * SECTORSIZE)); // moving through buffer correctly
 				curSector++;
 			}
+			disk_write_sector(0, sector);
 			return;
 		}
 	}

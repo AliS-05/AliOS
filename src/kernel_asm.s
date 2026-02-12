@@ -24,6 +24,7 @@ global esc_pressed
 global enter_editor_flag
 global editor_scancode
 global editor_mode
+global editor_filename
 
 
 kernel:
@@ -50,19 +51,23 @@ kernel:
 	
 	;prints command prompt
 	call kernel_main
-	jmp $
-;	.idle:
-;	    sti
-;	    hlt
-;	    cmp byte [enter_editor_flag], 1
-;	    jne .idle
-;	    mov byte [enter_editor_flag], 0
-;	    call edit_loop
-;	    ; restore shell after editor exits
-;	    push shell_prompt
-;	    call print
-;	    add esp, 4
-;	    jmp .idle
+	;jmp $
+	.idle:
+	    sti
+	    hlt
+	    cmp byte [enter_editor_flag], 1
+	    jne .idle
+	    mov byte [enter_editor_flag], 0
+
+	    push dword editor_filename
+	    call edit_loop
+	    add esp, 4
+	    ; restore shell after editor exits
+	    push shell_prompt
+	    call print
+	    add esp, 4
+	    jmp .idle
+
 remap_pic:
 	
 
@@ -126,13 +131,21 @@ keyboard_handler:
 	;cld
 	mov ax, 0x10
 	mov ds, ax
+	mov es, ax
 	mov edi, [cursor_pos] ;saving cursor pos in register
 
 	in al, 0x60 ; reading scancode
 	
+	mov byte [editor_scancode], al
+
 	cmp byte [in_editor], 1
 	jne .not_in_editor
-	mov byte [editor_scancode], al
+
+	mov al, 0x20
+	out 0x20, al
+	popad
+	iretd
+
 	jmp .done
 
 .not_in_editor:
@@ -374,6 +387,7 @@ section .data
 	enter_editor_flag db 0
 	editor_scancode db 0
 	editor_mode db 0 ; 0 = normal , 1 insert, 2 = command ?
+	editor_filename times 32 db 0
 
 	scancode_table:
 		db 0, 27, '1' , '2' , '3' , '4' , '5' , '6' , '7' , '8' , '9' , '0' , '-' , '='

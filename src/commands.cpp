@@ -131,8 +131,13 @@ void cmd_run(char* input_buffer){
 void cmd_edit(char* input_buffer){
 	token(input_buffer, ' ');
 	const char* filename =  token(NULL, ' ');
-	edit_loop(filename);
-	//enter_editor_flag = 1;
+	if(!filename){
+		print("Usage edit <filename>");
+	}
+//	edit_loop(filename);
+	extern char editor_filename[32];
+	strcpy(editor_filename, filename);
+	enter_editor_flag = 1;
 }
 
 extern "C" void parse_command() {

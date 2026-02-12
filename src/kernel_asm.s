@@ -22,6 +22,9 @@ global vga_color
 global in_editor
 global esc_pressed
 global enter_editor_flag
+global editor_scancode
+global editor_mode
+
 
 kernel:
 	mov ax, 0x10
@@ -125,8 +128,15 @@ keyboard_handler:
 	mov edi, [cursor_pos] ;saving cursor pos in register
 
 	in al, 0x60 ; reading scancode
-	test al, 0x80 ; if scancode is a relase we skip
-	jnz .check_release ; NOTE need to implement key release for shift and ctrl
+	
+	cmp byte [in_editor], 1
+	jne .not_in_editor
+	mov byte [editor_scancode], al
+	jmp .done
+
+.not_in_editor:
+	test al, 0x80 
+	jnz .check_release
 
 	cmp al, 0x01 ;escape key
 	jne .normal
@@ -150,7 +160,6 @@ keyboard_handler:
 	
 
 	movzx ebx, al ;padding scancode in ebx register
-	
 	;checking if shift is pressed
 	cmp byte [shift_pressed], 1
 	je .use_shifted
@@ -362,6 +371,8 @@ section .data
 	in_editor db 0 ;flag specifically for whether or not to print shell_prompt on enter press
 	esc_pressed db 0
 	enter_editor_flag db 0
+	editor_scancode db 0
+	editor_mode db 0 ; 0 = normal , 1 insert, 2 = command ?
 
 	scancode_table:
 		db 0, 27, '1' , '2' , '3' , '4' , '5' , '6' , '7' , '8' , '9' , '0' , '-' , '='

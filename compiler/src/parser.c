@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include "token.h"
-
+#include "codeGen.h"
 extern int currentTokenIndex;
 extern int line;
 
@@ -32,8 +32,13 @@ void parseTokenArray(Token* tokenArray, int totalTokens){
 	expect(tokenArray, LBRACK,     totalTokens);
 	//interpret inside of main
 	expect(tokenArray, RETURN,     totalTokens);
+	int returnValue = tokenArray[currentTokenIndex].intValue;
 	expect(tokenArray, NUMBER,     totalTokens);
 	expect(tokenArray, SEMICOLON,     totalTokens);
 	printf("All tokens expected passed!\n");
+	printf("Return Value: %d\n", returnValue);
+
+	codeGen(returnValue);
+
 }
 

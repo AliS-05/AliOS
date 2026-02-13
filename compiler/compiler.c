@@ -1,72 +1,134 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <ctype.h>
 #include "token.h"
 
 
 char* source; 	
-
+int curPos = 0;
+long filesize = -1;
+int line = 1;
 //isalpha() isdigit() isalnum() isspace()
 // read entire file into memory  small sizes == not an issue
 
-char* readIdentifer(int curPos){
-	// should read until whitespace and return string
-	// int x = 4;
-	// ^curpos
-	//readIdentifer(curPos) returns 'int'
+void init(const char* filename){
+	FILE* file = fopen(filename, "rb");
+		if(file){
+			if(fseek(file, 0, SEEK_END) == 0){
+				filesize = ftell(file);
+				fseek(file, 0, SEEK_SET);
+			}
+
+			source = (char*)malloc(filesize + 1);
+			size_t bytes_read = fread(source, sizeof(char), filesize, file);
+			source[bytes_read] = '\0';
+
+			fclose(file);
+		}
+}
+
+Token nextToken() {	
+	Token tok;
+	tok.line = line;	
+	while (isspace(source[curPos])) {
+	if (source[curPos] == '\n')
+        	line++;
+		curPos++;
+	}	
+	char c = source[curPos];	
+	if (c == '\0') {
+		tok.type = TOK_EOF;
+		return tok;
+	}	
+	// Single character tokens
+	switch (c) {
+	case '(':
+        	curPos++;
+        	tok.type = LPAR;
+        	return tok;
+	case ')':
+        	curPos++;
+        	tok.type = RPAR;
+        	return tok;
+	case '{':
+        	curPos++;
+        	tok.type = LBRACK;
+        	return tok;
+	case '}':
+        	curPos++;
+        	tok.type = RBRACK;
+        	return tok;
+	case ';':
+        	curPos++;
+        	tok.type = SEMICOLON;
+        	return tok;
+	}	
+	// Identifier or keyword
+	if (isalpha(c)) {
+		char buffer[64];
+		int i = 0;	
+		while (isalnum(source[curPos])) {
+			buffer[i++] = source[curPos++];
+		}	
+		buffer[i] = '\0';	
+		if (strcmp(buffer, "int") == 0) {
+			tok.type = INT;
+			return tok;
+		}
+		if (strcmp(buffer, "char") == 0) {
+			tok.type = CHAR;
+			return tok;
+		}
+		if (strcmp(buffer, "void") == 0) {
+			tok.type = VOID;
+			return tok;
+		}
+		if (strcmp(buffer, "return") == 0) {
+			tok.type = RETURN;
+			return tok;
+		}	
+		tok.type = IDENTIFIER;
+		tok.strValue = strdup(buffer);
+		return tok;
+	}	
+	// Number
+	if (isdigit(c)) {
+		int value = 0;
+		while (isdigit(source[curPos])) {
+			value = value * 10 + (source[curPos] - '0');
+			curPos++;
+		}	
+		tok.type = NUMBER;
+		tok.intValue = value;
+		return tok;
+	}	
+	// Unknown character
+	curPos++;
+	tok.type = TOK_EOF;
+	return tok;
+}
+
+int main(int argc, char** argv) {
 	
+	init(argv[1]);
+	Token tok;
 
-	while(source[curPos] == ' '){ //skipping any initial whitespace
-		curPos++;
-	}
-
-	char* identifier = (char*)malloc(64);
-	int iter = 0;
-
-	while(source[curPos] != ' ' && source[curPos] != '\0'){
-		identifier[iter] = source[curPos];
-		iter++;
-		curPos++;
-	}
-
-	identifier[iter] = '\0';
-
-	printf("Identifier read: %s", identifier);
-	return identifier;
-}
-
-int readNum(int curPos){
-	//same as readIdentifer but for numerals
-}
-
-Token tokenize(){
-
-}
-
-int main() {
-	static int line = 1;
-	long filesize = -1;
-	int curPos = 0;
-
-	FILE* file = fopen("goal1.c", "rb");
-	if(file){
-		if(fseek(file, 0, SEEK_END) == 0){
-			filesize = ftell(file);
-			fseek(file, 0, SEEK_SET);
+	//start parsing
+	do{
+		tok = nextToken();
+		printf("Token: %s", tokenTypeToString(tok.type));
+		if(tok.type == IDENTIFIER){
+			printf("%s", tok.strValue);
 		}
 
-		source = (char*)malloc(filesize + 1);
-		size_t bytes_read = fread(source, sizeof(char), filesize, file);
-		source[bytes_read] = '\0';
-		rewind(file);
+		if(tok.type == NUMBER){
+			printf("%d", tok.intValue);
+		}
 
-		fclose(file);
-	}
-	
-	//start parsing
-	
-	readIdentifer(0);
+		printf("\n");
 
+	} while(tok.type != TOK_EOF);
 	return 0;
 }
 

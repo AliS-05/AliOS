@@ -30,5 +30,5 @@ static void ata_wait_busy() {
 }
 
 static void ata_wait_drq() {
-    while (!(inb(0x1F7) & 0x08)); // DRQ bit
+    while (!(inb(0x1F7) & 0x08)); // Data Request Bit
 }

@@ -5,7 +5,7 @@
 
 
 void codeGen(int return_value) {
-    uint8_t output[10];
+    uint8_t output[20];
     
     output[0] = 0x55;        // push ebp
     output[1] = 0x89;        // mov ebp, esp

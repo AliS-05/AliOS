@@ -16,7 +16,7 @@
 
 void disk_read_sector(uint32_t lba, uint8_t* buffer){
 	ata_wait_busy();
-	outb(ATA_DRIVE, 0xF0 | ((lba >> 24) & 0x0F)); //specifying second drive ie disk.img rather than os.bin
+	outb(ATA_DRIVE, 0xF0 | ((lba >> 24) & 0x0F)); //0xE0 = first disk 0xF0 = second disk
 	outb(ATA_SECCOUNT, 1);
 	outb(ATA_LBA_LOW, (uint8_t)lba);
 	outb(ATA_LBA_MID, (uint8_t)(lba >> 8));

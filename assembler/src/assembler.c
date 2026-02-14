@@ -2,8 +2,8 @@
 #include <string.h>
 #include <stdlib.h>
 #include <ctype.h>
-#include "token.h"
-#include "lexer.h"
+#include "asm_token.h"
+#include "asm_lexer.h"
 
 char* source = NULL; 	
 int currentTokenIndex = 0;

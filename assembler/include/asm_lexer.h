@@ -1,4 +1,4 @@
 #pragma once
-#include "token.h"
+#include "asm_token.h"
 
 Token nextToken();

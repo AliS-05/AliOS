@@ -2,7 +2,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <ctype.h>
-#include "token.h"
+#include "asm_token.h"
 
 extern int line;
 extern char* source;

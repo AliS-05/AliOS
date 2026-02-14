@@ -1,1 +1,1 @@
-gcc -I ./include src/assembler.c src/lexer.c src/token.c -o asm
+gcc -I ./include src/assembler.c src/asm_lexer.c src/asm_token.c -o asm

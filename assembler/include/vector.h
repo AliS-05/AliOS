@@ -1,12 +1,12 @@
 #pragma once
-#include "token.h"
+#include "asm_token.h"
 
-typedef struct{
+typedef struct {
 	Token* data;
 	size_t size;
 	size_t capacity;
 } TokVector;
 
-void tokenVecInit(TokenVector* vec);
-void tokenVectorPush(TokenVector* vec, Token tok);
-void tokenVectorFree(TokenVector* vec);
+void tokenVecInit(TokVector* vec);
+void tokenVecPush(TokVector* vec, Token tok);
+void tokenVecFree(TokVector* vec);

@@ -4,7 +4,8 @@
 #include <ctype.h>
 #include "asm_token.h"
 #include "asm_lexer.h"
-
+#include "asm_parser.h"
+#include "vector.h"
 char* source = NULL; 	
 int currentTokenIndex = 0;
 int curPos = 0;
@@ -65,7 +66,7 @@ int main(int argc, char** argv) {
 	
 	line = 1;
 	currentTokenIndex = 0;
-	//parseTokenArray(tokenArray, totalTokens);
+	parseTokenArray(tokenArray, totalTokens);
 
 
 	free(tokenArray);

@@ -3,85 +3,107 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include "asm_token.h"
-#include "parser.h"
+#include "asm_parser.h"
+#include "vector.h"
 
-//when this is called
+extern long line;
 
-//should increment curToken and return tokenArray[curToken] 
-// i feel like it might not return anything but im not sure
-Token advance(){
-	currentTokenIndex++;
-	return tokenArray[currentTokenIndex];
+Token advance(Token* tokenArray, int* index){
+	(*index)++;
+	return tokenArray[*index];
+
 }
 
-Token advanceTokenVector(TokenVec* vec, int* position){
-	return vec[++(*position)];
+Token advanceTokVector(TokVector* vec, int* position){
+	return vec->data[++(*position)];
 }
 
-Token peek(){
-	return tokenArray[currentTokenIndex+1];
+Token peek(Token* t, int index){
+	return t[index+1];
 }
 //this should either not advance or calls advance inside im not sure
-void expect(TokenType expectedType){
-	if(tokenArray[currentTokenIndex+1].type != expectedType){
-		printf("Error on line %d: Expected: %s Got: %s\n", \
-			line, tokenTypeToString(expectedType), tokenTypeToString(tokenArray[currentTokenIndex+1].type);
-
+void expect(Token* tokenArray, int* index, TokenType expectedType){
+	if(tokenArray[*index].type != expectedType){
+		printf("Error on line %ld: Expected: %s Got: %s\n",line, tokenTypeToString(expectedType), tokenTypeToString(tokenArray[*index+1].type));
+		exit(1);
 	}
-	return;
+	(*index)++;
 }
 
-Operand parseOperand(TokenVec* vec, int* pos){
+Operand parseOperand(TokVector* vec, int* pos){
 	Operand op;
-	Token t = vec[pos];
+	Token t = vec->data[*pos];
 	op.type = t.type;
+	op.line = t.line;
 	// think i need something called a tagged union fml
-	if(op.type == NUMBER){
+	if(t.type == NUMBER){
 		op.intValue = t.intValue;
 	} else{
 		op.strValue = t.strValue;
 	}
-	op.line = t.line;
+	(*pos)++;
 	return op;
 }
 
-Instruction parseInstruction(TokenVec* vec){
+Instruction parseInstruction(TokVector* vec){
 	// basically only looking for important stuff
 	// mnemonics, register, immediates
 	int instructionPos = 0;
 	Instruction instruction;
 	// NOTE need to add error handling but leave that for later
 	// this should always be a mnemonic such as mov or jmp
-	instruction.mnemonic = vec[instructionPos].strValue;
+	if(vec->data[instructionPos].type != IDENTIFIER){
+		printf("Error on line: %d, Expected IDENTIFIER/mnemonic got %s\n", vec->data[instructionPos].line, tokenTypeToString(vec->data[instructionPos].type));
+		exit(1); 
+	}
 
-	//
-	instruction.operand1 = parseOperand(&vec, &instructionPos);
-	instruction.operand2 = parseOperand(&vec, &instructionPos);
+	instruction.mnemonic = vec->data[instructionPos].strValue;
+	instructionPos++;
+
+	instruction.operand1 = parseOperand(vec, &instructionPos);
+	
+	if(vec->data[instructionPos].type == COMMA){
+		instructionPos++;
+	}
+	//validate expected second operator
+	if(instructionPos < vec->size){
+		Operand o2 = parseOperand(vec, &instructionPos);
+		instruction.operand2 = o2;
+	}
+	return instruction;
 }
 
-void parseLine(Token* tokenArray){
-	TokenVec tokVec;
+void parseLine(Token* tokenArray, int* index){
+	TokVector tokVec;
 	tokenVecInit(&tokVec);
-	
-	int lineCounter == 0; //NOTE this could be an error
 
-	Token curTok = advanceTokenVector(&tokVec, &lineCounter);
-	do{
-		tokenVecPush(&curTok);
-		curTok = advanceTokenVector(&tokVec, &lineCounter);
-	}while(curTok.type != NEWLINE);
-	
-	//now vector either contains {NEWLINE}
-	// or something like {MOV EAX COMMA 5 SEMICOLON NEWLINE}
-	
-	//needs to be ANOTHER vector for instructions
-	parseInstruction(&tokVec);
-	
+	while(tokenArray[*index].type != NEWLINE &&
+	      tokenArray[*index].type != TOK_EOF){
+
+		tokenVecPush(&tokVec, tokenArray[*index]);
+		(*index)++;
+	}
+
+	// vector should contain something like {MOV EAX COMMA 5 SEMICOLON NEWLINE}
+	// or is empty
+	if(tokVec.size > 0){
+		Instruction inst = parseInstruction(&tokVec);
+		printf("Parsed instruction %s\n", inst.mnemonic);
+
+		printf("Operand 1: %s", tokenTypeToString(inst.operand1.type));
+		printf(" Operand 2: %s\n", tokenTypeToString(inst.operand2.type));
+	}
+	if(tokenArray[*index].type == NEWLINE)
+		(*index)++;
+
 	tokenVecFree(&tokVec);
 }
 
 void parseTokenArray(Token* tokenArray, int totalToken){
-	
+	int index = 0;
+	while(tokenArray[index].type != TOK_EOF){
+		parseLine(tokenArray, &index);	
+	}
 }
 
 

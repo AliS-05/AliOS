@@ -1,6 +1,6 @@
 #pragma once
 #include "asm_token.h"
-
+#include "vector.h"
 
 typedef struct {
 	TokenType type;
@@ -18,10 +18,11 @@ typedef struct {
 } Instruction;
 
 
-Token advance();
-Token peek();
-void expect(TokenType expectedType);
-Operand parseOperand();
-Instruction parseInstruction();
-void parseLine(Token* tokenArray);
+Token advance(Token* tokenArray, int* index);
+Token advanceTokenVector(TokVector* vec, int* position);
+Token peek(Token* t, int index);
+void expect(Token* tokenArray, int* index, TokenType expectedType);
+Operand parseOperand(TokVector* vec, int* pos);
+Instruction parseInstruction(TokVector* vec);
+void parseLine(Token* tokenArray, int* index);
 void parseTokenArray(Token* tokenArray, int totalToken);

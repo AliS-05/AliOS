@@ -40,6 +40,10 @@ int main(int argc, char** argv) {
 	init(argv[1]);
 	Token tok;
 	Token* tokenArray = malloc(sizeof(Token) * filesize * 2);
+
+	InstructionVector instVec;
+	instVecInit(&instVec);
+
 	int totalTokens = 0;
 	//start lexing
 	do{
@@ -66,7 +70,7 @@ int main(int argc, char** argv) {
 	
 	line = 1;
 	currentTokenIndex = 0;
-	parseTokenArray(tokenArray, totalTokens);
+	parseTokenArray(tokenArray, totalTokens, &instVec);
 
 
 	free(tokenArray);

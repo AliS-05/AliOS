@@ -8,6 +8,24 @@
 
 extern long line;
 
+MnemonicType strToInstructionType(const char* str) {
+	if (!strcmp(str, "mov"))  return INST_MOV;
+	if (!strcmp(str, "add"))  return INST_ADD;
+	if (!strcmp(str, "sub"))  return INST_SUB;
+	if (!strcmp(str, "jmp"))  return INST_JMP;
+	if (!strcmp(str, "call")) return INST_CALL;
+	if (!strcmp(str, "ret"))  return INST_RET;
+	if (!strcmp(str, "push")) return INST_PUSH;
+	if (!strcmp(str, "pop"))  return INST_POP;
+	if (!strcmp(str, "cmp"))  return INST_CMP;
+	if (!strcmp(str, "je"))   return INST_JE;
+	if (!strcmp(str, "jne"))  return INST_JNE;
+	if (!strcmp(str, "nop"))  return INST_NOP;
+
+	return INST_INVALID;
+}
+
+
 Token advance(Token* tokenArray, int* index){
 	(*index)++;
 	return tokenArray[*index];
@@ -49,31 +67,57 @@ Instruction parseInstruction(TokVector* vec){
 	// basically only looking for important stuff
 	// mnemonics, register, immediates
 	int instructionPos = 0;
-	Instruction instruction;
+	Instruction instruction = {0};
+	instruction.mnemonic = INST_INVALID;
 	// NOTE need to add error handling but leave that for later
 	// this should always be a mnemonic such as mov or jmp
-	if(vec->data[instructionPos].type != IDENTIFIER){
-		printf("Error on line: %d, Expected IDENTIFIER/mnemonic got %s\n", vec->data[instructionPos].line, tokenTypeToString(vec->data[instructionPos].type));
-		exit(1); 
+	
+	if(vec->size == 0){
+		return instruction;
 	}
 
-	instruction.mnemonic = vec->data[instructionPos].strValue;
-	instructionPos++;
+	//if(vec->data[instructionPos].type != IDENTIFIER){
+	//	printf("Error on line: %d, Expected IDENTIFIER/mnemonic got %s\n", vec->data[instructionPos].line, tokenTypeToString(vec->data[instructionPos].type));
+	//	exit(1); 
+	//}
 
-	instruction.operand1 = parseOperand(vec, &instructionPos);
+	//label case
+	if(vec->size == 2 && vec->data[0].type == IDENTIFIER && vec->data[1].type == COLON){
+		printf("LABEL: %s\n", vec->data[0].strValue);
+		return instruction; // basically a skip
+	}
+	//directives
+	if(vec->data[0].type == IDENTIFIER && ((!strcmp(vec->data[0].strValue, "global")) ||(!strcmp(vec->data[0].strValue, "section")))){
+		return instruction; //another skip not an instruction
+	}
 	
-	if(vec->data[instructionPos].type == COMMA){
+	if(vec->data[0].type != IDENTIFIER){ //error not a label directive or mnemonic
+		printf("Error line on %d: Expected mnemonic, got %s\n", vec->data[0].line, tokenTypeToString(vec->data[0].type));
+		exit(1);
+	}
+	instructionPos++;
+	instruction.mnemonic = strToInstructionType(vec->data[0].strValue);
+	// verifying there are more tokens and getting next operand
+	if(instructionPos < vec->size){
+		instruction.operand1 = parseOperand(vec, &instructionPos);
+		instruction.operandCount = 1;
+	}
+	
+	//skipping commma
+	if(instructionPos < vec->size && vec->data[instructionPos].type == COMMA){
 		instructionPos++;
 	}
-	//validate expected second operator
+	
+	// verify second token and get second operand
 	if(instructionPos < vec->size){
-		Operand o2 = parseOperand(vec, &instructionPos);
-		instruction.operand2 = o2;
+		instruction.operand2 = parseOperand(vec, &instructionPos);
+		instruction.operandCount = 2;
 	}
+
 	return instruction;
 }
 
-void parseLine(Token* tokenArray, int* index){
+void parseLine(Token* tokenArray, int* index, InstructionVector* instVec){
 	TokVector tokVec;
 	tokenVecInit(&tokVec);
 
@@ -88,10 +132,15 @@ void parseLine(Token* tokenArray, int* index){
 	// or is empty
 	if(tokVec.size > 0){
 		Instruction inst = parseInstruction(&tokVec);
-		printf("Parsed instruction %s\n", inst.mnemonic);
+		
+		if(inst.mnemonic != INST_INVALID){
+			instVecPush(instVec, inst);
+			printf("Operand 1: %s", tokenTypeToString(inst.operand1.type));
+			printf(" Operand 2: %s\n", tokenTypeToString(inst.operand2.type));
+		}
 
-		printf("Operand 1: %s", tokenTypeToString(inst.operand1.type));
-		printf(" Operand 2: %s\n", tokenTypeToString(inst.operand2.type));
+
+		
 	}
 	if(tokenArray[*index].type == NEWLINE)
 		(*index)++;
@@ -99,10 +148,10 @@ void parseLine(Token* tokenArray, int* index){
 	tokenVecFree(&tokVec);
 }
 
-void parseTokenArray(Token* tokenArray, int totalToken){
+void parseTokenArray(Token* tokenArray, int totalToken, InstructionVector* instVec){
 	int index = 0;
 	while(tokenArray[index].type != TOK_EOF){
-		parseLine(tokenArray, &index);	
+		parseLine(tokenArray, &index, instVec);	
 	}
 }
 

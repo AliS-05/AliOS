@@ -89,6 +89,7 @@ int main(int argc, char** argv) {
 	printSymbolTable(&table);
 	
 
+
 	free(tokenArray);
 
 	return 0;

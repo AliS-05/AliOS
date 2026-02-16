@@ -7,6 +7,37 @@
 #include "vector.h"
 
 extern long line;
+extern long currentAddress;
+
+int instructionSize(Instruction* i){
+	switch(i->mnemonic){
+		case INST_MOV:
+			//B8 00 00 00 00 (little endian immediate)
+			// mov reg, imm
+			if(i->operand1.type == REGISTER && i->operand2.type == NUMBER){
+				i->size = 5;
+				return 5;
+			//89 /r 
+			//mov reg, reg
+			} else if (i->operand1.type == REGISTER && i->operand2.type == REGISTER){
+				i->size = 2;
+				return 2;
+			}
+			break;
+		// C3
+		case INST_RET:
+			i->size = 1;
+			return 1;
+		// E9 + 32 bit imm
+		case INST_JMP:
+			i->size = 5;
+			return 5; //near jump for now
+		default:
+			printf("Error calculating instruction size\n");
+			exit(1);		
+	}
+}
+
 
 MnemonicType strToInstructionType(const char* str) {
 	if (!strcmp(str, "mov"))  return INST_MOV;
@@ -25,6 +56,47 @@ MnemonicType strToInstructionType(const char* str) {
 	return INST_INVALID;
 }
 
+
+const char* mnemonicTypeToStr(MnemonicType type){
+    switch(type){
+        case INST_MOV:  return "mov";
+        case INST_ADD:  return "add";
+        case INST_SUB:  return "sub";
+        case INST_JMP:  return "jmp";
+        case INST_CALL: return "call";
+        case INST_RET:  return "ret";
+        case INST_PUSH: return "push";
+        case INST_POP:  return "pop";
+        case INST_CMP:  return "cmp";
+        case INST_JE:   return "je";
+        case INST_JNE:  return "jne";
+        case INST_NOP:  return "nop";
+        default:        return "invalid";
+    }
+}
+
+
+void printInstruction(Instruction* i){
+	if(!i) return;
+
+	printf("Instruction{ %s }", mnemonicTypeToStr(i->mnemonic));
+	if(i->operandCount >= 1){
+		if(i->operand1.type == NUMBER){
+			printf(" Operand 1 { %d }", i->operand1.intValue);
+		} else{
+			printf(" Operand 1 { %s }", i->operand1.strValue);
+		}
+	}
+
+	if(i->operandCount >= 2){
+		if(i->operand2.type == NUMBER){
+			printf(" Operand 2 { %d }", i->operand2.intValue);
+		} else{
+			printf(" Operand 2 { %s }", i->operand2.strValue);
+		}
+	}
+	printf("\n");
+}
 
 Token advance(Token* tokenArray, int* index){
 	(*index)++;
@@ -69,6 +141,7 @@ Instruction parseInstruction(TokVector* vec){
 	int instructionPos = 0;
 	Instruction instruction = {0};
 	instruction.mnemonic = INST_INVALID;
+	instruction.operandCount = 0;
 	// NOTE need to add error handling but leave that for later
 	// this should always be a mnemonic such as mov or jmp
 	
@@ -127,20 +200,14 @@ void parseLine(Token* tokenArray, int* index, InstructionVector* instVec){
 		tokenVecPush(&tokVec, tokenArray[*index]);
 		(*index)++;
 	}
-
 	// vector should contain something like {MOV EAX COMMA 5 SEMICOLON NEWLINE}
 	// or is empty
 	if(tokVec.size > 0){
 		Instruction inst = parseInstruction(&tokVec);
-		
 		if(inst.mnemonic != INST_INVALID){
 			instVecPush(instVec, inst);
-			printf("Operand 1: %s", tokenTypeToString(inst.operand1.type));
-			printf(" Operand 2: %s\n", tokenTypeToString(inst.operand2.type));
+			printInstruction(&inst);
 		}
-
-
-		
 	}
 	if(tokenArray[*index].type == NEWLINE)
 		(*index)++;

@@ -2,6 +2,7 @@
 #include "asm_token.h"
 
 struct Instruction;
+struct Symbol;
 
 typedef struct {
 	Token* data;
@@ -22,3 +23,4 @@ void tokenVecFree(TokVector* vec);
 void instVecInit(InstructionVector* vec);
 void instVecPush(InstructionVector* vec, struct Instruction inst);
 void instVecFree(InstructionVector* vec);
+

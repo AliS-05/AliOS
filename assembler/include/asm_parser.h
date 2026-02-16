@@ -33,14 +33,10 @@ typedef struct Instruction {
 	Operand operand1; // necessary for every instruction
 	Operand operand2; //optional
 	int operandCount;
-	int offset;
+	int size;
+	int address;
 } Instruction;
 
-//when we come across a lone identifier it is a label
-typedef struct {
-	char* name;
-	int offset;
-} SymbolTable;
 
 MnemonicType strToInstructionType(const char* str);
 Token advance(Token* tokenArray, int* index);

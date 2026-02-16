@@ -70,6 +70,7 @@ int main(int argc, char** argv) {
 	
 	line = 1;
 	currentTokenIndex = 0;
+	int currentAddress = 0;
 	parseTokenArray(tokenArray, totalTokens, &instVec);
 
 

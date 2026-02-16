@@ -5,7 +5,7 @@
 #include "vector.h"
 #include "asm_token.h"
 #include "asm_parser.h"
-
+#include "symbol_table.h"
 // TokenVec vector;
 // tokenVectorInit(&vector);
 
@@ -47,3 +47,4 @@ void instVecPush(InstructionVector* vec, Instruction inst){
 void instVecFree(InstructionVector* vec){
 	free(vec->data);
 }
+

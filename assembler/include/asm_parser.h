@@ -5,6 +5,7 @@
 
 typedef enum {
 	INST_INVALID = 0,
+	INST_LABEL,
 	INST_MOV,
 	INST_ADD,
 	INST_SUB,
@@ -35,6 +36,7 @@ typedef struct Instruction {
 	int operandCount;
 	int size;
 	int address;
+	char* labelName; 
 } Instruction;
 
 

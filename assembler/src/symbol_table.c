@@ -4,14 +4,6 @@
 #include "symbol_table.h"
 
 
-static void grow(SymbolTable* table) {
-	table->capacity *= 2;
-	table->data = realloc(table->data, table->capacity * sizeof(Symbol));
-	if (!table->data) {
-		printf("Failed to grow symbol table\n");
-		exit(1);
-	}
-}
 
 void symbolTableInit(SymbolTable* table) {
 	table->size = 0;
@@ -30,24 +22,17 @@ void symbolTableFree(SymbolTable* table) {
 	free(table->data);
 }
 
-void symbolTableInsert(SymbolTable* table, const char* name, int address) {
-
-// Check duplicate label
-	for (int i = 0; i < table->size; i++) {
-		if (strcmp(table->data[i].name, name) == 0) {
-		    printf("Duplicate label: %s\n", name);
-		    exit(1);
-		}
+void symbolTablePush(SymbolTable* vec, const char* name, int address){
+	if(vec->size >= vec->capacity){
+		vec->capacity *= 2;
+		vec->data = realloc(vec->data, sizeof(Symbol) * vec->capacity);
 	}
-
-	if (table->size >= table->capacity) {
-		grow(table);
-	}
-
-	table->data[table->size].name = strdup(name);
-	table->data[table->size].address = address;
-	table->size++;
+	vec->data[vec->size].name = strdup(name);
+	vec->data[vec->size].address = address;
+	
+	vec->size++;
 }
+
 
 int symbolTableLookup(SymbolTable* table, const char* name) {
 

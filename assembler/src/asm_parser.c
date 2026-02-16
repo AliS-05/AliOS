@@ -10,7 +10,10 @@ extern long line;
 extern long currentAddress;
 
 int instructionSize(Instruction* i){
+	if(!i) return 0;
 	switch(i->mnemonic){
+		case INST_INVALID:
+			return 0;
 		case INST_MOV:
 			//B8 00 00 00 00 (little endian immediate)
 			// mov reg, imm
@@ -24,6 +27,9 @@ int instructionSize(Instruction* i){
 				return 2;
 			}
 			break;
+		case INST_LABEL:
+			return 0;
+			break;
 		// C3
 		case INST_RET:
 			i->size = 1;
@@ -32,6 +38,27 @@ int instructionSize(Instruction* i){
 		case INST_JMP:
 			i->size = 5;
 			return 5; //near jump for now
+
+		case INST_ADD:
+		case INST_SUB:
+		case INST_CMP:
+			i->size = 2;
+			return 2;
+
+		case INST_PUSH:
+		case INST_POP:
+			i->size = 1;
+			return 1;
+		case INST_NOP:
+			i->size = 1;
+			return 1;
+		case INST_CALL:
+			i->size = 5;
+			return 5;
+		case INST_JE:
+		case INST_JNE:
+			i->size = 6;
+			return 6;
 		default:
 			printf("Error calculating instruction size\n");
 			exit(1);		
@@ -59,6 +86,7 @@ MnemonicType strToInstructionType(const char* str) {
 
 const char* mnemonicTypeToStr(MnemonicType type){
     switch(type){
+	case INST_LABEL: return "label";
         case INST_MOV:  return "mov";
         case INST_ADD:  return "add";
         case INST_SUB:  return "sub";
@@ -95,6 +123,7 @@ void printInstruction(Instruction* i){
 			printf(" Operand 2 { %s }", i->operand2.strValue);
 		}
 	}
+	printf(" Size of Instruction {%d} , Address of Instruction {%d}", i->size, i->address);
 	printf("\n");
 }
 
@@ -114,7 +143,7 @@ Token peek(Token* t, int index){
 //this should either not advance or calls advance inside im not sure
 void expect(Token* tokenArray, int* index, TokenType expectedType){
 	if(tokenArray[*index].type != expectedType){
-		printf("Error on line %ld: Expected: %s Got: %s\n",line, tokenTypeToString(expectedType), tokenTypeToString(tokenArray[*index+1].type));
+		printf("Error on line %ld: Expected: %s Got: %s\n",line, tokenTypeToString(expectedType), tokenTypeToString(tokenArray[*index].type));
 		exit(1);
 	}
 	(*index)++;
@@ -156,8 +185,11 @@ Instruction parseInstruction(TokVector* vec){
 
 	//label case
 	if(vec->size == 2 && vec->data[0].type == IDENTIFIER && vec->data[1].type == COLON){
-		printf("LABEL: %s\n", vec->data[0].strValue);
-		return instruction; // basically a skip
+		instruction.mnemonic = INST_LABEL;
+		instruction.labelName = vec->data[0].strValue;
+		printf("LABEL: %s Address: %ld\n", vec->data[0].strValue, currentAddress);
+
+		return instruction; // skip adding to instruction vector
 	}
 	//directives
 	if(vec->data[0].type == IDENTIFIER && ((!strcmp(vec->data[0].strValue, "global")) ||(!strcmp(vec->data[0].strValue, "section")))){
@@ -202,9 +234,11 @@ void parseLine(Token* tokenArray, int* index, InstructionVector* instVec){
 	}
 	// vector should contain something like {MOV EAX COMMA 5 SEMICOLON NEWLINE}
 	// or is empty
-	if(tokVec.size > 0){
+	if(tokVec.size > 0) {
 		Instruction inst = parseInstruction(&tokVec);
 		if(inst.mnemonic != INST_INVALID){
+			currentAddress += instructionSize(&inst);
+			inst.address = currentAddress;
 			instVecPush(instVec, inst);
 			printInstruction(&inst);
 		}
@@ -220,6 +254,7 @@ void parseTokenArray(Token* tokenArray, int totalToken, InstructionVector* instV
 	while(tokenArray[index].type != TOK_EOF){
 		parseLine(tokenArray, &index, instVec);	
 	}
+
 }
 
 

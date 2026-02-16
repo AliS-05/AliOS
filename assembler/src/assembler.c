@@ -5,12 +5,15 @@
 #include "asm_token.h"
 #include "asm_lexer.h"
 #include "asm_parser.h"
+#include "symbol_table.h"
 #include "vector.h"
 char* source = NULL; 	
 int currentTokenIndex = 0;
 int curPos = 0;
 long filesize = -1;
 int line = 1;
+int currentAddress = 0;
+
 
 void init(const char* filename){
 	FILE* file = fopen(filename, "rb");
@@ -70,11 +73,24 @@ int main(int argc, char** argv) {
 	
 	line = 1;
 	currentTokenIndex = 0;
-	int currentAddress = 0;
 	parseTokenArray(tokenArray, totalTokens, &instVec);
-
+	
+	printf("Init symboltable\n");
+	SymbolTable table;
+	symbolTableInit(&table);
+	
+	// loop over instructionVector looking for INST_LABEL's and filling
+	// in addresses
+	for(int i = 0; i < instVec.size; i++){
+		if(instVec.data[i].mnemonic == INST_LABEL){
+		symbolTablePush(&table, instVec.data[i].labelName ,instVec.data[i].address);
+		}
+	}
+	printSymbolTable(&table);
+	
 
 	free(tokenArray);
+
 	return 0;
 }
 

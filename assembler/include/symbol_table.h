@@ -13,7 +13,7 @@ typedef struct SymbolTable{
 
 
 void symbolTableInit(SymbolTable* vec);
-void symbolTableInsert(SymbolTable* vec, const char* name, int address);
+void symbolTablePush(SymbolTable* vec, const char* name, int address);
 int symbolTableLookup(SymbolTable* vec, const char* name);
 void symbolTableFree(SymbolTable* vec);
 void printSymbolTable(SymbolTable* vec);

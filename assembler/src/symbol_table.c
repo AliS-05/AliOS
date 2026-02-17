@@ -38,13 +38,14 @@ int symbolTableLookup(SymbolTable* table, const char* name) {
 
 	for (int i = 0; i < table->size; i++) {
 		if (strcmp(table->data[i].name, name) == 0) {
-		    return table->data[i].address;
+		    
+			return table->data[i].address;
 		}
 	}
 
 	printf("Undefined label: %s\n", name);
 	exit(1);
-}
+	}
 
 
 void printSymbolTable(SymbolTable* table){

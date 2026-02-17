@@ -237,8 +237,8 @@ void parseLine(Token* tokenArray, int* index, InstructionVector* instVec){
 	if(tokVec.size > 0) {
 		Instruction inst = parseInstruction(&tokVec);
 		if(inst.mnemonic != INST_INVALID){
-			currentAddress += instructionSize(&inst);
 			inst.address = currentAddress;
+			currentAddress += instructionSize(&inst);
 			instVecPush(instVec, inst);
 			printInstruction(&inst);
 		}

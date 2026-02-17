@@ -8,6 +8,8 @@
 #include "symbol_table.h"
 #include "codegen.h"
 #include "vector.h"
+
+
 char* source = NULL; 	
 int currentTokenIndex = 0;
 int curPos = 0;

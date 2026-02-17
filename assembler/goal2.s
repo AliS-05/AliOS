@@ -1,6 +1,6 @@
 global _start
+
 _start:
 	mov eax, 5
-	mov ebx, eax
-	jmp _start
-end:
+	add eax, 5
+	ret

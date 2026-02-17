@@ -1,13 +1,11 @@
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <ctype.h>
 #include "asm_token.h"
 #include "asm_lexer.h"
 #include "asm_parser.h"
 #include "symbol_table.h"
 #include "codegen.h"
 #include "vector.h"
+#include "fs.hpp"  
+#include <stdint.h>
 
 
 char* source = NULL; 	
@@ -15,38 +13,20 @@ int currentTokenIndex = 0;
 int curPos = 0;
 long filesize = -1;
 int line = 1;
-int currentAddress = 0;
+int currentAddress = 0x200000;
 
 
-void init(const char* filename){
-	FILE* file = fopen(filename, "rb");
-	if(file){
-		if(fseek(file, 0, SEEK_END) == 0){
-			filesize = ftell(file);
-			fseek(file, 0, SEEK_SET);
-		}
-
-		source = (char*)malloc(filesize + 1);
-		size_t bytes_read = fread(source, sizeof(char), filesize, file);
-		source[bytes_read] = '\0';
-
-		fclose(file);
-	}
+void init(const char* buffer, uint32_t size){
+	source = (char*)buffer;
+	filesize = size;
 }
 
 
+void assemble_buffer(const char* buffer, uint32_t size){
+	init(buffer, size);
 
-int main(int argc, char** argv) {
-	
-	if (argc < 2){
-		printf("Usage ./assemble <filename>");
-		exit(1);
-	}
-
-	init(argv[1]);
 	Token tok;
-	Token* tokenArray = malloc(sizeof(Token) * filesize * 2);
-
+	Token* tokenArray = (Token*)malloc(sizeof(Token) * filesize * 2);  
 	InstructionVector instVec;
 	instVecInit(&instVec);
 
@@ -57,28 +37,12 @@ int main(int argc, char** argv) {
 		tokenArray[totalTokens] = tok;
 		totalTokens++;
 
-		printf("Token %d: %s", totalTokens, tokenTypeToString(tok.type));
-		if(tok.type == IDENTIFIER || tok.type == REGISTER){
-			printf(" %s", tok.strValue);
-		}
-
-		if(tok.type == NUMBER){
-			printf("%ld", tok.intValue);
-		}
-
-
-		if(tok.type == NEWLINE)
-			printf(" <EOL>\n");
-		else
-			printf("\n");
-
 	} while(tok.type != TOK_EOF);
 	
 	line = 1;
 	currentTokenIndex = 0;
 	parseTokenArray(tokenArray, totalTokens, &instVec);
 	
-	printf("Init symboltable\n");
 	SymbolTable table;
 	symbolTableInit(&table);
 	
@@ -89,18 +53,13 @@ int main(int argc, char** argv) {
 			symbolTablePush(&table, instVec.data[i].labelName ,instVec.data[i].address);
 		}
 	}
-	printSymbolTable(&table);
 	
 	ByteVector byteVector;
 	ByteVectorInit(&byteVector);
 
 	startCodeGen(&instVec, &table, &byteVector);
 
-	FILE* out = fopen("a.bin", "wb");
-	fwrite(byteVector.data, sizeof(uint8_t), byteVector.size, out);
-	free(tokenArray);
-
-	return 0;
+	// write result to OS filesystem
+	write_file("a.bin", byteVector.data, byteVector.size);
 }
-
 

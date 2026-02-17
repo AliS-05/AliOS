@@ -60,7 +60,7 @@ int instructionSize(Instruction* i){
 			i->size = 6;
 			return 6;
 		default:
-			printf("Error calculating instruction size\n");
+			print("Error calculating instruction size\n");
 			exit(1);		
 	}
 }
@@ -107,24 +107,24 @@ const char* mnemonicTypeToStr(MnemonicType type){
 void printInstruction(Instruction* i){
 	if(!i) return;
 
-	printf("Instruction{ %s }", mnemonicTypeToStr(i->mnemonic));
+	print("Instruction{ %s }", mnemonicTypeToStr(i->mnemonic));
 	if(i->operandCount >= 1){
 		if(i->operand1.type == NUMBER){
-			printf(" Operand 1 { %d }", i->operand1.intValue);
+			print(" Operand 1 { %d }", i->operand1.intValue);
 		} else{
-			printf(" Operand 1 { %s }", i->operand1.strValue);
+			print(" Operand 1 { %s }", i->operand1.strValue);
 		}
 	}
 
 	if(i->operandCount >= 2){
 		if(i->operand2.type == NUMBER){
-			printf(" Operand 2 { %d }", i->operand2.intValue);
+			print(" Operand 2 { %d }", i->operand2.intValue);
 		} else{
-			printf(" Operand 2 { %s }", i->operand2.strValue);
+			print(" Operand 2 { %s }", i->operand2.strValue);
 		}
 	}
-	printf(" Size of Instruction {%d} , Address of Instruction {%d}", i->size, i->address);
-	printf("\n");
+	print(" Size of Instruction {%d} , Address of Instruction {%d}", i->size, i->address);
+	print("\n");
 }
 
 Token advance(Token* tokenArray, int* index){
@@ -143,7 +143,7 @@ Token peek(Token* t, int index){
 //this should either not advance or calls advance inside im not sure
 void expect(Token* tokenArray, int* index, TokenType expectedType){
 	if(tokenArray[*index].type != expectedType){
-		printf("Error on line %ld: Expected: %s Got: %s\n",line, tokenTypeToString(expectedType), tokenTypeToString(tokenArray[*index].type));
+		print("Error on line %ld: Expected: %s Got: %s\n",line, tokenTypeToString(expectedType), tokenTypeToString(tokenArray[*index].type));
 		exit(1);
 	}
 	(*index)++;
@@ -187,7 +187,7 @@ Instruction parseInstruction(TokVector* vec){
 	if(vec->size == 2 && vec->data[0].type == IDENTIFIER && vec->data[1].type == COLON){
 		instruction.mnemonic = INST_LABEL;
 		instruction.labelName = vec->data[0].strValue;
-		printf("LABEL: %s Address: %ld\n", vec->data[0].strValue, currentAddress);
+		print("LABEL: %s Address: %ld\n", vec->data[0].strValue, currentAddress);
 
 		return instruction; // skip adding to instruction vector
 	}
@@ -197,7 +197,7 @@ Instruction parseInstruction(TokVector* vec){
 	}
 	
 	if(vec->data[0].type != IDENTIFIER){ //error not a label directive or mnemonic
-		printf("Error line on %d: Expected mnemonic, got %s\n", vec->data[0].line, tokenTypeToString(vec->data[0].type));
+		print("Error line on %d: Expected mnemonic, got %s\n", vec->data[0].line, tokenTypeToString(vec->data[0].type));
 		exit(1);
 	}
 	instructionPos++;

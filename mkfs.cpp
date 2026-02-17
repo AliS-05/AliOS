@@ -23,7 +23,7 @@ int main(){
 	memset(files, 0, sizeof(files));
 
  	// File 1: "hello.txt" at sector 1
-	strcpy(files[0].name, "hello.txt\n");
+	strcpy(files[0].name, "hello.txt");
 	files[0].start_sector = 1;
 	files[0].size_bytes = 13;
 
@@ -53,6 +53,21 @@ int main(){
 		printf("Error: test.bin not found");
 	}
 
+
+	binfile = fopen("./assembler/asm","rb");
+	if(binfile){
+		// file size
+		fseek(binfile, 0, SEEK_END);
+		long bin_size = ftell(binfile);
+		fseek(binfile, 0, SEEK_SET);
+		
+		strcpy(files[4].name, "assembler");
+		files[4].start_sector = 6;
+		files[4].size_bytes = bin_size;
+		fclose(binfile);
+	} else{
+		printf("Error: assembler not found");
+	}
 	// Write sector 0
 	fwrite(files, SECTOR_SIZE, 1, disk);
 
@@ -87,8 +102,29 @@ int main(){
 			fwrite(buffer, SECTOR_SIZE, 1, disk);
 		}
 		fclose(binfile);
-		printf("  test.bin  - %ld bytes at sector 5\n", files[3].size_bytes);
-	} 
+		printf("  test.bin  - %d bytes at sector 5\n", files[3].size_bytes);
+	}
+
+	printf("Writing assembler..");
+	binfile = fopen("./assembler/asm", "rb");
+	if(binfile) {
+		fseek(disk, 6 * SECTOR_SIZE, SEEK_SET);  // Go to sector 5
+		// Read and write in chunks
+		char buffer[SECTOR_SIZE];
+		size_t bytes_read;
+		while((bytes_read = fread(buffer, 1, SECTOR_SIZE, binfile)) > 0) {
+			// Pad with zeros if less than sector size
+			if(bytes_read < SECTOR_SIZE) {
+			    memset(buffer + bytes_read, 0, SECTOR_SIZE - bytes_read);
+			}
+			fwrite(buffer, SECTOR_SIZE, 1, disk);
+		}
+		fclose(binfile);
+		printf("  assembler  - %d bytes at sector 6\n", files[4].size_bytes);
+	}
+	
+
+	printf("Finished writing assembler");
 	// Fill rest of disk with zeros (10MB total) 
 	fseek(disk, 10 * 1024 * 1024 - 1, SEEK_SET);
 	fputc(0, disk);

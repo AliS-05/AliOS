@@ -42,7 +42,7 @@ int getRegisterCode(const char* reg) {
 	if(!strcmp(reg, "esi")) return 6;
 	if(!strcmp(reg, "edi")) return 7;
 
-	printf("Unknown register %s\n", reg);
+	print("Unknown register %s\n", reg);
 	exit(1);
 }
 
@@ -68,7 +68,7 @@ uint8_t getMod(int mod, int reg, int rm) {
 }
 
 void encodeInstruction(Instruction* inst, SymbolTable* table, ByteVector* byteVector){
-	printf("DEBUG encodeInstruction mnemonic value: %d\n", inst->mnemonic);
+	print("DEBUG encodeInstruction mnemonic value: %d\n", inst->mnemonic);
 	switch(inst->mnemonic) {
 		case INST_LABEL: {
 			return;
@@ -205,7 +205,7 @@ void encodeInstruction(Instruction* inst, SymbolTable* table, ByteVector* byteVe
 		}
 
 		default: {
-			printf("Error encoding instruction from codegen.c\n");
+			print("Error encoding instruction from codegen.c\n");
 			exit(1);
 			break;
 		}

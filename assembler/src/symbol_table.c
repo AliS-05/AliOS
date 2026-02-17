@@ -10,7 +10,7 @@ void symbolTableInit(SymbolTable* table) {
 	table->capacity = 16;
 	table->data = malloc(table->capacity * sizeof(Symbol));
 	if (!table->data) {
-		printf("Failed to initialize symbol table\n");
+		print("Failed to initialize symbol table\n");
 		exit(1);
 	}
 }
@@ -43,14 +43,14 @@ int symbolTableLookup(SymbolTable* table, const char* name) {
 		}
 	}
 
-	printf("Undefined label: %s\n", name);
+	print("Undefined label: %s\n", name);
 	exit(1);
 	}
 
 
 void printSymbolTable(SymbolTable* table){
 	for(int i = 0; i < table->size; i++){
-		printf("Symbol %s at address %d\n", table->data[i].name, table->data[i].address);
+		print("Symbol %s at address %d\n", table->data[i].name, table->data[i].address);
 	}
 }
 

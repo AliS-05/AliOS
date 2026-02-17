@@ -47,7 +47,7 @@ void listfiles(){
 	for(int i = 0; i < MAXFILES; i++){
 		if(files[i].name[0] != '0'){
 			print(files[i].name);
-			print("\n");
+			print("  ");
 		}
 	}
 }

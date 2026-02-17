@@ -6,6 +6,7 @@
 #include "asm_lexer.h"
 #include "asm_parser.h"
 #include "symbol_table.h"
+#include "codegen.h"
 #include "vector.h"
 char* source = NULL; 	
 int currentTokenIndex = 0;
@@ -83,13 +84,18 @@ int main(int argc, char** argv) {
 	// in addresses
 	for(int i = 0; i < instVec.size; i++){
 		if(instVec.data[i].mnemonic == INST_LABEL){
-		symbolTablePush(&table, instVec.data[i].labelName ,instVec.data[i].address);
+			symbolTablePush(&table, instVec.data[i].labelName ,instVec.data[i].address);
 		}
 	}
 	printSymbolTable(&table);
 	
+	ByteVector byteVector;
+	ByteVectorInit(&byteVector);
 
+	startCodeGen(&instVec, &table, &byteVector);
 
+	FILE* out = fopen("a.bin", "wb");
+	fwrite(byteVector.data, sizeof(uint8_t), byteVector.size, out);
 	free(tokenArray);
 
 	return 0;

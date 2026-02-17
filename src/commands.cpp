@@ -118,32 +118,16 @@ void cmd_run(char* input_buffer){
 	const char* filename = token(NULL, ' ');
 	if(filename == NULL){
 		print("Error finding file to run");
-
 		return;
-	} else if (!strcmp(filename, "assembler")){
-		const char* codeFile = token(NULL, ' ');
-		if(codeFile == NULL){
-			print("Error finding file to assemble");
-			return;
-		}
-
-		uint8_t* memory = (uint8_t*)0x200000; 
-		cpy_file_buffer("assembler", memory, fileSize("assembler"));
-		cpy_file_buffer(codeFile, (uint8_t*)0x300000, fileSize(codeFile));
-		typedef void (*Program)(const char* source, uint32_t size);
-		Program program = (Program)memory;
-		program((const char*)0x300000, fileSize(codeFile));
-		print("Program finished");
-
-	}else{
-		uint8_t* memory = (uint8_t*)0x200000; 
-		cpy_file_buffer(filename, memory, fileSize(filename));
-		
-		typedef void (*Program)();
-		Program program = (Program)memory;
-		program();
-		print("Program finished");
 	}
+	uint8_t* memory = (uint8_t*)0x200000; 
+	cpy_file_buffer(filename, memory, fileSize(filename));
+	
+	typedef int (*Program)();
+	Program program = (Program)memory;
+	int ret = program();
+	print("Program finished: ");
+	print_num(ret);
 }
 
 void cmd_edit(char* input_buffer){

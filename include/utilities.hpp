@@ -21,6 +21,7 @@ extern "C" {
 
 
 
+void init_editor_screen(uint8_t colorByte);
 void updateCursorPos(int newPos);
 boolean isDigit(char digit);
 boolean isHex(char digit);

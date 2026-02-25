@@ -9,7 +9,6 @@ extern "C" volatile uint8_t enter_editor_flag;
 extern "C" volatile uint8_t editor_scancode;
 extern "C" volatile uint8_t editor_mode; // normal, insert, command
 
-void init_editor_screen(uint8_t colorByte);
 void save_editor_content(const char* filename);
 uint8_t getkey();
 extern "C" void edit_loop(const char* filename);

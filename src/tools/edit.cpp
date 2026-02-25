@@ -39,17 +39,6 @@ extern "C" volatile uint8_t editor_mode; // normal, insert, command
 #define KEY_COLON	0x27
 
 
-void init_editor_screen(uint8_t colorByte){
-	vga_color = colorByte;
-	int pos = 0;
-	unsigned char* vga = (unsigned char*)0xB8000;
-	for(int i = 0; i < 2000; i++){
-		vga[pos] = ' ';
-		vga[pos+1] = colorByte;
-		pos += 2;
-	}
-	cursor_pos = 0;
-}
 
 char lines[50][80];
 int cursor_row = 0, cursor_col = 0, num_lines = 1;

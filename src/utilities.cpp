@@ -13,6 +13,17 @@ extern "C" {
     extern uint8_t vga_color;
 }
 
+void init_editor_screen(uint8_t colorByte){
+	vga_color = colorByte;
+	int pos = 0;
+	unsigned char* vga = (unsigned char*)0xB8000;
+	for(int i = 0; i < 2000; i++){
+		vga[pos] = ' ';
+		vga[pos+1] = colorByte;
+		pos += 2;
+	}
+	cursor_pos = 0;
+}
 
 int newLine(int cursor_pos){
 	int next_line = (((cursor_pos / 160) + 1) * 160);

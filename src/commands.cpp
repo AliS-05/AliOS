@@ -142,6 +142,16 @@ void cmd_edit(char* input_buffer){
 	enter_editor_flag = 1;
 }
 
+void cmd_color(char* input_buffer){
+	token(input_buffer, ' '); // 'color'
+	const char* hexCol = token(NULL, ' '); // something like 0xF1
+	int col = atoi(hexCol);
+	if(col > 255){
+		print("Must enter an integer number, try 'color 02' or 'color 30'");
+	}
+	init_editor_screen((uint8_t)col);
+}
+
 extern "C" void parse_command() {
 	if (strcmp(input_buffer, "help") == 0) {
 		cmd_help();
@@ -169,9 +179,10 @@ extern "C" void parse_command() {
 		cmd_run(input_buffer);
 	} else if (strncmp(input_buffer, "edit", 4) == 0){
 		cmd_edit(input_buffer);
+	} else if (strncmp(input_buffer, "color", 5) == 0){
+		cmd_color(input_buffer);
 	}
 	else {
 		print(unknown_response);
 	}
 }
-

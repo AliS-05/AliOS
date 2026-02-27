@@ -31,7 +31,7 @@ size_t fileSize(const char* filename){
 			return files[i].size;
 			}
 	}
-	return -1;
+	return 0;
 }
 
 uint32_t calcSectorsUsed(size_t size){
@@ -90,6 +90,7 @@ size_t read_file(const char* filename){
 
 
 //this just finds the next open sector and writes there use overwrite_file to overwrite
+// does write more than one sector if needed
 void write_file(const char* filename, uint8_t* buffer, size_t size){
 	//idea, read sector table, find next open sector write to that
 	uint8_t sector[SECTORSIZE];
@@ -107,7 +108,7 @@ void write_file(const char* filename, uint8_t* buffer, size_t size){
 			//writing to file sector location
 			uint32_t secs = calcSectorsUsed(size);
 			for(uint32_t j = 0; j < secs; j++){
-				disk_write_sector(prevSector, buffer);
+				disk_write_sector(prevSector + j, buffer + j * SECTORSIZE);
 			}
 			return;
 		}
@@ -192,7 +193,7 @@ uint8_t* cpy_file_buffer(const char* filename, uint8_t* buffer, size_t bufferSiz
 				disk_read_sector(start + x, curSector);
 				//
 				size_t bytes_to_copy = (size - bytes_copied > SECTORSIZE) ? SECTORSIZE : (size - bytes_copied);
-				memcpy(buffer + bytes_copied, curSector, SECTORSIZE);
+				memcpy(buffer + bytes_copied, curSector, bytes_to_copy);
 				bytes_copied += bytes_to_copy;
 			}
 			return buffer;

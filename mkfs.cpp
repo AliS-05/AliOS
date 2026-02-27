@@ -11,6 +11,10 @@ struct FileEntry{
 	uint32_t size_bytes;
 } __attribute__((packed));
 
+//uint32_t calcSectorsUsed(size_t size){
+//	return (size + SECTORSIZE - 1) / SECTORSIZE;
+//}
+
 
 int main(){
 	FILE* disk = fopen("./src/fs/disk.img", "wb");
@@ -68,6 +72,22 @@ int main(){
 	} else{
 		printf("Error: a.bin not found");
 	}
+
+	binfile = fopen("./games/snake.bin", "rb");
+	if(binfile){
+		// file size
+		fseek(binfile, 0, SEEK_END);
+		long bin_size = ftell(binfile);
+		fseek(binfile, 0, SEEK_SET);
+		
+		strcpy(files[5].name, "snake");
+		files[5].start_sector = 7;
+		files[5].size_bytes = bin_size;
+		fclose(binfile);
+	} else{
+		printf("Error: snake.bin not found");
+	}
+
 	// Write sector 0
 	fwrite(files, SECTOR_SIZE, 1, disk);
 
@@ -123,7 +143,23 @@ int main(){
 	}
 	
 
-	printf("Finished writing assembler");
+	binfile = fopen("./games/snake.bin", "rb");
+	if(binfile) {
+		fseek(disk, 7 * SECTOR_SIZE, SEEK_SET);  // Go to sector 5
+		// Read and write in chunks
+		char buffer[SECTOR_SIZE];
+		size_t bytes_read;
+		while((bytes_read = fread(buffer, 1, SECTOR_SIZE, binfile)) > 0) {
+			// Pad with zeros if less than sector size
+			if(bytes_read < SECTOR_SIZE) {
+			    memset(buffer + bytes_read, 0, SECTOR_SIZE - bytes_read);
+			}
+			fwrite(buffer, SECTOR_SIZE, 1, disk);
+		}
+		fclose(binfile);
+		printf("  snake.bin - %d bytes at sector 6\n", files[4].size_bytes);
+	}
+
 	// Fill rest of disk with zeros (10MB total) 
 	fseek(disk, 10 * 1024 * 1024 - 1, SEEK_SET);
 	fputc(0, disk);
@@ -132,4 +168,3 @@ int main(){
 	return 0;
 
 }
-

@@ -114,19 +114,34 @@ void cmd_readfile(char* input_buffer){
 
 
 void cmd_run(char* input_buffer){
+
 	token(input_buffer, ' ');
 	const char* filename = token(NULL, ' ');
-	if(filename == NULL){
-		print("Error finding file to run");
+	print("Attempting to run ");
+	print(filename);
+
+	if(!filename){
+		print("No file\n");
 		return;
 	}
-	uint8_t* memory = (uint8_t*)0x200000; 
-	cpy_file_buffer(filename, memory, fileSize(filename));
+
+	uint8_t* memory = (uint8_t*)0x200000;
+
+	if(!cpy_file_buffer(filename, memory, fileSize(filename))){
+		print("Load failed\n");
+		return;
+	}
 	
+	print("Copied file buffer...\n");
+	print("Loading file at: ");
+	print_num((uint32_t)memory);
+
 	typedef int (*Program)();
 	Program program = (Program)memory;
+
 	int ret = program();
-	print("Program finished: ");
+
+	print("Program Finished: ");
 	print_num(ret);
 }
 

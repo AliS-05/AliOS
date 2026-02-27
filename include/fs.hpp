@@ -14,6 +14,7 @@ struct FileObject{
 
 void initfs();
 
+uint32_t calcSectorsUsed(size_t size);
 uint32_t fileSize(const char* filename);
 void listfiles();
 void read_file(const char* filename);

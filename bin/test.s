@@ -2,7 +2,7 @@ bits 32
 section .data
 	string db "Hello from bin test", 0
 
-global start
+global _start
 
 _start:
 	mov edi, 0xB8000

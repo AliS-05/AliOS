@@ -72,7 +72,7 @@ size_t read_file(const char* filename){
 				memset(sector, 0, SECTORSIZE);
 				disk_read_sector(start + x, sector);
 
-				for(int j = 0; j < 20; j++){
+				for(int j = 0; j < SECTORSIZE; j++){
 					print_hex8(sector[j]);
 					print(" ");
 				}

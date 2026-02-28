@@ -157,7 +157,7 @@ int main(){
 			fwrite(buffer, SECTOR_SIZE, 1, disk);
 		}
 		fclose(binfile);
-		printf("  snake.bin - %d bytes at sector 6\n", files[4].size_bytes);
+		printf("  snake.bin - %d bytes at sector %lu\n", files[5].size_bytes, files[5].start_sector);
 	}
 
 	// Fill rest of disk with zeros (10MB total) 

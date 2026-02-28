@@ -2,22 +2,23 @@ org 0x200000
 bits 32
 global start
 center equ 2000
-
+score equ 0
 section .data
 	xPos dd 40
 	yPos dd 12
-
+	curDirection db 3 ; 0 = W ; 1 = A  ; 2 = S  ; 3 = D
 start:
 	;pushad
 	cld
 	call init_screen
 	call draw_border
 
-.loop:
+.mainLoop:
 	call read_input
+	call update_position
 	call draw_player
 	call delay
-	jmp .loop
+	jmp .mainLoop
 	;popad
 	;mov eax, 0	; return code
 	;ret	; necessary
@@ -46,30 +47,59 @@ read_input:
 
 	jmp .done
 
-.up:
-	dec dword [yPos]
+.up:	
+	mov byte [curDirection] , 0 ; up
 	jmp .done
 
 .down:
-	inc dword [yPos]
+	mov byte [curDirection], 2 ; down
 	jmp .done
 
 .left:
-	dec dword [xPos]
+	mov byte [curDirection], 1 ; left
 	jmp .done
 
 .right:
-	inc dword [xPos]
+	mov byte [curDirection], 3 ; right
 	jmp .done
 
 .done:
 	ret	
 
 delay:
-	mov ecx, 5000000
+	mov ecx, 20000000
 .loop:
 	dec ecx
 	jnz .loop
+	ret
+
+update_position:
+	mov al, [curDirection]
+	cmp al, 0
+	je .up
+
+	cmp al, 1
+	je .left
+
+	cmp al, 2
+	je .down
+
+	cmp al, 3
+	je .right
+
+	ret
+
+.up:
+	dec dword [yPos]
+	ret
+.down:
+	inc dword [yPos]
+	ret
+.left:
+	dec dword [xPos]
+	ret
+.right:
+	inc dword [xPos]
 	ret
 
 draw_player:

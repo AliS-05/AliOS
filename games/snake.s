@@ -2,26 +2,37 @@ org 0x200000
 bits 32
 global start
 center equ 2000
-score equ 0
 section .data
 	xPos dd 40
 	yPos dd 12
 	curDirection db 3 ; 0 = W ; 1 = A  ; 2 = S  ; 3 = D
+	score db 0
+	prevScore db 0
+	applePos dd 0
+	gameOver db 0 ; 0 = OK 1 = GAME OVER
 start:
 	;pushad
 	cld
-	call init_screen
-	call draw_border
+	call spawn_apple
 
 .mainLoop:
 	call read_input
 	call update_position
+
+	mov al, [score]
+	cmp al, [prevScore]
+	je .skip_apple 
+	; if prevScore and score are the same then score has not been updated 
+	;meaning apple has not been collected so no need to draw a new one
+
+	mov [prevScore], al
+.skip_apple:
+
 	call draw_player
+	call draw_apple
+	call collisions
 	call delay
 	jmp .mainLoop
-	;popad
-	;mov eax, 0	; return code
-	;ret	; necessary
 
 read_input:
 	in al, 0x64 ;reading keyboard status
@@ -165,4 +176,41 @@ draw_border:
 	mov byte [0xB8001 + ebx], 0x02
 	add ebx, 2
 	loop .bottom_border
+	ret
+
+spawn_apple:
+; idea: simply get current clock cycle and modulo 2000 for apple's 'random' coord
+	rdtsc ; EDX:EAX = cycle count
+	xor edx, edx ;
+	mov ecx, 2000 ; number to divide by
+	div ecx ; result in eax
+	mov eax, edx ; storing result in eax
+	mov [applePos], eax
+	ret
+
+draw_apple:
+	;NOTE need to check that this does not write over character
+	mov eax, [applePos]
+	shl eax, 1
+	mov byte [0xB8000 + eax], 153 ;apple character
+	mov byte [0xB8001 + eax], 0x04
+	ret
+
+collisions:
+	; check if curPos = apple
+	; check if curPos = border
+
+	; curPos = yPos * 80 + xPos
+	mov eax, [yPos]
+	mov ebx, 80
+	mul ebx
+	add eax, [xPos]
+
+	cmp eax, [applePos]
+	je .collision_apple
+	ret
+
+.collision_apple:
+	call spawn_apple
+	inc byte [score]
 	ret

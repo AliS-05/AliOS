@@ -199,14 +199,39 @@ draw_border:
 	ret
 
 spawn_apple:
-	; idea: simply get current clock cycle and modulo 2000 for apple's 'random' coord
-	rdtsc                          ; EDX:EAX = cycle count
-	xor  edx, edx
-	mov  ecx, 2000                 ; number to divide by
-	div  ecx                       ; result in eax
-	mov  eax, edx                  ; storing result in eax
-	mov  [applePos], eax
-	ret
+	.getCoords:
+		rdtsc
+		xor  edx, edx
+		mov  ecx, 80
+		div  ecx              ; edx = random x (0–79)
+
+		mov  ebx, edx         ; save x in ebx
+
+		; x bounds: 11–69
+		cmp  ebx, 11
+		jl   .getCoords
+		cmp  ebx, 69
+		jg   .getCoords
+
+		rdtsc
+		xor  edx, edx
+		mov  ecx, 25
+		div  ecx              ; edx = random y (0–24)
+
+		mov  eax, edx         ; y in eax
+
+		; y bounds: 1–23
+		cmp  eax, 1
+		jl   .getCoords
+		cmp  eax, 23
+		jg   .getCoords
+
+		mov  ecx, 80
+		mul  ecx              ; eax = y * 80
+		add  eax, ebx         ; eax = y*80 + x
+
+		mov  [applePos], eax
+		ret
 
 draw_apple:
 	;NOTE need to check that this does not write over character

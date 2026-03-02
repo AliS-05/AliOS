@@ -13,6 +13,7 @@ section .data
 	gameOver        db 0      ; 0 = OK 1 = GAME OVER
 	gameOverMessage db "Game Over, Play Again ?", 0
 	gameOverInstructions db "Press Enter To Play Again Or ESC To Return To Shell.", 0
+	scoreMsg db "Score: ", 0
 section .text
 	
 
@@ -39,6 +40,7 @@ mainLoop:
 
 	call draw_player
 	call draw_apple
+	call draw_score
 	call collisions
 	call delay
 	jmp  mainLoop
@@ -326,4 +328,32 @@ reset_game:
 	mov  byte [prevScore], 0
 	mov  byte [curDirection], 3
 	jmp start
+	ret
+
+draw_score:
+	; prints "Score: XX" at top-left
+
+	mov  esi, scoreMsg
+	mov  edi, 0xB8000
+	call print
+
+	; edi now points right after "Score: "
+	; print two-digit score
+
+	movzx eax, byte [score]   ; load score (0–255)
+	xor  edx, edx
+	mov  ecx, 10
+	div  ecx                  ; eax = tens, edx = ones
+
+	; print tens
+	add  al, '0'
+	mov  [edi], al
+	mov  byte [edi+1], 0x0F
+	add  edi, 2
+
+	; print ones
+	add  dl, '0'
+	mov  [edi], dl
+	mov  byte [edi+1], 0x0F
+
 	ret

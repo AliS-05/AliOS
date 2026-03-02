@@ -11,15 +11,20 @@ section .data
 	prevScore       db 0
 	applePos        dd 0
 	gameOver        db 0      ; 0 = OK 1 = GAME OVER
-
 	gameOverMessage db "Game Over, Play Again ?", 0
+	gameOverInstructions db "Press Enter To Play Again Or ESC To Return To Shell.", 0
+section .text
+	
 
 start:
-	;pushad
+	pushad
 	cld
 	call spawn_apple
-
-.mainLoop:
+	call mainLoop
+	popad
+	xor eax, eax
+	ret
+mainLoop:
 	call read_input
 	call update_position
 
@@ -36,7 +41,7 @@ start:
 	call draw_apple
 	call collisions
 	call delay
-	jmp  .mainLoop
+	jmp  mainLoop
 
 read_input:
 	in   al, 0x64                 ;reading keyboard status
@@ -61,7 +66,7 @@ read_input:
 	je   .right
 	
 	cmp  al, 0x1C                 ;return
-	
+	je .enter
 	jmp  .done
 
 .up:	
@@ -233,7 +238,7 @@ collisions:
 	cmp  dword [yPos], 0
 	je   .collision_border
 
-	cmp  dword [yPos], 25
+	cmp  dword [yPos], 24
 	je   .collision_border
 
 	ret
@@ -253,6 +258,8 @@ print:
 	; ex. 
 	; mov esi, gameOverMessage
 	; mov edi, 0xB8000 + center
+	cld
+.loop:
 	lodsb
 	test al, al                    ;checks for 0 terminator
 	jz   .done
@@ -260,7 +267,7 @@ print:
 	mov  [edi], al
 	mov  byte [edi+1], 0x0F
 	add  edi, 2
-	jmp  print
+	jmp  .loop
 
 .done:
 	ret
@@ -269,7 +276,12 @@ game_over:
 	inc  byte [gameOver]
 	call init_screen
 	mov  esi, gameOverMessage
-	mov  edi, 0xB8000 + center
+	mov  edi, 0xB8000 + center - 22
+
+	call print
+
+	mov esi, gameOverInstructions
+	mov edi, 0xB8000 + center + 106
 
 	call print
 
@@ -288,5 +300,5 @@ reset_game:
 	mov  byte [score], 0
 	mov  byte [prevScore], 0
 	mov  byte [curDirection], 3
-	call start
+	jmp start
 	ret

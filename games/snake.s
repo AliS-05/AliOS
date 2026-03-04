@@ -4,6 +4,7 @@ global start
 center equ 2000
 
 section .data
+	body times 200  dd 0
 	xPos            dd 40
 	yPos            dd 12
 	curDirection    db 3      ; 0 = W ; 1 = A  ; 2 = S  ; 3 = D
@@ -22,6 +23,7 @@ start:
 	cld
 	call spawn_apple
 	call mainLoop
+.returnToShell:
 	popad
 	xor eax, eax
 	ret
@@ -69,8 +71,11 @@ read_input:
 	
 	cmp  al, 0x1C                 ;return
 	je .enter
-	jmp  .done
 
+	cmp al, 0x01		      ; escape
+	je .esc
+
+	jmp  .done
 .up:	
 	mov  byte [curDirection], 0   ; up
 	jmp  .done
@@ -88,11 +93,14 @@ read_input:
 	jmp  .done
 
 .enter:
-	cmp  byte [gameOver], 0       ;dont want to decrement if not 1
+	cmp  byte [gameOver], 0       ;ignore if not 1 / set
 	je   .done
 	mov  byte [gameOver], 0
 	jmp  .done
 
+.esc:
+	mov eax, 0
+	jmp start.returnToShell
 .done:
 	ret	
 
@@ -104,6 +112,28 @@ delay:
 	ret
 
 update_position:
+
+	movzx ecx, byte [score]
+	test ecx, ecx
+	jz .move_head ; score = 0
+
+.shift_loop:
+	;each segment is 8 bytes
+	; need to move body[n-1] into body[n]
+	mov eax, [body + ecx * 8 - 8] ; prev x
+	mov [body + ecx * 8], eax ;current x
+
+	mov eax, [body + ecx * 8 - 4] ; prev y
+	mov [body + ecx * 8 + 4], eax ;current y
+
+	loop .shift_loop
+	
+	mov eax, [xPos]
+	mov [body], eax
+	mov eax, [yPos]
+	mov [body + 4], eax
+
+.move_head:
 	mov  al, [curDirection]
 	cmp  al, 0
 	je   .up
@@ -138,6 +168,8 @@ update_position:
 draw_player:
 	call init_screen
 	call draw_border
+	
+	mov ecx, score
 
 	mov  eax, [yPos]
 	mov  ebx, 160
@@ -152,6 +184,29 @@ draw_player:
 	mov  byte [eax], '@'
 	mov  byte [eax+1], 0x0A
 
+	movzx ecx, byte [score]
+	test ecx, ecx
+	jz .done ; score = 0
+	xor esi, esi
+
+.draw_body_loop:
+	push ecx
+	; Calculate offset: y * 160 + x * 2
+	mov   eax, [body + esi*8 + 4] ; Get Y of this segment
+	mov   ebx, 160
+	mul   ebx
+	mov   ebx, [body + esi*8]     ; Get X of this segment
+	shl   ebx, 1
+	add   eax, ebx
+	add   eax, 0xB8000
+
+	mov   byte [eax], '@' 
+	mov   byte [eax+1], 0x02      ; Green
+
+	inc   esi
+	pop   ecx
+	loop  .draw_body_loop
+.done:
 	ret
 
 init_screen:
@@ -340,7 +395,7 @@ draw_score:
 	; edi now points right after "Score: "
 	; print two-digit score
 
-	movzx eax, byte [score]   ; load score (0–255)
+	movzx eax, byte [score]   ; load score (0– 255)
 	xor  edx, edx
 	mov  ecx, 10
 	div  ecx                  ; eax = tens, edx = ones

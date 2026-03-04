@@ -169,7 +169,7 @@ draw_player:
 	call init_screen
 	call draw_border
 	
-	mov ecx, score
+	movzx ecx, byte [score]
 
 	mov  eax, [yPos]
 	mov  ebx, 160

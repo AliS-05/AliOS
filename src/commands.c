@@ -1,11 +1,11 @@
-#include <structures.hpp>
-#include <utilities.hpp>
-#include <string.hpp>
-#include <tools.hpp>
-#include <fs.hpp>
-#include <edit.hpp>
+#include <structures.h>
+#include <utilities.h>
+#include <string.h>
+#include <tools.h>
+#include <fs.h>
+#include <edit.h>
 
-extern "C" volatile uint8_t enter_editor_flag;
+extern volatile uint8_t enter_editor_flag;
 
 void cmd_help() {
     print(help_response);
@@ -19,7 +19,7 @@ void cmd_clear() {
 }
 
 void cmd_reboot() {
-    asm("jmp $0xFFFF, $0");
+    __asm__ __volatile__ ("jmp $0xFFFF, $0");
 }
 
 
@@ -166,7 +166,7 @@ void cmd_color(char* input_buffer){
 	init_editor_screen((uint8_t)col);
 }
 
-extern "C" void parse_command() {
+void parse_command() {
 	if (strcmp(input_buffer, "help") == 0) {
 		cmd_help();
 	} else if (strcmp(input_buffer, "clear") == 0) {

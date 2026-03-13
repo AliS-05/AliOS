@@ -1,4 +1,4 @@
-#include <structures.hpp>
+#include <structures.h>
 
 #ifndef MEMORY_H
 #define MEMORY_H

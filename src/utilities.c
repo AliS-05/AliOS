@@ -1,17 +1,15 @@
-#include <utilities.hpp>
-#include <string.hpp>
+#include <utilities.h>
+#include <string.h>
 
-extern "C" {
-    extern int cursor_pos;
-    extern int buffer_pos;
-    extern unsigned char skip_newline; //1 byte
-    extern char input_buffer[80];
-    extern char shell_prompt[];
-    extern char help_response[];
-    extern char unknown_response[];
-    extern void print(const char* str);
-    extern uint8_t vga_color;
-}
+extern int cursor_pos;
+extern int buffer_pos;
+extern unsigned char skip_newline; //1 byte
+extern char input_buffer[80];
+extern char shell_prompt[];
+extern char help_response[];
+extern char unknown_response[];
+extern void print(const char* str);
+extern uint8_t vga_color;
 
 void init_editor_screen(uint8_t colorByte){
 	vga_color = colorByte;
@@ -45,7 +43,7 @@ void print_char(const char c){
 	cursor_pos += 2;
 }
 
-extern "C" void print(const char *s1){
+void print(const char *s1){
 	while( *s1 != '\0' ){
 		if(*s1 == '\n'){
 			cursor_pos = newLine(cursor_pos);
@@ -186,7 +184,7 @@ void itoa(int num, char* buf) { //converts an integer to a string
     }
 }
 
-extern "C" void clearBuf(void*ptr, size_t size){
+void clearBuf(void*ptr, size_t size){
 	unsigned char* p = (unsigned char*)ptr;
 	for(size_t i = 0; i < size; i++){
 		p[i] = 0;

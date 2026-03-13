@@ -1,5 +1,5 @@
 AS = nasm
-CXX = g++
+CXX = gcc
 LD = ld
 
 SRC_DIR = src
@@ -8,11 +8,11 @@ BUILD_DIR = build
 
 # 1. FIND ALL SOURCES RECURSIVELY
 # This finds every .cpp file in src/ and any sub-directory (like fs/)
-CPP_SOURCES := $(shell find $(SRC_DIR) -name "*.cpp")
+C_SOURCES := $(shell find $(SRC_DIR) -name "*.c")
 
 # 2. MAP SOURCES TO OBJECTS IN BUILD DIR
 # This converts src/fs/ata.cpp -> build/fs/ata.o
-CPP_OBJECTS := $(patsubst $(SRC_DIR)/%.cpp, $(BUILD_DIR)/%.o, $(CPP_SOURCES))
+C_OBJECTS := $(patsubst $(SRC_DIR)/%.c, $(BUILD_DIR)/%.o, $(C_SOURCES))
 
 BINARY = $(BUILD_DIR)/os.bin
 DRIVE = $(SRC_DIR)/fs/disk.img
@@ -24,7 +24,7 @@ KERNEL_ASM_OBJ = $(BUILD_DIR)/kernel_asm.o
 KERNEL_ELF = $(BUILD_DIR)/kernel.elf
 KERNEL_BIN = $(BUILD_DIR)/kernel.bin
 
-CXXFLAGS = -m32 -ffreestanding -fno-exceptions -fno-rtti \
+CXXFLAGS = -m32 -ffreestanding \
            -nostdlib -fno-builtin -fno-pic -fno-stack-protector \
            -Wall -Wextra -O0 -I$(HEADER_DIR)
 
@@ -37,7 +37,7 @@ $(BINARY): $(BOOT_BIN) $(KERNEL_BIN)
 	cat $^ > $@
 
 # Link kernel (Uses all discovered CPP objects + asm object)
-$(KERNEL_ELF): $(KERNEL_ASM_OBJ) $(CPP_OBJECTS)
+$(KERNEL_ELF): $(KERNEL_ASM_OBJ) $(C_OBJECTS)
 	$(LD) $(LDFLAGS) -o $@ $^
 
 # Extract kernel binary
@@ -55,9 +55,9 @@ $(KERNEL_ASM_OBJ): $(KERNEL_ASM)
 	$(AS) -f elf32 $< -o $@
 
 # THE MAGIC RULE: Compiles any .cpp in any subfolder
-$(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp
+$(BUILD_DIR)/%.o: $(SRC_DIR)/%.c
 	@mkdir -p $(dir $@)
-	$(CXX) $(CXXFLAGS) -c $< -o $@
+	$(CXX) $(CXXFLAGS) --std=c99 -c $< -o $@
 
 run: $(BINARY)
 	qemu-system-x86_64 -drive format=raw,file=$(BINARY) -drive format=raw,file=$(DRIVE)

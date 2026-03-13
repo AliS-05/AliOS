@@ -1,9 +1,9 @@
-#include <structures.hpp>
-#include <math.hpp>
-#include <ata.hpp>
-#include <utilities.hpp>
-#include <memory.hpp>
-#include <string.hpp>
+#include <structures.h>
+#include <math.h>
+#include <ata.h>
+#include <utilities.h>
+#include <memory.h>
+#include <string.h>
 
 #define SUCCESS true
 #define FAILURE false
@@ -24,7 +24,7 @@ void initfs(){
 size_t fileSize(const char* filename){
 	uint8_t sector[SECTORSIZE];
 	disk_read_sector(0, sector);
-	FileObject* files = (FileObject*)sector;
+	struct FileObject* files = (struct FileObject*)sector;
 
 	for(int i = 0; i < MAXFILES; i++){
 		if(strcmp(files[i].name, filename) == 0){
@@ -42,7 +42,7 @@ void listfiles(){
 	uint8_t sector[SECTORSIZE];
 	disk_read_sector(0, sector);
 	// casting sector as array of fileObjects 
-	FileObject* files = (FileObject*)sector;
+	struct FileObject* files = (struct FileObject*)sector;
 	print("Files: \n");
 	for(int i = 0; i < MAXFILES; i++){
 		if(files[i].name[0] != '0'){
@@ -50,12 +50,13 @@ void listfiles(){
 			print("  ");
 		}
 	}
+	return;
 }
 
 size_t read_file(const char* filename){
 	uint8_t sector[SECTORSIZE];
 	disk_read_sector(0, sector);
-	FileObject* files = (FileObject*)sector;
+	struct FileObject* files = (struct FileObject*)sector;
 
 	for(int i = 0; i < MAXFILES; i++){
 		if(strncmp(files[i].name,filename, 32) == 0){
@@ -83,8 +84,8 @@ size_t read_file(const char* filename){
 			return 0;
 		}
 	}
-
 	print("File Not Found\n");
+	return 0;
 }
 
 
@@ -95,7 +96,7 @@ void write_file(const char* filename, uint8_t* buffer, size_t size){
 	//idea, read sector table, find next open sector write to that
 	uint8_t sector[SECTORSIZE];
 	disk_read_sector(0, sector);
-	FileObject* files = (FileObject*)sector;
+	struct FileObject* files = (struct FileObject*)sector;
 	uint32_t prevSector = 0;
 	for(int i = 0; i < MAXFILES; i++){
 		if(files[i].name[0] == 0){
@@ -124,14 +125,14 @@ void write_file(const char* filename, uint8_t* buffer, size_t size){
 void overwrite_file(const char* filename, uint8_t* buffer, size_t newSize){
 	uint8_t sector[SECTORSIZE];
 	disk_read_sector(0, sector);
-	FileObject* files = (FileObject*)sector;
-	for(int i = 0; i < MAXFILES; i++){
-		if(strcmp(filename, files[i].name) == 0){//found file
-			files[i].size = newSize;
-			uint8_t curSector = files[i].startSector;
+	struct FileObject* files = (struct FileObject*)sector;
+	for(int x = 0; x < MAXFILES; x++){
+		if(strcmp(filename, files[x].name) == 0){//found file
+			files[x].size = newSize;
+			uint8_t curSector = files[x].startSector;
 			size_t secs = calcSectorsUsed(newSize);
-			for(size_t i = 0; i < secs; i++){
-				disk_write_sector(curSector, buffer + (i * SECTORSIZE)); // moving through buffer correctly
+			for(size_t y = 0; y < secs; y++){
+				disk_write_sector(curSector, buffer + (y * SECTORSIZE)); // moving through buffer correctly
 				curSector++;
 			}
 			disk_write_sector(0, sector);
@@ -145,7 +146,7 @@ void overwrite_file(const char* filename, uint8_t* buffer, size_t newSize){
 boolean delete_file(const char* filename){
 	uint8_t sector[SECTORSIZE];
 	disk_read_sector(0, sector);
-	FileObject* files = (FileObject*)sector;
+	struct FileObject* files = (struct FileObject*)sector;
 
 	uint8_t zeroBuffer[SECTORSIZE];
 	memset(zeroBuffer, 0, SECTORSIZE);
@@ -176,7 +177,7 @@ uint8_t* cpy_file_buffer(const char* filename, uint8_t* buffer, size_t bufferSiz
 
 	uint8_t sector[SECTORSIZE];
 	disk_read_sector(0, sector);
-	FileObject* files = (FileObject*)sector;
+	struct FileObject* files = (struct FileObject*)sector;
 
 	for(uint32_t i = 0; i < MAXFILES; i++){
 		if(strncmp(files[i].name,filename, 32) == 0){

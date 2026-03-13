@@ -1,6 +1,6 @@
-#include <utilities.hpp>
+#include <utilities.h>
 
-extern "C" int strcmp(const char* s1, const char* s2){
+int strcmp(const char* s1, const char* s2){
 	while (*s1 && *s2 && (*s1 == *s2)){
 		s1++;
 		s2++;
@@ -20,8 +20,8 @@ int strncmp(const char* s1, const char* s2, size_t n) {
 }
 
 size_t strlen(const char* str){
-	if(str == nullptr){
-		print("CRITICAL ERROR STRLEN RECEIVED NULLPTR\n");
+	if(str == NULL){
+		print("STRLEN RECEIVED NULL\n");
 		return 0;
 	}
 	size_t count = 0;

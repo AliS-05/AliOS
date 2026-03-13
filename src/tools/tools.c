@@ -1,29 +1,25 @@
-#include <utilities.hpp>
-#include <string.hpp>
+#include <utilities.h>
+#include <string.h>
 
 void calc(char* buf){ 
     token(buf, ' ');
 
-    const char *x = token(NULL, ' ');
-    int realx = atoi(x);
+    const char *strx = token(NULL, ' ');
+    int x = atoi(strx);
 
     const char* op = token(NULL, ' ');
 
-    char *y = token(NULL, ' ');
-    int realy = atoi(y);
+    char *stry = token(NULL, ' ');
+    int y = atoi(stry);
 
     if(strcmp(op, "+") == 0){
-        auto sum = [](int a, int b){return a+b;};
-        print_num((int)sum(realx,realy));
+        print_num(x + y);
     } else if (strcmp(op, "-") == 0){
-	    auto res = [](int a, int b){return a - b;};
-	    print_num((int)res(realx,realy));
+	    print_num(x - y);
     } else if (strcmp(op, "*") == 0){
-	    auto res = [](int a, int b){return a * b;};
-	    print_num((int)res(realx,realy));
+	    print_num(x * y);
     } else if (strcmp(op, "/") == 0){
-	    auto res = [](int a, int b){ return a / b; };
-	    print_num((int)res(realx,realy));
+	    print_num(x / y);
     } else{
         print("Usage: calc x + y");
     }

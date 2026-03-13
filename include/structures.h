@@ -17,8 +17,8 @@ typedef unsigned int uint32_t;
 struct MemoryBlock{
 	size_t size;
 	boolean available; // 0 = available , 1 = in use. basically a bool
-	MemoryBlock* next;
-	MemoryBlock* prev;
+	struct MemoryBlock* next;
+	struct MemoryBlock* prev;
 };
 
 #endif

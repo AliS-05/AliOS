@@ -1,7 +1,7 @@
 #ifndef FS_H
 #define FS_H
 
-#include <structures.hpp>
+#include <structures.h>
 
 #define MAXFILES 12
 #define SECTORSIZE 512

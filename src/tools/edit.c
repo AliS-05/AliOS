@@ -1,8 +1,8 @@
-#include <structures.hpp>
-#include <utilities.hpp>
-#include <string.hpp>
-#include <memory.hpp>
-#include <fs.hpp>
+#include <structures.h>
+#include <utilities.h>
+#include <string.h>
+#include <memory.h>
+#include <fs.h>
 
 //color reference 
 
@@ -15,12 +15,12 @@
 //0x6 Brown		0xE Yellow
 //0x7 Light Gray	0xF White
 
-extern "C" volatile uint8_t vga_color;
-extern "C" volatile uint8_t in_editor;
-extern "C" volatile uint8_t esc_pressed;
-extern "C" volatile uint8_t enter_editor_flag;
-extern "C" volatile uint8_t editor_scancode;
-extern "C" volatile uint8_t editor_mode; // normal, insert, command
+extern volatile uint8_t vga_color;
+extern volatile uint8_t in_editor;
+extern volatile uint8_t esc_pressed;
+extern volatile uint8_t enter_editor_flag;
+extern volatile uint8_t editor_scancode;
+extern volatile uint8_t editor_mode; // normal, insert, command
 
 
 #define MODE_NORMAL  0
@@ -62,8 +62,8 @@ void save_editor_content(const char* filename) {
 uint8_t getkey() {
 	editor_scancode = 0;
 	while(!editor_scancode){
-		asm("sti");
-		asm("hlt");
+		__asm__("sti");
+		__asm__("hlt");
 	}
 	uint8_t k = editor_scancode;
 	editor_scancode = 0;
@@ -96,7 +96,7 @@ void redraw(uint8_t color) {
     cursor_pos = cursor_row * 160 + cursor_col * 2;
 }
 
-extern "C" void edit_loop(const char* filename) {
+extern void edit_loop(const char* filename) {
 	in_editor = 0;
 	editor_scancode = 0;
 	editor_mode = 0;

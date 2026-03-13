@@ -1,4 +1,4 @@
-#include <structures.hpp>
+#include <structures.h>
 
 
 int ceil(float x){

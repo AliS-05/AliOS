@@ -1,5 +1,6 @@
 #include <structures.h>
-
+#include <utilities.h>
+#include <memory.h>
 
 #define CONTROL_REG 0x0000 //controls major operational modes for controller
 #define STATUS_REG 0x0008 // "this register provides software status indication about the Ethernet controller's  settings and modes of operation
@@ -22,6 +23,20 @@
 //Receive Data FIFO Packet Count
 #define RDFPC 0x02430 //#of receive packets currently in the FIFO
 
+//Receive Address Low
+#define RAL 0x05400
+//Receive Address High
+#define RAH 0x05404
+
+//Flow Control
+#define FCTRL 0x02160
+#define FCAL 0x00028 //Flow control address low
+#define FCAH 0x0002C //Flow control address high
+#define FCT 0x00030 //Flow Control Type
+#define FCTTV 0x00170 //Flow Control Transmit Timer Value
+
+
+
 //Packet Buffer Memory
 //from 0x10000 - 0x1FFFC R/W (64KB)
 
@@ -35,9 +50,9 @@ void outl(uint16_t port, uint32_t value){
 }
 
 uint32_t inl(uint16_t port) {
-    uint32_t value;
-    __asm__ volatile ("inl %1, %0" : "=a"(value) : "Nd"(port));
-    return value;
+	uint32_t value;
+	__asm__ volatile ("inl %1, %0" : "=a"(value) : "Nd"(port));
+	return value;
 }
 
 void write_reg(uint32_t offset, uint32_t value){ //
@@ -54,11 +69,11 @@ uint32_t pci_read(uint8_t bus, uint8_t device, uint8_t func, uint8_t offset){
                      | (device << 11) // which device to look for
                      | (func << 8) //which function we want
                      | (offset & 0xFC); // which register we want
-    outl(0xCF8, address);
-    return inl(0xCFC);
+	outl(0xCF8, address);
+	return inl(0xCFC);
 }
 
-void find_nic(){
+boolean find_nic(){
 	for(int bus = 0; bus < 256; bus++){ //256 buses
 		for(int device = 0; device < 32; device++){
 			uint32_t result = pci_read(bus, device, 0, 0x00);
@@ -67,27 +82,107 @@ void find_nic(){
 
 			if (vendor == 0x8086 && deviceID == 0x100E){
 				bar0 = pci_read(bus, device, 0, 0x10);
+				return true;
 			}
 		}
 	}
+	return false;
 }
 
 void reset_nic(){
 	write_reg(CONTROL_REG, 0x04000000); //writing 32nd bit to control registers for reset
-	while(read_reg(CONTROL_REG) & 0x0400000);
+	while(read_reg(CONTROL_REG) & 0x04000000);
+}
+
+
+
+void enable_ASDE(){ //write bit 5 to the CTRL register
+	//setting this bit makes the controller automatically detect some settings
+	//software must set the SLU bit for this operation, might look at 'ASD' feature
+
+	//SLU bit - Set Link Up, 
+
+	uint32_t value = read_reg(CONTROL_REG);
+	
+	value |= (0 << 3) | //LRST set to 0 enabling Auto Negotiation
+		(1 << 6) | //setting SLU bit for auto negotiation
+		(1 << 5) | // auto negotiation
+		(0 << 30)| //VLAN mode off since we're not using vlans
+		(0 << 31); //phy reset normal mode i think telling it we dont want to reset?
+	write_reg(CONTROL_REG, value);
+}
+
+//we might want this later but for now just clear all the registers
+//just write zero to everything for now
+void disable_FCTRL(){
+	uint32_t value = (0 << 31); //Reserved
+	write_reg(FCTRL, value);
+	write_reg(FCAH, value);
+	write_reg(FCAL, value);
+	write_reg(FCT, value);
+	write_reg(FCTTV, value);
 }
 
 uint16_t eeprom_read(uint8_t addr) {
-    write_reg(EECD, (addr << 8) | 1);
-    uint32_t result;
-    do {
-        result = read_reg(EERD);
-    } while(!(result & 0x10));
-    return (result >> 16) & 0xFFFF;
+	write_reg(EECD, (addr << 8) | 1);
+	uint32_t result;
+	do {
+		result = read_reg(EERD);
+	} while(!(result & 0x10));
+	return (result >> 16) & 0xFFFF;
+}
+
+void read_mac_address(uint8_t* mac_address){ //mac should be a 6 byte array i think ?
+//	uint16_t mac_word1 = eeprom_read(0x0); //bytes 1-2
+//	uint16_t mac_word2 = eeprom_read(0x1); //bytes 2-3
+//	uint16_t mac_word3 = eeprom_read(0x2); //bytes 4-5
+	
+	uint32_t mac_dword1 = read_reg(RAL); //first 4 bytes
+	uint16_t mac_word2 = read_reg(RAH); //last 2 bytes
+
+	//example AA:BB:CC:DD:EE:FF
+	//read returns us say AA:BB
+	//little endian BB:AA = 1011 1011 1010 1010
+	
+	//even bytes = >> 8
+	//odd bytes = & 0x00FF (use python CLI !!)
+	
+	//low address 4 bytes math changes a bit
+	mac_address[0] = (mac_dword1 & 0xFF);
+	mac_address[1] = ((mac_dword1 >> 8) & 0xff);
+	mac_address[2] = ((mac_dword1 >> 16) & 0xff);	
+	mac_address[3] = (mac_dword1 >> 24);
+	//high address stays the same
+	mac_address[4] = (mac_word2 & 0xFF);
+	mac_address[5] = (mac_word2 >> 8);
+}
+
+void print_mac(uint8_t* mac) {
+	for(int i = 0; i < 6; i++) {
+		print_hex8(mac[i]);
+		if(i < 5) print(":");
+	}
 }
 
 void init_nic(){
-	find_nic();
-	print("FOUND NIC !!");
+
+	//nic driver initialization
+	boolean found_nic = find_nic();
+	if(found_nic == true){
+		print("FOUND NIC !!\n");
+	} else{
+		print("Error finding NIC\n");
+	}
 	reset_nic();
+	enable_ASDE();
+	print("Enabled ASDE\n");
+	disable_FCTRL(); //im assuming this works
+	print("Disabled Flow Control Registers\n");
+	//and we already disabled VLAN in enable_ASDE()
+
+	//start receive initialization
+
+	uint8_t* mac_address = (uint8_t*)malloc(sizeof(uint8_t) * 6);
+	read_mac_address(mac_address); //modifies in place
+	print_mac(mac_address);
 }

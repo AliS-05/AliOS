@@ -35,7 +35,8 @@
 #define FCT 0x00030 //Flow Control Type
 #define FCTTV 0x00170 //Flow Control Transmit Timer Value
 
-
+//Mulicast Table Array
+#define MTA 0x05200
 
 //Packet Buffer Memory
 //from 0x10000 - 0x1FFFC R/W (64KB)
@@ -132,6 +133,12 @@ uint16_t eeprom_read(uint8_t addr) {
 	return (result >> 16) & 0xFFFF;
 }
 
+void write_mac_address(uint32_t mac_dword, uint16_t mac_word){
+	//need to write address back exactly but flip 32nd bit to set RAH AV field
+	write_reg(RAL, mac_dword);
+	write_reg(RAH, (mac_word | 1 << 31));
+}
+
 void read_mac_address(uint8_t* mac_address){ //mac should be a 6 byte array i think ?
 //	uint16_t mac_word1 = eeprom_read(0x0); //bytes 1-2
 //	uint16_t mac_word2 = eeprom_read(0x1); //bytes 2-3
@@ -139,6 +146,8 @@ void read_mac_address(uint8_t* mac_address){ //mac should be a 6 byte array i th
 	
 	uint32_t mac_dword1 = read_reg(RAL); //first 4 bytes
 	uint16_t mac_word2 = read_reg(RAH); //last 2 bytes
+	
+	write_mac_address(mac_dword1, mac_word2);
 
 	//example AA:BB:CC:DD:EE:FF
 	//read returns us say AA:BB
@@ -164,6 +173,13 @@ void print_mac(uint8_t* mac) {
 	}
 }
 
+void disable_multicast(){ //will need to actually set this up in the future
+	//need to write 0 to 128 registers (writes must be 32 bit)
+	for(int reg = 0; reg <= 0x1FC; reg += 4){
+		write_reg(MTA + reg, 0);
+	}
+}
+
 void init_nic(){
 
 	//nic driver initialization
@@ -185,4 +201,7 @@ void init_nic(){
 	uint8_t* mac_address = (uint8_t*)malloc(sizeof(uint8_t) * 6);
 	read_mac_address(mac_address); //modifies in place
 	print_mac(mac_address);
+
+	disable_multicast();
+	print("\nDisabled MultiCast\n");
 }

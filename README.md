@@ -20,8 +20,7 @@ A minimal x86 operating system built from scratch with the goal of achieving sel
 - **Program Loader** - Load and execute binary programs from disk (DOS-style single-tasking)
 
 ### In Progress
-- Text editor
-- C++ compiler toolchain
+- NIC Driver / Network Capability
 
 ### Planned
 - Self-compilation capability
@@ -42,6 +41,7 @@ A minimal x86 operating system built from scratch with the goal of achieving sel
 - `clear` - Clear screen
 - `reboot` - Restart system
 - `help` - Show available commands
+- `run snake` - Play my x86 Assembly Snake game !
 
 ### Filesystem
 - Simple flat filesystem design
@@ -123,8 +123,7 @@ struct FileObject {
 
 ## Technical Details
 
-- **Language:** C++ (kernel), x86 Assembly (bootloader, low-level)
+- **Language:** C (kernel, filesystem), x86 Assembly (bootloader, low-level, snake)
 - **Architecture:** x86 (32-bit protected mode)
 - **Filesystem:** Custom simple flat filesystem
-- **Boot:** Legacy BIOS boot
 - **Execution Model:** Single-tasking (DOS like program loading)

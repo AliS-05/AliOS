@@ -1,9 +1,9 @@
 #include <structures.h>
 #include <memory.h>
 
-void* malloc(int size) {
+static short first_call = 1;
+void* malloc(uint32_t size) {
 	//static char* heap_ptr = (char*)0x100000;
-	static short first_call = 1;
 
 	if (first_call) {
 		// First time: set up initial block
@@ -83,4 +83,47 @@ int memcmp(void* mem1, void* mem2){
 	return (*m1 - *m2);
 }
 
+void* aligned_malloc(uint32_t size, uint32_t alignment){
+	if (first_call) {
+		// First time: set up initial block
+		struct MemoryBlock* initial = (struct MemoryBlock*)0x100000; //this might need to be static, actually no ? can we just cast memblock in seperate scopes and still access further nodes?
+		initial->size = (size_t)1048576 - sizeof(struct MemoryBlock);
+		initial->available = 0;
+		initial->next = NULL;
+		initial->prev = NULL;
+		first_call = 0;
+	}
 
+	struct MemoryBlock* current = (struct MemoryBlock*)0x100000;
+	while(current != NULL){//ie until the first suitable block
+		if(current->available == 0 && current->size >= size + alignment + sizeof(struct MemoryBlock) + 1){
+			//we want to return current and create a new header AFTER current that gives us access to the rest of the heap
+			struct MemoryBlock* block = (struct MemoryBlock*)((char*)current + sizeof(struct MemoryBlock) + size);
+			//basically reducing size of heap
+			block->size = current->size - size - sizeof(struct MemoryBlock);
+			block->available = 0; //its available
+			block->next = current->next;
+			block->prev = current;
+			
+			if(current->next != NULL){
+				current->next->prev = block;
+			}
+
+			current->size = size;
+			current->available = 1;
+			current->next = block;
+			
+			uint32_t addr = (uint32_t)current + sizeof(struct MemoryBlock);
+
+			while( addr % alignment != 0){
+				addr++;
+			}
+			return (void*)(addr);
+		}
+		
+		current = current->next;
+	}
+
+	//no suitable block found
+	return NULL;
+}

@@ -3,64 +3,12 @@
 #include <memory.h>
 #include <networking.h>
 
-#define CONTROL_REG 0x0000 //controls major operational modes for controller
-#define STATUS_REG 0x0008 // "this register provides software status indication about the Ethernet controller's  settings and modes of operation
-//EE Control Data
-#define EECD 0x00010 //EEPROM control and data register provides simplified interface for software accesses to the eeprom
-//EE Read Data
-#define EERD 0x00014 //EEPROM Read Register
+uint32_t bar0;
+uint32_t NUM_TRANSMIT_DESC = 8;
+uint32_t TAIL = 0;
+uint8_t* transmitPacketBuffer = NULL;
+struct TransmitDescriptor* TRANS_DESC_LIST = NULL;
 
-//Get Packets Received Count
-#define GPRC 0x04074 //counts the number of good packets received of any length
-//Total Packets Received
-#define TPR 0x040D0 // counts total number of all packets received, might be useful
-//Total Packets Transmitted
-#define TPT 0x040D4 // counts total number of packets transmitted
-
-//Receive Data FIFO Header (Register)
-#define RDFH 0x02410 //stores the head of the Ethernet controller's on-chip receive data FIFO. DO NOT WRITE TO
-//Receive Data FIFO Tail (Register)
-#define RDFT 0x02418 //stores tail end of FIFO
-//Receive Data FIFO Packet Count
-#define RDFPC 0x02430 //#of receive packets currently in the FIFO
-
-//Receive Address Low
-#define RAL 0x05400
-//Receive Address High
-#define RAH 0x05404
-
-//Flow Control
-#define FCTRL 0x02160
-#define FCAL 0x00028 //Flow control address low
-#define FCAH 0x0002C //Flow control address high
-#define FCT 0x00030 //Flow Control Type
-#define FCTTV 0x00170 //Flow Control Transmit Timer Value
-
-//Mulicast Table Array
-#define MTA 0x05200
-
-//Receive Registers
-#define RCRTL 0x100 //control
-#define RDBAL 0x2800 //base descriptor low
-#define RDBAH 0x2804 // i dont think this is needed for 32 bit
-#define RDLEN 0x2808 //descriptor length
-#define RDH 0x2810 //descriptor head
-#define RDT 0x2818 //descriptor tail
-
-//Transmit Registers
-#define	TCTL 0x400
-#define TIPG 0x410
-#define TDBAL 0x3800
-#define TDBAH 0x3804
-#define TDLEN 0x3808
-#define TDH 0x3810
-#define TDT 0x3818
-
-uint32_t bar0; // base address register, add offset to talk to device at specific function port
-static uint32_t NUM_TRANSMIT_DESC = 8; //8 descriptors
-static uint32_t TAIL = 0;
-static uint8_t* transmitPacketBuffer = NULL;
-static struct TransmitDescriptor* TRANS_DESC_LIST = NULL;
 
 void outl(uint16_t port, uint32_t value){
 	__asm__ volatile ("outl %0, %1" : : "a"(value), "Nd"(port));
@@ -98,7 +46,7 @@ boolean find_nic(){
 			uint16_t deviceID = (result >> 16) & 0xFFFF;
 
 			if (vendor == 0x8086 && deviceID == 0x100E){
-				bar0 = pci_read(bus, device, 0, 0x10);
+				bar0 = pci_read(bus, device, 0, 0x10) & 0xFFFFFFF0;
 				return true;
 			}
 		}
@@ -220,13 +168,21 @@ void init_transmit_descriptors(){
 	//software should write 0b to both head and tail
 	write_reg(TDH, 0); 
 	write_reg(TDT, 0);
-	write_reg(TCTL, (1 << 1) | //enable bit always 1
+	uint32_t packets_sent = read_reg(TPT);
+	print("Packets Transmitted: ");
+	print_num(packets_sent);
+	print("\n");
+	write_reg(TCTL, (0 << 1) | //enable bit always 1 but do later?
 			(1 << 3) | //Pad Short Packets
 			(0x10 << 4) | //Ethernet Standard Collision Threshold
 			(0x40 << 12)); //Full Duplex Collision Distance
 	write_reg(TIPG, (10 << 0) | //IPGT
 			(10 << 10) | //IPGR1
 			(10 << 20)); //IPGR2
+	uint32_t tctl = read_reg(TCTL);
+	tctl |= (1 << 1);
+	write_reg(TCTL, tctl);
+	print("Transmit enabled");
 
 }
 
@@ -240,19 +196,57 @@ uint16_t transmit_packet(uint8_t* packet_data, uint16_t length){
 	uint8_t* dest = transmitPacketBuffer + TAIL * 2048;
 	memcpy(dest ,packet_data , length);
 
+	uint32_t old_tail = TAIL;
+
+	print("Setting descriptor at TAIL=");
+
+	print_num(old_tail);
+	print("\n");
+
 	TRANS_DESC_LIST[TAIL].address = (uint64_t)dest;
+	print("Set address to: ");
+	print_hex32((uint32_t)TRANS_DESC_LIST[TAIL].address);
+	print("\n");
+
 	TRANS_DESC_LIST[TAIL].length = length;
+	print("Set length to: ");
+	print_num(TRANS_DESC_LIST[TAIL].length);
+	print(" (input was ");
+	print_num(length);
+	print(")\n");
+
 	TRANS_DESC_LIST[TAIL].command = 0x09;
+	print("Set command to: ");
+	print_hex8(TRANS_DESC_LIST[TAIL].command);
+	print("\n");
+
 	TRANS_DESC_LIST[TAIL].status = 0;
 
+
 	TAIL = (TAIL + 1) % NUM_TRANSMIT_DESC;
+
+	print("Descriptor[");
+	print_num(old_tail);
+	print("]:\n");
+	print("  addr: ");
+	print_hex32((uint32_t)TRANS_DESC_LIST[old_tail].address);
+	print("\n  len: ");
+	print_num(TRANS_DESC_LIST[old_tail].length);
+	print("\n  cmd: ");
+	print_hex8(TRANS_DESC_LIST[old_tail].command);
+	print("\n");
+
 	write_reg(TDT, TAIL);
+	print("Wrote TDT = ");
+	print_num(TAIL);
+	print(", Read back TDT = ");
+	print_num(read_reg(TDT));
+	print("\n");
 	return length;
 }
 
-void init_nic(){
-
-	//nic driver initialization
+uint8_t* init_nic(){
+//nic driver initialization
 	boolean found_nic = find_nic();
 	if(found_nic == true){
 		print("FOUND NIC !!\n");
@@ -277,4 +271,21 @@ void init_nic(){
 
 	//start receive init
 	init_transmit_descriptors();
+
+
+	print("Waiting for transmission...\n");
+	for (volatile int i = 0; i < 10000000; i++);
+
+	uint32_t packets_sent = read_reg(TPT);
+	print("TPT after wait: ");
+	print_num(packets_sent);
+	print("\n");
+
+	// Also check if descriptor status DD bit is set
+	print("Descriptor status: ");
+	print_hex8(TRANS_DESC_LIST[0].status);
+	print("\n");
+
+
+	return mac_address;
 }

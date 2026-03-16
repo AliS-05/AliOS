@@ -57,7 +57,10 @@
 #define TDT 0x3818
 
 uint32_t bar0; // base address register, add offset to talk to device at specific function port
-
+static uint32_t NUM_TRANSMIT_DESC = 8; //8 descriptors
+static uint32_t TAIL = 0;
+static uint8_t* transmitPacketBuffer = NULL;
+static struct TransmitDescriptor* TRANS_DESC_LIST = NULL;
 
 void outl(uint16_t port, uint32_t value){
 	__asm__ volatile ("outl %0, %1" : : "a"(value), "Nd"(port));
@@ -198,15 +201,11 @@ void disable_multicast(){ //will need to actually set this up in the future
 void init_transmit_descriptors(){
 	//everytime we receive a descriptor do
 	// tail = (tail + 1) % #descriptors to update tail position
-	static int NUM_TRANSMIT_DESC = 8; //8 descriptors
-	static int TAIL = 0;
-	
-/*	static */ uint8_t* packetBuffer = (uint8_t*)malloc(2048 * NUM_TRANSMIT_DESC);
-/*
-	static */struct TransmitDescriptor* TRANS_DESC_LIST = (struct TransmitDescriptor*)malloc(sizeof(struct TransmitDescriptor) * NUM_TRANSMIT_DESC);
-	
+	transmitPacketBuffer = (uint8_t*)malloc(2048 * NUM_TRANSMIT_DESC);
+	TRANS_DESC_LIST = (struct TransmitDescriptor*)aligned_malloc(sizeof(struct TransmitDescriptor) * NUM_TRANSMIT_DESC, 16);
+
 	for(int desc = 0; desc < NUM_TRANSMIT_DESC; desc++){
-		TRANS_DESC_LIST[desc].address = (uint64_t)packetBuffer + (desc * 2048);
+		TRANS_DESC_LIST[desc].address = (uint64_t)transmitPacketBuffer + (desc * 2048);
 		TRANS_DESC_LIST[desc].length = 0;
 		TRANS_DESC_LIST[desc].checksum_offset = 0;
 		TRANS_DESC_LIST[desc].command = 0;
@@ -229,6 +228,26 @@ void init_transmit_descriptors(){
 			(10 << 10) | //IPGR1
 			(10 << 20)); //IPGR2
 
+}
+
+// returns packets transmitted ?
+uint16_t transmit_packet(uint8_t* packet_data, uint16_t length){
+	uint32_t cur_head = read_reg(TDH);
+	if(((TAIL + 1) % NUM_TRANSMIT_DESC) == cur_head){
+		print("TRANSMIT RING FULL");
+		return 0;
+	}
+	uint8_t* dest = transmitPacketBuffer + TAIL * 2048;
+	memcpy(dest ,packet_data , length);
+
+	TRANS_DESC_LIST[TAIL].address = (uint64_t)dest;
+	TRANS_DESC_LIST[TAIL].length = length;
+	TRANS_DESC_LIST[TAIL].command = 0x09;
+	TRANS_DESC_LIST[TAIL].status = 0;
+
+	TAIL = (TAIL + 1) % NUM_TRANSMIT_DESC;
+	write_reg(TDT, TAIL);
+	return length;
 }
 
 void init_nic(){
@@ -257,4 +276,5 @@ void init_nic(){
 	print("\nDisabled MultiCast\n");
 
 	//start receive init
+	init_transmit_descriptors();
 }

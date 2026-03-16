@@ -19,5 +19,13 @@ extern void kernel_main(){
 	print("\n\nAligned malloc: ");
 	print_num((uint32_t)address2);
 	print("\n");
+
+//	uint8_t testPacket[60] = {
+//		0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, //Destination MAC (broadcast)
+//		//source mac (my nic)
+//		0x0
+//	};
+
+
 	print(shell_prompt);
 }

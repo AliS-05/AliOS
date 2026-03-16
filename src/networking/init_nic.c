@@ -1,6 +1,7 @@
 #include <structures.h>
 #include <utilities.h>
 #include <memory.h>
+#include <networking.h>
 
 #define CONTROL_REG 0x0000 //controls major operational modes for controller
 #define STATUS_REG 0x0008 // "this register provides software status indication about the Ethernet controller's  settings and modes of operation
@@ -35,12 +36,25 @@
 #define FCT 0x00030 //Flow Control Type
 #define FCTTV 0x00170 //Flow Control Transmit Timer Value
 
+//Mulicast Table Array
+#define MTA 0x05200
 
+//Receive Registers
+#define RCRTL 0x100 //control
+#define RDBAL 0x2800 //base descriptor low
+#define RDBAH 0x2804 // i dont think this is needed for 32 bit
+#define RDLEN 0x2808 //descriptor length
+#define RDH 0x2810 //descriptor head
+#define RDT 0x2818 //descriptor tail
 
-//Packet Buffer Memory
-//from 0x10000 - 0x1FFFC R/W (64KB)
-
-
+//Transmit Registers
+#define	TCTL 0x400
+#define TIPG 0x410
+#define TDBAL 0x3800
+#define TDBAH 0x3804
+#define TDLEN 0x3808
+#define TDH 0x3810
+#define TDT 0x3818
 
 uint32_t bar0; // base address register, add offset to talk to device at specific function port
 
@@ -132,6 +146,12 @@ uint16_t eeprom_read(uint8_t addr) {
 	return (result >> 16) & 0xFFFF;
 }
 
+void write_mac_address(uint32_t mac_dword, uint16_t mac_word){
+	//need to write address back exactly but flip 32nd bit to set RAH AV field
+	write_reg(RAL, mac_dword);
+	write_reg(RAH, (mac_word | 1 << 31));
+}
+
 void read_mac_address(uint8_t* mac_address){ //mac should be a 6 byte array i think ?
 //	uint16_t mac_word1 = eeprom_read(0x0); //bytes 1-2
 //	uint16_t mac_word2 = eeprom_read(0x1); //bytes 2-3
@@ -139,6 +159,8 @@ void read_mac_address(uint8_t* mac_address){ //mac should be a 6 byte array i th
 	
 	uint32_t mac_dword1 = read_reg(RAL); //first 4 bytes
 	uint16_t mac_word2 = read_reg(RAH); //last 2 bytes
+	
+	write_mac_address(mac_dword1, mac_word2);
 
 	//example AA:BB:CC:DD:EE:FF
 	//read returns us say AA:BB
@@ -164,6 +186,51 @@ void print_mac(uint8_t* mac) {
 	}
 }
 
+void disable_multicast(){ //will need to actually set this up in the future
+	//need to write 0 to 128 registers (writes must be 32 bit)
+	for(int reg = 0; reg <= 0x1FC; reg += 4){
+		write_reg(MTA + reg, 0);
+	}
+}
+
+
+//maximum packet & transmit descriptor size = 16288 bytes
+void init_transmit_descriptors(){
+	//everytime we receive a descriptor do
+	// tail = (tail + 1) % #descriptors to update tail position
+	static int NUM_TRANSMIT_DESC = 8; //8 descriptors
+	static int TAIL = 0;
+	
+/*	static */ uint8_t* packetBuffer = (uint8_t*)malloc(2048 * NUM_TRANSMIT_DESC);
+/*
+	static */struct TransmitDescriptor* TRANS_DESC_LIST = (struct TransmitDescriptor*)malloc(sizeof(TransmitDescriptor) * NUM_TRANSMIT_DESC);
+	
+	for(int desc = 0; desc < NUM_TRANSMIT_DESC; desc++){
+		TRANS_DESC_LIST[desc].address = (uint64_t)packetBuffer + (desc * 2048);
+		TRANS_DESC_LIST[desc].length = 0;
+		TRANS_DESC_LIST[desc].checksum_offset = 0;
+		TRANS_DESC_LIST[desc].command = 0;
+		TRANS_DESC_LIST[desc].status = 0;
+		TRANS_DESC_LIST[desc].checksum_start = 0;
+		TRANS_DESC_LIST[desc].special= 0;
+	}
+
+	write_reg(TDBAL, (uint32_t)TRANS_DESC_LIST); //this is physical address
+	write_reg(TDBAH, 0); //zero out upper address, (32 bit addresses)
+	write_reg(TDLEN, 128); //16 bytes * 8 descriptors = 128 bytes
+	//software should write 0b to both head and tail
+	write_reg(TDH, 0); 
+	write_reg(TDT, 0);
+	write_reg(TCTL, (1 << 1) | //enable bit always 1
+			(1 << 3) | //Pad Short Packets
+			(0x10 << 4) | //Ethernet Standard Collision Threshold
+			(0x40 << 12)); //Full Duplex Collision Distance
+	write_reg(TIPG, (10 << 0) | //IPGT
+			(10 << 10) | //IPGR1
+			(10 << 20)); //IPGR2
+
+}
+
 void init_nic(){
 
 	//nic driver initialization
@@ -185,4 +252,9 @@ void init_nic(){
 	uint8_t* mac_address = (uint8_t*)malloc(sizeof(uint8_t) * 6);
 	read_mac_address(mac_address); //modifies in place
 	print_mac(mac_address);
+
+	disable_multicast();
+	print("\nDisabled MultiCast\n");
+
+	//start receive init
 }

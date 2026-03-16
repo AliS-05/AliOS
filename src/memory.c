@@ -3,7 +3,7 @@
 
 void* malloc(int size) {
 	//static char* heap_ptr = (char*)0x100000;
-	static int first_call = 1;
+	static short first_call = 1;
 
 	if (first_call) {
 		// First time: set up initial block

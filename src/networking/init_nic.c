@@ -203,7 +203,7 @@ void init_transmit_descriptors(){
 	
 /*	static */ uint8_t* packetBuffer = (uint8_t*)malloc(2048 * NUM_TRANSMIT_DESC);
 /*
-	static */struct TransmitDescriptor* TRANS_DESC_LIST = (struct TransmitDescriptor*)malloc(sizeof(TransmitDescriptor) * NUM_TRANSMIT_DESC);
+	static */struct TransmitDescriptor* TRANS_DESC_LIST = (struct TransmitDescriptor*)malloc(sizeof(struct TransmitDescriptor) * NUM_TRANSMIT_DESC);
 	
 	for(int desc = 0; desc < NUM_TRANSMIT_DESC; desc++){
 		TRANS_DESC_LIST[desc].address = (uint64_t)packetBuffer + (desc * 2048);
@@ -217,7 +217,7 @@ void init_transmit_descriptors(){
 
 	write_reg(TDBAL, (uint32_t)TRANS_DESC_LIST); //this is physical address
 	write_reg(TDBAH, 0); //zero out upper address, (32 bit addresses)
-	write_reg(TDLEN, 128); //16 bytes * 8 descriptors = 128 bytes
+	write_reg(TDLEN, NUM_TRANSMIT_DESC * sizeof(struct TransmitDescriptor)); //16 bytes * 8 descriptors = 128 bytes
 	//software should write 0b to both head and tail
 	write_reg(TDH, 0); 
 	write_reg(TDT, 0);

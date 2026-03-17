@@ -47,7 +47,25 @@ boolean find_nic(){
 
 			if (vendor == 0x8086 && deviceID == 0x100E){
 				bar0 = pci_read(bus, device, 0, 0x10) & 0xFFFFFFF0;
-				return true;
+    
+			        // Enable Bus Mastering
+			        uint32_t command = pci_read(bus, device, 0, 0x04);
+			        print("PCI Command before: ");
+			        print_hex32(command);
+			        print("\n");
+			        
+			        command |= 0x04;  // Set bit 2 (Bus Master Enable)
+			        
+			        // Write back (need to use outl/inl for PCI config writes)
+			        uint32_t address = (1 << 31) | (bus << 16) | (device << 11) | (0 << 8) | 0x04;
+			        outl(0xCF8, address);
+			        outl(0xCFC, command);
+			        
+			        print("PCI Command after: ");
+			        print_hex32(pci_read(bus, device, 0, 0x04));
+			        print("\n");
+			        
+			        return true;
 			}
 		}
 	}
@@ -163,6 +181,13 @@ void init_transmit_descriptors(){
 	}
 
 	write_reg(TDBAL, (uint32_t)TRANS_DESC_LIST); //this is physical address
+
+	print("Wrote TDBAL: ");
+	print_hex32((uint32_t)TRANS_DESC_LIST);
+	print(", read back: ");
+	print_hex32(read_reg(TDBAL));
+	print("\n");
+
 	write_reg(TDBAH, 0); //zero out upper address, (32 bit addresses)
 	write_reg(TDLEN, NUM_TRANSMIT_DESC * sizeof(struct TransmitDescriptor)); //16 bytes * 8 descriptors = 128 bytes
 	//software should write 0b to both head and tail
@@ -176,9 +201,9 @@ void init_transmit_descriptors(){
 			(1 << 3) | //Pad Short Packets
 			(0x10 << 4) | //Ethernet Standard Collision Threshold
 			(0x40 << 12)); //Full Duplex Collision Distance
-	write_reg(TIPG, (10 << 0) | //IPGT
-			(10 << 10) | //IPGR1
-			(10 << 20)); //IPGR2
+	write_reg(TIPG, (0x10 << 0) | //IPGT
+			(0x10 << 10) | //IPGR1
+			(0x10 << 20)); //IPGR2
 	uint32_t tctl = read_reg(TCTL);
 	tctl |= (1 << 1);
 	write_reg(TCTL, tctl);
@@ -196,6 +221,10 @@ uint16_t transmit_packet(uint8_t* packet_data, uint16_t length){
 	uint8_t* dest = transmitPacketBuffer + TAIL * 2048;
 	memcpy(dest ,packet_data , length);
 
+	print("\n Packet Data: ");
+	for(int c = 0; c < 20; c++){
+		print_hex8(dest[c]);
+	}
 	uint32_t old_tail = TAIL;
 
 	print("Setting descriptor at TAIL=");
@@ -215,7 +244,7 @@ uint16_t transmit_packet(uint8_t* packet_data, uint16_t length){
 	print_num(length);
 	print(")\n");
 
-	TRANS_DESC_LIST[TAIL].command = 0x09;
+	TRANS_DESC_LIST[TAIL].command = 0x0B;
 	print("Set command to: ");
 	print_hex8(TRANS_DESC_LIST[TAIL].command);
 	print("\n");
@@ -247,15 +276,33 @@ uint16_t transmit_packet(uint8_t* packet_data, uint16_t length){
 
 uint8_t* init_nic(){
 //nic driver initialization
+	print("SIZE OF UINT64");
+	print_num(sizeof(uint64_t));
+	print_num(sizeof(unsigned long long));
+	print(" ");
 	boolean found_nic = find_nic();
 	if(found_nic == true){
 		print("FOUND NIC !!\n");
 	} else{
 		print("Error finding NIC\n");
 	}
+	
+	print("Size of TXDESC\n");
+	print_num(sizeof(struct TransmitDescriptor));
+
 	reset_nic();
 	enable_ASDE();
 	print("Enabled ASDE\n");
+	for (volatile int i = 0; i < 10000000; i++); // wait for link
+	uint32_t status = read_reg(STATUS_REG);
+	print("STATUS: ");
+	print_hex32(status);
+	if (status & (1 << 1)) {
+		print(" - Link UP\n");
+	} else {
+		print(" - Link DOWN!\n");
+	}
+
 	disable_FCTRL(); //im assuming this works
 	print("Disabled Flow Control Registers\n");
 	//and we already disabled VLAN in enable_ASDE()

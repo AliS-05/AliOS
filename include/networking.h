@@ -8,7 +8,7 @@ struct TransmitDescriptor{
 	uint8_t status; // last 4 bits are reserved
 	uint8_t checksum_start;
 	uint16_t special;
-}__attribute__((packed));
+};
 
 void outl(uint16_t port, uint32_t value);
 uint32_t inl(uint16_t port);

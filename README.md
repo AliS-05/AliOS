@@ -1,31 +1,35 @@
 # AliOS
 
-A minimal x86 operating system built from scratch with the goal of achieving self-hosting capability (compiling itself from within itself).
+An x86 operating system built from scratch with the goal of achieving self-hosting capability (compiling itself from within itself).
 
 ## Project Status
 - Active Development
 
 ### Implemented
-- **Bootloader** - Custom x86 bootloader in assembly
-- **VGA Text Mode** - 80x25 text display with cursor management
-- **Keyboard Driver** - PS/2 keyboard input with scancode translation
-- **Memory Management** - malloc/free implementation
-- **ATA Disk Driver** - Read/write support from hard drive
+- **32 bit Assembler** - Assembler that creates symbol table and emits working machine code
+- **NIC Driver** - Currently transmits packets, receiving and ARP in active development
+- **x86 Snake Game** - Snake implemented in x86 Assembly! How high of a score can you get?!
 - **Filesystem** - Custom simple filesystem with:
   - File creation, reading, writing, deletion
   - Multi-sector file support
   - Max 12 files (expansion planned)
+ **Bootloader** - Custom x86 bootloader in assembly
+- **Memory Management** - malloc/free implementation
+- **VGA Text Mode Driver** - 80x25 character display with cursor control
+- **PS2 Keyboard Driver** - Interrupt based driver converts PS2 scancodes into ascii characters.
+- **ATA Disk Driver** - Read/write support from hard drive
 - **Shell** - Interactive command-line interface with built-in commands
+- **Basic Text Editor** - Extremely basic text editor, hjkl for movement, :q :wq and :w for saving and exiting files.
 - **Program Loader** - Load and execute binary programs from disk (DOS-style single-tasking)
-
 ### In Progress
 - NIC Driver / Network Capability
-
+- Assembler (On pause while working on NIC Driver)
 ### Planned
-- Self-compilation capability
-- Enhanced filesystem (more files, better allocation)
+- Enhanced filesystem (more files, FAT16)
 - More utilities and programs
-
+- Improved Text Editor
+- Porting Assembler to run inside of OS environment rather than Linux
+- Self-compilation capability
 ## Features
 
 ### Shell Commands
@@ -40,6 +44,7 @@ A minimal x86 operating system built from scratch with the goal of achieving sel
 - `clear` - Clear screen
 - `reboot` - Restart system
 - `help` - Show available commands
+- `edit <filename>` - Open editor on file
 - `run snake` - Play my x86 Assembly Snake game !
 
 ### Filesystem
@@ -52,7 +57,7 @@ A minimal x86 operating system built from scratch with the goal of achieving sel
 ### Program Loading
 - Load raw binary files (.bin) from disk
 - Execute at fixed memory location (0x200000)
-- Single-tasking (one program at a time)
+- Single-tasking 
 - Return to shell on program completion
 
 ## Building
@@ -70,7 +75,9 @@ A minimal x86 operating system built from scratch with the goal of achieving sel
 make
 
 # Create filesystem image
+
 g++ mkfs.cpp -o mkfs && ./mkfs
+(You can copy logic in mkfs to add your own files to the OS!)
 
 # Run in QEMU
 make run
@@ -104,25 +111,15 @@ struct FileObject {
 } __attribute__((packed));
 ```
 
-## Roadmap to Self-Hosting
-
-1. Basic OS infrastructure (bootloader, kernel, drivers)
-2. Filesystem implementation
-3. Program loading
-4. Text editor for writing code within OS
-5. C compiler (lexer, parser, code generation)
-6. Assembler and linker
-7. Self-compilation test (compile kernel.c from within AliOS)
-
 ## Goals
 
 - **Primary Goal:** Achieve self-hosting , ability to recompile the kernel from within the OS itself
 - **Learning Focus:** Deep understanding of systems programming, OS internals, and low-level x86 architecture
-- **Philosophy:** Build everything from scratch to understand fundamentals
+- **Philosophy:** Build everything from scratch to understand fundamentals and how software interacts with hardware
 
 ## Technical Details
 
-- **Language:** C (kernel, filesystem), x86 Assembly (bootloader, low-level, snake)
+- **Language:** C (kernel, filesystem, drivers), x86 Assembly (bootloader, low-level, snake)
 - **Architecture:** x86 (32-bit protected mode)
 - **Filesystem:** Custom simple flat filesystem
 - **Execution Model:** Single-tasking (DOS like program loading)

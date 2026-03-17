@@ -3,60 +3,11 @@
 #include <memory.h>
 #include <networking.h>
 
-#define CONTROL_REG 0x0000 //controls major operational modes for controller
-#define STATUS_REG 0x0008 // "this register provides software status indication about the Ethernet controller's  settings and modes of operation
-//EE Control Data
-#define EECD 0x00010 //EEPROM control and data register provides simplified interface for software accesses to the eeprom
-//EE Read Data
-#define EERD 0x00014 //EEPROM Read Register
-
-//Get Packets Received Count
-#define GPRC 0x04074 //counts the number of good packets received of any length
-//Total Packets Received
-#define TPR 0x040D0 // counts total number of all packets received, might be useful
-//Total Packets Transmitted
-#define TPT 0x040D4 // counts total number of packets transmitted
-
-//Receive Data FIFO Header (Register)
-#define RDFH 0x02410 //stores the head of the Ethernet controller's on-chip receive data FIFO. DO NOT WRITE TO
-//Receive Data FIFO Tail (Register)
-#define RDFT 0x02418 //stores tail end of FIFO
-//Receive Data FIFO Packet Count
-#define RDFPC 0x02430 //#of receive packets currently in the FIFO
-
-//Receive Address Low
-#define RAL 0x05400
-//Receive Address High
-#define RAH 0x05404
-
-//Flow Control
-#define FCTRL 0x02160
-#define FCAL 0x00028 //Flow control address low
-#define FCAH 0x0002C //Flow control address high
-#define FCT 0x00030 //Flow Control Type
-#define FCTTV 0x00170 //Flow Control Transmit Timer Value
-
-//Mulicast Table Array
-#define MTA 0x05200
-
-//Receive Registers
-#define RCRTL 0x100 //control
-#define RDBAL 0x2800 //base descriptor low
-#define RDBAH 0x2804 // i dont think this is needed for 32 bit
-#define RDLEN 0x2808 //descriptor length
-#define RDH 0x2810 //descriptor head
-#define RDT 0x2818 //descriptor tail
-
-//Transmit Registers
-#define	TCTL 0x400
-#define TIPG 0x410
-#define TDBAL 0x3800
-#define TDBAH 0x3804
-#define TDLEN 0x3808
-#define TDH 0x3810
-#define TDT 0x3818
-
-uint32_t bar0; // base address register, add offset to talk to device at specific function port
+uint32_t bar0;
+uint32_t NUM_TRANSMIT_DESC = 8;
+uint32_t TAIL = 0;
+uint8_t* transmitPacketBuffer = NULL;
+struct TransmitDescriptor* TRANS_DESC_LIST = NULL;
 
 
 void outl(uint16_t port, uint32_t value){
@@ -95,8 +46,26 @@ boolean find_nic(){
 			uint16_t deviceID = (result >> 16) & 0xFFFF;
 
 			if (vendor == 0x8086 && deviceID == 0x100E){
-				bar0 = pci_read(bus, device, 0, 0x10);
-				return true;
+				bar0 = pci_read(bus, device, 0, 0x10) & 0xFFFFFFF0;
+    
+			        // Enable Bus Mastering
+			        uint32_t command = pci_read(bus, device, 0, 0x04);
+			        print("PCI Command before: ");
+			        print_hex32(command);
+			        print("\n");
+			        
+			        command |= 0x04;  // Set bit 2 (Bus Master Enable)
+			        
+			        // Write back (need to use outl/inl for PCI config writes)
+			        uint32_t address = (1 << 31) | (bus << 16) | (device << 11) | (0 << 8) | 0x04;
+			        outl(0xCF8, address);
+			        outl(0xCFC, command);
+			        
+			        print("PCI Command after: ");
+			        print_hex32(pci_read(bus, device, 0, 0x04));
+			        print("\n");
+			        
+			        return true;
 			}
 		}
 	}
@@ -198,15 +167,11 @@ void disable_multicast(){ //will need to actually set this up in the future
 void init_transmit_descriptors(){
 	//everytime we receive a descriptor do
 	// tail = (tail + 1) % #descriptors to update tail position
-	static int NUM_TRANSMIT_DESC = 8; //8 descriptors
-	static int TAIL = 0;
-	
-/*	static */ uint8_t* packetBuffer = (uint8_t*)malloc(2048 * NUM_TRANSMIT_DESC);
-/*
-	static */struct TransmitDescriptor* TRANS_DESC_LIST = (struct TransmitDescriptor*)malloc(sizeof(struct TransmitDescriptor) * NUM_TRANSMIT_DESC);
-	
+	transmitPacketBuffer = (uint8_t*)malloc(2048 * NUM_TRANSMIT_DESC);
+	TRANS_DESC_LIST = (struct TransmitDescriptor*)aligned_malloc(sizeof(struct TransmitDescriptor) * NUM_TRANSMIT_DESC, 16);
+
 	for(int desc = 0; desc < NUM_TRANSMIT_DESC; desc++){
-		TRANS_DESC_LIST[desc].address = (uint64_t)packetBuffer + (desc * 2048);
+		TRANS_DESC_LIST[desc].address = (uint64_t)transmitPacketBuffer + (desc * 2048);
 		TRANS_DESC_LIST[desc].length = 0;
 		TRANS_DESC_LIST[desc].checksum_offset = 0;
 		TRANS_DESC_LIST[desc].command = 0;
@@ -216,33 +181,128 @@ void init_transmit_descriptors(){
 	}
 
 	write_reg(TDBAL, (uint32_t)TRANS_DESC_LIST); //this is physical address
+
+	print("Wrote TDBAL: ");
+	print_hex32((uint32_t)TRANS_DESC_LIST);
+	print(", read back: ");
+	print_hex32(read_reg(TDBAL));
+	print("\n");
+
 	write_reg(TDBAH, 0); //zero out upper address, (32 bit addresses)
 	write_reg(TDLEN, NUM_TRANSMIT_DESC * sizeof(struct TransmitDescriptor)); //16 bytes * 8 descriptors = 128 bytes
 	//software should write 0b to both head and tail
 	write_reg(TDH, 0); 
 	write_reg(TDT, 0);
-	write_reg(TCTL, (1 << 1) | //enable bit always 1
+	uint32_t packets_sent = read_reg(TPT);
+	print("Packets Transmitted: ");
+	print_num(packets_sent);
+	print("\n");
+	write_reg(TCTL, (0 << 1) | //enable bit always 1 but do later?
 			(1 << 3) | //Pad Short Packets
 			(0x10 << 4) | //Ethernet Standard Collision Threshold
 			(0x40 << 12)); //Full Duplex Collision Distance
-	write_reg(TIPG, (10 << 0) | //IPGT
-			(10 << 10) | //IPGR1
-			(10 << 20)); //IPGR2
+	write_reg(TIPG, (0x10 << 0) | //IPGT
+			(0x10 << 10) | //IPGR1
+			(0x10 << 20)); //IPGR2
+	uint32_t tctl = read_reg(TCTL);
+	tctl |= (1 << 1);
+	write_reg(TCTL, tctl);
+	print("Transmit enabled");
 
 }
 
-void init_nic(){
+// returns packets transmitted ?
+uint16_t transmit_packet(uint8_t* packet_data, uint16_t length){
+	uint32_t cur_head = read_reg(TDH);
+	if(((TAIL + 1) % NUM_TRANSMIT_DESC) == cur_head){
+		print("TRANSMIT RING FULL");
+		return 0;
+	}
+	uint8_t* dest = transmitPacketBuffer + TAIL * 2048;
+	memcpy(dest ,packet_data , length);
 
-	//nic driver initialization
+	print("\n Packet Data: ");
+	for(int c = 0; c < 20; c++){
+		print_hex8(dest[c]);
+	}
+	uint32_t old_tail = TAIL;
+
+	print("Setting descriptor at TAIL=");
+
+	print_num(old_tail);
+	print("\n");
+
+	TRANS_DESC_LIST[TAIL].address = (uint64_t)dest;
+	print("Set address to: ");
+	print_hex32((uint32_t)TRANS_DESC_LIST[TAIL].address);
+	print("\n");
+
+	TRANS_DESC_LIST[TAIL].length = length;
+	print("Set length to: ");
+	print_num(TRANS_DESC_LIST[TAIL].length);
+	print(" (input was ");
+	print_num(length);
+	print(")\n");
+
+	TRANS_DESC_LIST[TAIL].command = 0x0B;
+	print("Set command to: ");
+	print_hex8(TRANS_DESC_LIST[TAIL].command);
+	print("\n");
+
+	TRANS_DESC_LIST[TAIL].status = 0;
+
+
+	TAIL = (TAIL + 1) % NUM_TRANSMIT_DESC;
+
+	print("Descriptor[");
+	print_num(old_tail);
+	print("]:\n");
+	print("  addr: ");
+	print_hex32((uint32_t)TRANS_DESC_LIST[old_tail].address);
+	print("\n  len: ");
+	print_num(TRANS_DESC_LIST[old_tail].length);
+	print("\n  cmd: ");
+	print_hex8(TRANS_DESC_LIST[old_tail].command);
+	print("\n");
+
+	write_reg(TDT, TAIL);
+	print("Wrote TDT = ");
+	print_num(TAIL);
+	print(", Read back TDT = ");
+	print_num(read_reg(TDT));
+	print("\n");
+	return length;
+}
+
+uint8_t* init_nic(){
+//nic driver initialization
+	print("SIZE OF UINT64");
+	print_num(sizeof(uint64_t));
+	print_num(sizeof(unsigned long long));
+	print(" ");
 	boolean found_nic = find_nic();
 	if(found_nic == true){
 		print("FOUND NIC !!\n");
 	} else{
 		print("Error finding NIC\n");
 	}
+	
+	print("Size of TXDESC\n");
+	print_num(sizeof(struct TransmitDescriptor));
+
 	reset_nic();
 	enable_ASDE();
 	print("Enabled ASDE\n");
+	for (volatile int i = 0; i < 10000000; i++); // wait for link
+	uint32_t status = read_reg(STATUS_REG);
+	print("STATUS: ");
+	print_hex32(status);
+	if (status & (1 << 1)) {
+		print(" - Link UP\n");
+	} else {
+		print(" - Link DOWN!\n");
+	}
+
 	disable_FCTRL(); //im assuming this works
 	print("Disabled Flow Control Registers\n");
 	//and we already disabled VLAN in enable_ASDE()
@@ -257,4 +317,22 @@ void init_nic(){
 	print("\nDisabled MultiCast\n");
 
 	//start receive init
+	init_transmit_descriptors();
+
+
+	print("Waiting for transmission...\n");
+	for (volatile int i = 0; i < 10000000; i++);
+
+	uint32_t packets_sent = read_reg(TPT);
+	print("TPT after wait: ");
+	print_num(packets_sent);
+	print("\n");
+
+	// Also check if descriptor status DD bit is set
+	print("Descriptor status: ");
+	print_hex8(TRANS_DESC_LIST[0].status);
+	print("\n");
+
+
+	return mac_address;
 }

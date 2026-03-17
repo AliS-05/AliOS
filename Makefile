@@ -60,7 +60,10 @@ $(BUILD_DIR)/%.o: $(SRC_DIR)/%.c
 	$(CXX) $(CXXFLAGS) --std=c99 -c $< -o $@
 
 run: $(BINARY)
-	qemu-system-x86_64 -drive format=raw,file=$(BINARY) -drive format=raw,file=$(DRIVE)
+	qemu-system-x86_64 -drive format=raw,file=$(BINARY) -drive format=raw,file=$(DRIVE) \
+		-netdev user,id=net0,hostfwd=tcp::5555-:22 \
+		-device e1000,netdev=net0 \
+		-object filter-dump,id=dump0,netdev=net0,file=packets.pcap
 
 clean:
 	rm $(BUILD_DIR)/*.o $(BUILD_DIR)/*.bin 

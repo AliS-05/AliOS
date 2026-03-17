@@ -7,7 +7,6 @@ A minimal x86 operating system built from scratch with the goal of achieving sel
 
 ### Implemented
 - **Bootloader** - Custom x86 bootloader in assembly
-- **Kernel** - ~1200+ lines of C/C++ kernel code
 - **VGA Text Mode** - 80x25 text display with cursor management
 - **Keyboard Driver** - PS/2 keyboard input with scancode translation
 - **Memory Management** - malloc/free implementation

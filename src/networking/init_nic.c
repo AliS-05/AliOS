@@ -50,10 +50,7 @@ boolean find_nic(){
     
 			        // Enable Bus Mastering
 			        uint32_t command = pci_read(bus, device, 0, 0x04);
-			        print("PCI Command before: ");
-			        print_hex32(command);
-			        print("\n");
-			        
+			        			        
 			        command |= 0x04;  // Set bit 2 (Bus Master Enable)
 			        
 			        // Write back (need to use outl/inl for PCI config writes)
@@ -61,10 +58,7 @@ boolean find_nic(){
 			        outl(0xCF8, address);
 			        outl(0xCFC, command);
 			        
-			        print("PCI Command after: ");
-			        print_hex32(pci_read(bus, device, 0, 0x04));
-			        print("\n");
-			        
+			        			        
 			        return true;
 			}
 		}
@@ -182,11 +176,7 @@ void init_transmit_descriptors(){
 
 	write_reg(TDBAL, (uint32_t)TRANS_DESC_LIST); //this is physical address
 
-	print("Wrote TDBAL: ");
-	print_hex32((uint32_t)TRANS_DESC_LIST);
-	print(", read back: ");
-	print_hex32(read_reg(TDBAL));
-	print("\n");
+	
 
 	write_reg(TDBAH, 0); //zero out upper address, (32 bit addresses)
 	write_reg(TDLEN, NUM_TRANSMIT_DESC * sizeof(struct TransmitDescriptor)); //16 bytes * 8 descriptors = 128 bytes
@@ -194,9 +184,7 @@ void init_transmit_descriptors(){
 	write_reg(TDH, 0); 
 	write_reg(TDT, 0);
 	uint32_t packets_sent = read_reg(TPT);
-	print("Packets Transmitted: ");
-	print_num(packets_sent);
-	print("\n");
+	
 	write_reg(TCTL, (0 << 1) | //enable bit always 1 but do later?
 			(1 << 3) | //Pad Short Packets
 			(0x10 << 4) | //Ethernet Standard Collision Threshold
@@ -207,7 +195,6 @@ void init_transmit_descriptors(){
 	uint32_t tctl = read_reg(TCTL);
 	tctl |= (1 << 1);
 	write_reg(TCTL, tctl);
-	print("Transmit enabled");
 
 }
 
@@ -221,117 +208,59 @@ uint16_t transmit_packet(uint8_t* packet_data, uint16_t length){
 	uint8_t* dest = transmitPacketBuffer + TAIL * 2048;
 	memcpy(dest ,packet_data , length);
 
-	print("\n Packet Data: ");
-	for(int c = 0; c < 20; c++){
-		print_hex8(dest[c]);
-	}
 	uint32_t old_tail = TAIL;
 
-	print("Setting descriptor at TAIL=");
 
-	print_num(old_tail);
-	print("\n");
 
 	TRANS_DESC_LIST[TAIL].address = (uint64_t)dest;
-	print("Set address to: ");
-	print_hex32((uint32_t)TRANS_DESC_LIST[TAIL].address);
-	print("\n");
+	
 
 	TRANS_DESC_LIST[TAIL].length = length;
-	print("Set length to: ");
-	print_num(TRANS_DESC_LIST[TAIL].length);
-	print(" (input was ");
-	print_num(length);
-	print(")\n");
+	
 
 	TRANS_DESC_LIST[TAIL].command = 0x0B;
-	print("Set command to: ");
-	print_hex8(TRANS_DESC_LIST[TAIL].command);
-	print("\n");
+	
 
 	TRANS_DESC_LIST[TAIL].status = 0;
 
 
 	TAIL = (TAIL + 1) % NUM_TRANSMIT_DESC;
 
-	print("Descriptor[");
-	print_num(old_tail);
-	print("]:\n");
-	print("  addr: ");
-	print_hex32((uint32_t)TRANS_DESC_LIST[old_tail].address);
-	print("\n  len: ");
-	print_num(TRANS_DESC_LIST[old_tail].length);
-	print("\n  cmd: ");
-	print_hex8(TRANS_DESC_LIST[old_tail].command);
-	print("\n");
 
 	write_reg(TDT, TAIL);
-	print("Wrote TDT = ");
-	print_num(TAIL);
-	print(", Read back TDT = ");
-	print_num(read_reg(TDT));
-	print("\n");
+	
 	return length;
 }
 
 uint8_t* init_nic(){
 //nic driver initialization
-	print("SIZE OF UINT64");
-	print_num(sizeof(uint64_t));
-	print_num(sizeof(unsigned long long));
-	print(" ");
+	
 	boolean found_nic = find_nic();
-	if(found_nic == true){
-		print("FOUND NIC !!\n");
-	} else{
+	if(found_nic == false){
 		print("Error finding NIC\n");
 	}
-	
-	print("Size of TXDESC\n");
-	print_num(sizeof(struct TransmitDescriptor));
 
 	reset_nic();
 	enable_ASDE();
-	print("Enabled ASDE\n");
 	for (volatile int i = 0; i < 10000000; i++); // wait for link
-	uint32_t status = read_reg(STATUS_REG);
-	print("STATUS: ");
-	print_hex32(status);
-	if (status & (1 << 1)) {
-		print(" - Link UP\n");
-	} else {
-		print(" - Link DOWN!\n");
-	}
+	
 
 	disable_FCTRL(); //im assuming this works
-	print("Disabled Flow Control Registers\n");
 	//and we already disabled VLAN in enable_ASDE()
 
 	//start receive initialization
 
 	uint8_t* mac_address = (uint8_t*)malloc(sizeof(uint8_t) * 6);
 	read_mac_address(mac_address); //modifies in place
-	print_mac(mac_address);
 
 	disable_multicast();
-	print("\nDisabled MultiCast\n");
 
 	//start receive init
 	init_transmit_descriptors();
 
 
-	print("Waiting for transmission...\n");
 	for (volatile int i = 0; i < 10000000; i++);
 
-	uint32_t packets_sent = read_reg(TPT);
-	print("TPT after wait: ");
-	print_num(packets_sent);
-	print("\n");
-
-	// Also check if descriptor status DD bit is set
-	print("Descriptor status: ");
-	print_hex8(TRANS_DESC_LIST[0].status);
-	print("\n");
 
 
 	return mac_address;

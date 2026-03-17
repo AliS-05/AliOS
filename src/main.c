@@ -11,7 +11,7 @@
 
 extern void kernel_main(){
 	uint8_t* mac_address = init_nic();
-	print_mac(mac_address);
+	//print_mac(mac_address);
 	
 	uint8_t test_packet[64] = {
 		// Destination MAC (broadcast)

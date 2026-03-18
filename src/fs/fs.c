@@ -90,8 +90,11 @@ size_t read_file(const char* filename){
 
 
 
-//this just finds the next open sector and writes there use overwrite_file to overwrite
+// this just finds the next open sector and writes there use overwrite_file to overwrite
 // does write more than one sector if needed
+//does this fail if file does not exist ? No it will just create the file
+// actually it expects the file to not exist overwrite_file should be used
+// when the file does exist
 void write_file(const char* filename, uint8_t* buffer, size_t size){
 	//idea, read sector table, find next open sector write to that
 	uint8_t sector[SECTORSIZE];
@@ -173,6 +176,7 @@ boolean delete_file(const char* filename){
 }
 
 
+//copies file data to buffer
 uint8_t* cpy_file_buffer(const char* filename, uint8_t* buffer, size_t bufferSize){
 
 	uint8_t sector[SECTORSIZE];
@@ -192,7 +196,7 @@ uint8_t* cpy_file_buffer(const char* filename, uint8_t* buffer, size_t bufferSiz
 			//looping over sectors, need to memcpy read_sector to buffer
 			for(uint32_t x = 0; x < totalSectors; x++){
 				disk_read_sector(start + x, curSector);
-				//
+	//
 				size_t bytes_to_copy = (size - bytes_copied > SECTORSIZE) ? SECTORSIZE : (size - bytes_copied);
 				memcpy(buffer + bytes_copied, curSector, bytes_to_copy);
 				bytes_copied += bytes_to_copy;
@@ -206,3 +210,32 @@ uint8_t* cpy_file_buffer(const char* filename, uint8_t* buffer, size_t bufferSiz
 }
 
 
+//expects file to exist already
+//returns nothing just modifies file actually returns success / failure as bool
+//filesize will be original + bufferSize
+boolean append_to_file(const char* filename, uint8_t* buffer, size_t bufferSize){
+	//copy file master table into memory
+	uint8_t sector[SECTORSIZE];
+	disk_read_sector(0, sector);
+	struct FileObject* files = (struct FileObject*)sector; 
+	//loop through table to find location of file on disk
+	for(uint32_t i = 0; i < MAXFILES; i++){
+		//found file
+		if(strncmp(files[i].name, filename, 32) == 0){
+		size_t oldsize = fileSize(filename);
+		//use cpy file to buffer then just write entire new buffer
+		// so make new buffer, use fileSize for exact size buffer
+		// memcpy original buffer into newBuffer then overwrite file
+			uint8_t* newBuffer = (uint8_t*)malloc(oldsize + bufferSize);  
+			//good practice malloc check
+			if(!newBuffer) return NULL;
+			cpy_file_buffer(filename, newBuffer,oldsize);
+			//copies entire original buffer to newBuffer starting from original fileSize offset
+			memcpy(newBuffer + oldsize, buffer, bufferSize);
+			overwrite_file(filename, newBuffer, oldsize + bufferSize);
+			return true;
+		} 
+	}
+	print("File Not Found\n");
+	return false;
+}

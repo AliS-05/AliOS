@@ -77,7 +77,7 @@ void cmd_makefile(char* input_buffer){
 
 	const char* filename = token(NULL, ' ');
 	if(filename == NULL){
-		print("Error finding file to delete");
+		print("Please enter valid filename (NULL Received)\n");
 		return;
 	}
 	

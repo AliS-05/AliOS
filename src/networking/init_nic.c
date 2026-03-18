@@ -2,13 +2,20 @@
 #include <utilities.h>
 #include <memory.h>
 #include <networking.h>
-
+#include <commands.h>
+#include <fs.h>
 uint32_t bar0;
-uint32_t NUM_TRANSMIT_DESC = 8;
 uint32_t TAIL = 0;
-uint8_t* transmitPacketBuffer = NULL;
-struct TransmitDescriptor* TRANS_DESC_LIST = NULL;
 
+struct TransmitDescriptor* TRANS_DESC_LIST = NULL;
+uint32_t NUM_TRANSMIT_DESC = 8;
+uint8_t* transmitPacketBuffer = NULL;
+
+struct ReceiveDescriptor* RECV_DESC_LIST = NULL;
+uint8_t* receivePacketBuffer = NULL;
+uint32_t NUM_RECEIVE_DESC = 8;
+static uint8_t receiveDescriptorTracker = 0;
+static boolean rcvFirstCall = true;
 
 void outl(uint16_t port, uint32_t value){
 	__asm__ volatile ("outl %0, %1" : : "a"(value), "Nd"(port));
@@ -71,44 +78,6 @@ void reset_nic(){
 	while(read_reg(CONTROL_REG) & 0x04000000);
 }
 
-
-
-void enable_ASDE(){ //write bit 5 to the CTRL register
-	//setting this bit makes the controller automatically detect some settings
-	//software must set the SLU bit for this operation, might look at 'ASD' feature
-
-	//SLU bit - Set Link Up, 
-
-	uint32_t value = read_reg(CONTROL_REG);
-	
-	value |= (0 << 3) | //LRST set to 0 enabling Auto Negotiation
-		(1 << 6) | //setting SLU bit for auto negotiation
-		(1 << 5) | // auto negotiation
-		(0 << 30)| //VLAN mode off since we're not using vlans
-		(0 << 31); //phy reset normal mode i think telling it we dont want to reset?
-	write_reg(CONTROL_REG, value);
-}
-
-//we might want this later but for now just clear all the registers
-//just write zero to everything for now
-void disable_FCTRL(){
-	uint32_t value = (0 << 31); //Reserved
-	write_reg(FCTRL, value);
-	write_reg(FCAH, value);
-	write_reg(FCAL, value);
-	write_reg(FCT, value);
-	write_reg(FCTTV, value);
-}
-
-uint16_t eeprom_read(uint8_t addr) {
-	write_reg(EECD, (addr << 8) | 1);
-	uint32_t result;
-	do {
-		result = read_reg(EERD);
-	} while(!(result & 0x10));
-	return (result >> 16) & 0xFFFF;
-}
-
 void write_mac_address(uint32_t mac_dword, uint16_t mac_word){
 	//need to write address back exactly but flip 32nd bit to set RAH AV field
 	write_reg(RAL, mac_dword);
@@ -149,12 +118,25 @@ void print_mac(uint8_t* mac) {
 	}
 }
 
-void disable_multicast(){ //will need to actually set this up in the future
-	//need to write 0 to 128 registers (writes must be 32 bit)
-	for(int reg = 0; reg <= 0x1FC; reg += 4){
-		write_reg(MTA + reg, 0);
-	}
+//TRANSMIT SECTION
+
+void enable_ASDE(){ //write bit 5 to the CTRL register
+	//setting this bit makes the controller automatically detect some settings
+	//software must set the SLU bit for this operation, might look at 'ASD' feature
+
+	//SLU bit - Set Link Up, 
+
+	uint32_t value = read_reg(CONTROL_REG);
+	
+	value |= (0 << 3) | //LRST set to 0 enabling Auto Negotiation
+		(1 << 6) | //setting SLU bit for auto negotiation
+		(1 << 5) | // auto negotiation
+		(0 << 30)| //VLAN mode off since we're not using vlans
+		(0 << 31); //phy reset normal mode i think telling it we dont want to reset?
+	write_reg(CONTROL_REG, value);
 }
+
+
 
 
 //maximum packet & transmit descriptor size = 16288 bytes
@@ -164,7 +146,7 @@ void init_transmit_descriptors(){
 	transmitPacketBuffer = (uint8_t*)malloc(2048 * NUM_TRANSMIT_DESC);
 	TRANS_DESC_LIST = (struct TransmitDescriptor*)aligned_malloc(sizeof(struct TransmitDescriptor) * NUM_TRANSMIT_DESC, 16);
 
-	for(int desc = 0; desc < NUM_TRANSMIT_DESC; desc++){
+	for(uint32_t desc = 0; desc < NUM_TRANSMIT_DESC; desc++){
 		TRANS_DESC_LIST[desc].address = (uint64_t)transmitPacketBuffer + (desc * 2048);
 		TRANS_DESC_LIST[desc].length = 0;
 		TRANS_DESC_LIST[desc].checksum_offset = 0;
@@ -232,6 +214,96 @@ uint16_t transmit_packet(uint8_t* packet_data, uint16_t length){
 	return length;
 }
 
+//RECEIVE SECTION
+
+//we might want this later but for now just clear all the registers
+//just write zero to everything for now
+void disable_FCTRL(){
+	uint32_t value = (0 << 31); //Reserved
+	write_reg(FCTRL, value);
+	write_reg(FCAH, value);
+	write_reg(FCAL, value);
+	write_reg(FCT, value);
+	write_reg(FCTTV, value);
+}
+
+uint16_t eeprom_read(uint8_t addr) {
+	write_reg(EECD, (addr << 8) | 1);
+	uint32_t result;
+	do {
+		result = read_reg(EERD);
+	} while(!(result & 0x10));
+	return (result >> 16) & 0xFFFF;
+}
+
+
+
+void disable_multicast(){ //will need to actually set this up in the future
+	//need to write 0 to 128 registers (writes must be 32 bit)
+	for(int reg = 0; reg <= 0x1FC; reg += 4){
+		write_reg(MTA + reg, 0);
+	}
+}
+
+void init_receive_descriptors(){
+	receivePacketBuffer = (uint8_t*)malloc(2048 * NUM_RECEIVE_DESC);
+	RECV_DESC_LIST = (struct ReceiveDescriptor*)aligned_malloc(sizeof(struct ReceiveDescriptor) * NUM_RECEIVE_DESC, 16);
+
+	for(int desc = 0; desc < NUM_RECEIVE_DESC; desc++){
+		RECV_DESC_LIST[desc].address = (uint64_t)receivePacketBuffer + (desc * 2048);
+		RECV_DESC_LIST[desc].length = 0;
+		RECV_DESC_LIST[desc].packet_checksum= 0;
+		RECV_DESC_LIST[desc].status= 0;
+		RECV_DESC_LIST[desc].errors = 0;
+		RECV_DESC_LIST[desc].special = 0;
+	}
+
+	write_reg(RDBAL, (uint32_t)RECV_DESC_LIST);
+
+	write_reg(RDBAH, 0); //32 bit address
+
+	write_reg(RDLEN, NUM_RECEIVE_DESC * sizeof(struct ReceiveDescriptor)); //128 bytes
+
+	write_reg(RDH, 0);
+	write_reg(RDT, 8);
+
+	write_reg(RCTL, (1 << 5) | //long packet mode
+			(0 << 6) | //loop back mode
+			(0 << 7) | //loop back mode
+			(0 << 8) | //RDMTS
+			(0 << 9) | //RDMTS
+			(0 << 12) |
+			(0 << 13) |
+			(1 << 15) | // Broadcast Accept Mode
+			(0 << 16) | // Receive Buffer Size = 2048 bytes
+			(0 << 17) | // ^^^
+			(0 << 26) | //strip Ethernet CRC 
+			(0 << 1));
+	uint32_t rctl = read_reg(RCTL);
+	rctl |= (1 << 1);  // Enable TX
+	write_reg(RCTL, rctl);
+}
+
+void receive_packet(){ //shouldnt take any parameters i think just use static variable
+	struct ReceiveDescriptor* descriptor = &RECV_DESC_LIST[receiveDescriptorTracker];
+	while(descriptor->status & (1 << 0)){
+		uint8_t* descriptorData = receivePacketBuffer + receiveDescriptorTracker * 2048;
+		if(rcvFirstCall){ 
+		//and is first call we write_file which will either act as append or
+		// will simply create AND write buffer in the same call
+			write_file("RX_PACKETS.pkt", descriptorData, descriptor->length);
+		} else{
+			//every descriptor is 2048 bytes
+			append_to_file("RX_PACKETS.pkt", descriptorData, descriptor->length);
+		}
+		descriptor->status = 0; // this should be fine 
+		
+		receiveDescriptorTracker = (receiveDescriptorTracker + 1) % NUM_RECEIVE_DESC;
+		write_reg(RDT, receiveDescriptorTracker);
+		descriptor = &RECV_DESC_LIST[receiveDescriptorTracker];
+	}
+}
+
 uint8_t* init_nic(){
 //nic driver initialization
 	
@@ -261,7 +333,7 @@ uint8_t* init_nic(){
 
 	for (volatile int i = 0; i < 10000000; i++);
 
-
+	init_receive_descriptors();
 
 	return mac_address;
 }

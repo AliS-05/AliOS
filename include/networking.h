@@ -10,6 +10,15 @@ struct TransmitDescriptor{
 	uint16_t special;
 };
 
+struct ReceiveDescriptor{
+	uint64_t address;
+	uint16_t length;
+	uint16_t packet_checksum;
+	uint8_t status;
+	uint8_t errors;
+	uint16_t special;
+};
+
 void outl(uint16_t port, uint32_t value);
 uint32_t inl(uint16_t port);
 void write_reg(uint32_t offset, uint32_t value);
@@ -38,17 +47,7 @@ uint8_t* init_nic();
 //Total Packets Transmitted
 #define TPT 0x040D4 // counts total number of packets transmitted
 
-//Receive Data FIFO Header (Register)
-#define RDFH 0x02410 //stores the head of the Ethernet controller's on-chip receive data FIFO. DO NOT WRITE TO
-//Receive Data FIFO Tail (Register)
-#define RDFT 0x02418 //stores tail end of FIFO
-//Receive Data FIFO Packet Count
-#define RDFPC 0x02430 //#of receive packets currently in the FIFO
 
-//Receive Address Low
-#define RAL 0x05400
-//Receive Address High
-#define RAH 0x05404
 
 //Flow Control
 #define FCTRL 0x02160
@@ -61,12 +60,20 @@ uint8_t* init_nic();
 #define MTA 0x05200
 
 //Receive Registers
-#define RCRTL 0x100 //control
+#define RCTL 0x100 //control
 #define RDBAL 0x2800 //base descriptor low
 #define RDBAH 0x2804 // i dont think this is needed for 32 bit
 #define RDLEN 0x2808 //descriptor length
 #define RDH 0x2810 //descriptor head
 #define RDT 0x2818 //descriptor tail
+#define RAL 0x05400 //Receive Address Low
+#define RAH 0x05404 //Receive Address High
+//Receive Data FIFO Header (Register)
+#define RDFH 0x02410 //stores the head of the Ethernet controller's on-chip receive data FIFO. DO NOT WRITE TO
+//Receive Data FIFO Tail (Register)
+#define RDFT 0x02418 //stores tail end of FIFO
+//Receive Data FIFO Packet Count
+#define RDFPC 0x02430 //#of receive packets currently in the FIFO
 
 //Transmit Registers
 #define	TCTL 0x400
@@ -78,7 +85,12 @@ uint8_t* init_nic();
 #define TDT 0x3818
 
 extern uint32_t bar0;
-extern struct TransmitDescriptor* TRANS_DESC_LIST;
 extern uint32_t TAIL;
+
+extern struct TransmitDescriptor* TRANS_DESC_LIST;
 extern uint32_t NUM_TRANSMIT_DESC;
 extern uint8_t* transmitPacketBuffer;
+
+extern struct ReceiveDescriptor* RECV_DESC_LIST;
+extern uint8_t* receivePacketBuffer;
+extern uint32_t NUM_RECEIVE_DESC;

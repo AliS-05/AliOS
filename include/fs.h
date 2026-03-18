@@ -22,5 +22,6 @@ void overwrite_file(const char* filename, uint8_t* buffer, size_t newSize);
 void write_file(const char* filename, uint8_t *buffer, size_t size);
 boolean delete_file(const char* filename);
 uint8_t* cpy_file_buffer(const char* filename, uint8_t* buffer, size_t bufferSize);
+void append_to_file(const char* filename, uint8_t* buffer, size_t bufferSize);
 
 #endif

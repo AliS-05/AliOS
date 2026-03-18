@@ -6,6 +6,8 @@ extern kernel_main
 extern parse_command
 extern print
 extern edit_loop
+extern receive_packet
+
 
 global kernel
 global init_screen

@@ -36,5 +36,7 @@ extern void kernel_main(){
 
 	transmit_packet(test_packet, 60);
 	
+	receive_packet();
+
 	print(shell_prompt);
 }

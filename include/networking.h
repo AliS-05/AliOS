@@ -21,6 +21,8 @@ struct ReceiveDescriptor{
 
 void outl(uint16_t port, uint32_t value);
 uint32_t inl(uint16_t port);
+uint8_t inb(uint16_t port);
+void outb(uint16_t port, uint8_t value);
 void write_reg(uint32_t offset, uint32_t value);
 uint32_t read_reg(uint32_t offset);
 uint32_t pci_read(uint8_t bus, uint8_t device, uint8_t func, uint8_t offset);
@@ -75,6 +77,10 @@ uint8_t* init_nic();
 //Receive Data FIFO Packet Count
 #define RDFPC 0x02430 //#of receive packets currently in the FIFO
 
+//INTERRUPTS
+#define IMS 0x000D0 //Interrupt Mask Set/Read Register
+#define ICR 0x000C0 //Interrupt Cause Read Register
+
 //Transmit Registers
 #define	TCTL 0x400
 #define TIPG 0x410
@@ -86,6 +92,7 @@ uint8_t* init_nic();
 
 extern uint32_t bar0;
 extern uint32_t TAIL;
+extern uint32_t irq_line;
 
 extern struct TransmitDescriptor* TRANS_DESC_LIST;
 extern uint32_t NUM_TRANSMIT_DESC;

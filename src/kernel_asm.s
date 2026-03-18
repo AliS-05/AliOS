@@ -112,7 +112,13 @@ idt_start:
     dw keyboard_handler, 0x08
     db 0, 10001110b
     dw 0x0000
-    times (256-34) dq 0
+
+    times 9 dq 0 ; skipping to NIC IRQ
+    dw nic_handler, 0x08
+    db 0, 10001110b
+    dw 0x0000
+
+    times (256-24) dq 0
 
     times 256 dq 0
 idt_end:
@@ -127,6 +133,12 @@ timer_handler:
     out 0x20, al
     pop eax
     iretd
+
+nic_handler:
+	pushad
+	call receive_packet
+	popad
+	iretd
 
 keyboard_handler:
 	pushad

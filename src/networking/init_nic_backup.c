@@ -4,8 +4,10 @@
 #include <networking.h>
 #include <commands.h>
 #include <fs.h>
+
 uint32_t bar0;
 uint32_t TAIL = 0;
+uint32_t irq_line = 0;
 
 struct TransmitDescriptor* TRANS_DESC_LIST = NULL;
 uint32_t NUM_TRANSMIT_DESC = 8;
@@ -26,6 +28,16 @@ uint32_t inl(uint16_t port) {
 	__asm__ volatile ("inl %1, %0" : "=a"(value) : "Nd"(port));
 	return value;
 }
+
+uint8_t inb(uint16_t port){
+	uint8_t value;
+	__asm__ volatile ("inb %1, %0" : "=a"(value) : "Nd"(port));
+	return value;
+}
+void outb(uint16_t port, uint8_t value){
+	__asm__ volatile ("outb %0, %1" : : "a"(value), "Nd"(port));
+}
+
 
 void write_reg(uint32_t offset, uint32_t value){ //
 	*(volatile uint32_t*)(bar0 + offset) = value; //writes passed value to offset register
@@ -57,7 +69,17 @@ boolean find_nic(){
     
 			        // Enable Bus Mastering
 			        uint32_t command = pci_read(bus, device, 0, 0x04);
-			        			        
+
+			        irq_line = pci_read(bus, device, 0, 0x3C);
+				irq_line &= 0xFF;
+
+				print("NIC IRQ LINE: ");
+				print_num(irq_line);
+
+				uint8_t mask = inb(0xA1);
+				mask &= 0xF7;
+				outb(0xA1, mask);
+
 			        command |= 0x04;  // Set bit 2 (Bus Master Enable)
 			        
 			        // Write back (need to use outl/inl for PCI config writes)
@@ -282,6 +304,9 @@ void init_receive_descriptors(){
 	uint32_t rctl = read_reg(RCTL);
 	rctl |= (1 << 1);  // Enable TX
 	write_reg(RCTL, rctl);
+
+	//write to IMS for interrupts
+	write_reg(IMS, (1 << 7));
 }
 
 void receive_packet(){ //shouldnt take any parameters i think just use static variable
@@ -302,6 +327,9 @@ void receive_packet(){ //shouldnt take any parameters i think just use static va
 		write_reg(RDT, receiveDescriptorTracker);
 		descriptor = &RECV_DESC_LIST[receiveDescriptorTracker];
 	}
+	write_reg(ICR, 0x3FF); //lower 14 bits
+	//outl(0xCF8, address);
+	read_reg(ICR); //clears all bits
 }
 
 uint8_t* init_nic(){
@@ -334,6 +362,7 @@ uint8_t* init_nic(){
 	for (volatile int i = 0; i < 10000000; i++);
 
 	init_receive_descriptors();
+	
 
 	return mac_address;
 }

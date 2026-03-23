@@ -30,6 +30,13 @@ void disk_read_sector(uint32_t lba, uint8_t* buffer){
 
 }
 
+void disk_read_sector_count(uint32_t lba, uint32_t count, uint8_t* buffer){
+	for(uint32_t i = 0; i < count; i++){
+		disk_read_sector(lba, buffer + (i * 512)); //ie size of sector
+	}
+			
+}
+
 void disk_write_sector(uint32_t lba, uint8_t* buffer){
 	
 	ata_wait_busy();

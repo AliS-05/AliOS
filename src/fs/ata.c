@@ -12,7 +12,10 @@
 #define ATA_CMD_READ   0x20
 #define ATA_CMD_WRITE  0x30
 
-
+#define CLUSTER_SIZE 4 // ie 4 sectors
+#define SUCCESS true
+#define FAILURE false
+#define SECTORSIZE 512
 
 void disk_read_sector(uint32_t lba, uint8_t* buffer){
 	ata_wait_busy();
@@ -54,4 +57,20 @@ void disk_write_sector(uint32_t lba, uint8_t* buffer){
 	outsw(ATA_DATA, buffer, 256);
 	outb(ATA_COMMAND, 0xE7); //cache flush command
 	ata_wait_busy();
+}
+
+void disk_write_sector_count(uint32_t lba, uint32_t count, uint8_t* buffer){
+	for(uint32_t i = 0; i < count; i++){
+		disk_write_sector(lba, buffer + (i * 512)); //ie size of sector
+	}
+			
+}
+//clusters will be 4 sectors, 512 * 4 = 2048 
+//read expects a buffer of size 2048
+void read_cluster(uint32_t cluster_start, uint8_t* buffer){
+	disk_read_sector_count(cluster_start, CLUSTER_SIZE, buffer);
+}
+
+void write_cluster(uint32_t cluster_start, uint8_t* buffer){
+	disk_write_sector_count(cluster_start, CLUSTER_SIZE, buffer);
 }

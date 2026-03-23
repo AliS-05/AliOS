@@ -7,11 +7,11 @@
 #include <ata.h>
 #include <fs.h>
 #include <networking.h>
-
+#include <fat16.h>
 
 extern void kernel_main(){
-	uint8_t* mac_address = init_nic();
-	print_mac(mac_address);
+	//uint8_t* mac_address = init_nic();
+	//print_mac(mac_address);
 	
 	uint8_t test_packet[64] = {
 		// Destination MAC (broadcast)
@@ -34,7 +34,8 @@ extern void kernel_main(){
 	//    test_packet[6 + i] = mac_address[i];
 	//}
 
-	transmit_packet(test_packet, 60);
+	//transmit_packet(test_packet, 60);
 	
+	init_bpb();
 	print(shell_prompt);
 }

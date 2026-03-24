@@ -166,6 +166,15 @@ void cmd_color(char* input_buffer){
 	init_editor_screen((uint8_t)col);
 }
 
+void getDate(){ 
+	//RTC hardware register stuff... ugh
+	//PDF downloaded implement later
+}
+
+void getTime(){
+
+}
+
 void parse_command() {
 	if (strcmp(input_buffer, "help") == 0) {
 		cmd_help();

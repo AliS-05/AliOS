@@ -30,7 +30,7 @@ struct File{
 	char extension[3];
 	uint8_t attributes;
 	uint8_t reserved; // leave 0
-	uint8_t creationTimeHundreths;
+	uint8_t creationTimeHundredths;
 	uint16_t creationTime;
 	uint16_t creationDate;
 	uint16_t lastAccessedDate;
@@ -39,5 +39,6 @@ struct File{
 	uint16_t lastModificationDate;
 	uint16_t cluster;
 	uint32_t fileSize;
-}__attribute__((packed));
+} __attribute__((packed));
+
 typedef struct File Directory;

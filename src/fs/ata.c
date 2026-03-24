@@ -68,9 +68,9 @@ void disk_write_sector_count(uint32_t lba, uint8_t* buffer, uint32_t count){
 //clusters will be 4 sectors, 512 * 4 = 2048 
 //read expects a buffer of size 2048
 void read_cluster(uint32_t cluster_start, uint8_t* buffer){
-	disk_read_sector_count(cluster_start, CLUSTER_SIZE, buffer);
+	disk_read_sector_count(cluster_start / SECTORS_PER_CLUSTER, CLUSTER_SIZE, buffer);
 }
 
 void write_cluster(uint32_t cluster_start, uint8_t* buffer){
-	disk_write_sector_count(cluster_start, CLUSTER_SIZE, buffer);
+	disk_write_sector_count(cluster_start / SECTORS_PER_CLUSTER, CLUSTER_SIZE, buffer);
 }

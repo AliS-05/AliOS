@@ -25,4 +25,19 @@ struct BootSector{
 	uint16_t bootSignature;
 } __attribute__((packed));
 
-
+struct File{
+	char filename[8];
+	char extension[3];
+	uint8_t attributes;
+	uint8_t reserved; // leave 0
+	uint8_t creationTimeHundreths;
+	uint16_t creationTime;
+	uint16_t creationDate;
+	uint16_t lastAccessedDate;
+	uint16_t highClusterBits; //for FAT16 this is always 0
+	uint16_t lastModificationTime;
+	uint16_t lastModificationDate;
+	uint16_t cluster;
+	uint32_t fileSize;
+}__attribute__((packed));
+typedef struct File Directory;

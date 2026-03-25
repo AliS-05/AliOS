@@ -68,7 +68,7 @@ void cmd_hexdump(char* input_buffer){
 }
 
 void cmd_ls(){
-	listfiles();
+	listfiles_fat16();
 }
 
 void cmd_makefile(char* input_buffer){

@@ -34,6 +34,6 @@ extern void kernel_main(){
 	//}
 
 	//transmit_packet(test_packet, 60);
-	init_fat16_filesystem();
+	//init_fat16_filesystem();
 	print(shell_prompt);
 }

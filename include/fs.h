@@ -17,6 +17,7 @@ void initfs();
 uint32_t calcSectorsUsed(size_t size);
 uint32_t fileSize(const char* filename);
 void listfiles();
+void listfiles_fat16();
 void read_file(const char* filename);
 void overwrite_file(const char* filename, uint8_t* buffer, size_t newSize);
 void write_file(const char* filename, uint8_t *buffer, size_t size);

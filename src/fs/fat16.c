@@ -103,7 +103,7 @@ void init_fat16_filesystem(){
 	print("Finished Writing FAT Tables!\n");
 
 	print("Writing Root Directory...\n");
-	disk_write_sector_count(41, rootDirectoryBuffer, 32);
+	disk_write_sector_count(ROOTSECTOR, rootDirectoryBuffer, 32);
 	print("Finished Writing Root Directory!\n");
 }
 
@@ -114,8 +114,8 @@ uint16_t findFreeCluster(){
 
 
 	for(int s = 1; s < 21; s++){
-		disk_read_sector(s, fatTable); //read sector into mem
-		for(uint16_t e = 0; e < 512; e += 2){
+		disk_read_sector(s, (uint8_t*)fatTable); //read sector into mem
+		for(uint16_t e = 0; e < 256; e++){
 	//this doesnt actually work for multiple sectors
 	// i need some way to return the sector AND the fat entry
 	// bc fatentry on sector 5 is being treated as the same as fat entry
@@ -123,7 +123,9 @@ uint16_t findFreeCluster(){
 			if(fatTable[e] == 0x0000){
 				print("Cluster Found!\n");
 				fatTable[e] = 0xFFFF;
-				return e;
+				disk_write_sector(s, (uint8_t*)fatTable);
+				disk_write_sector(FAT1SECTOR + s - 1, (uint8_t*)fatTable);
+				return (s - 1) * 256 + e + 2;
 			}
 		}
 	}
@@ -131,6 +133,22 @@ uint16_t findFreeCluster(){
 	return 0; //0 is reserved so make sure not to use this !
 }
 
+
+uint16_t addFileRoot(struct File* file){
+	struct File rootSector[16];
+	for(uint16_t s = 0; s < 32; s++){ //reading each sector of root
+		disk_read_sector(ROOTSECTOR + s, (uint8_t*)rootSector);
+		for(uint32_t e = 0; e < 16; e++){ //e = entry ie file
+			struct File* entry = &rootSector[e];
+			if(entry->filename[0] == 0x00){
+				memcpy(entry, file, sizeof(struct File));
+				disk_write_sector(ROOTSECTOR + s, (uint8_t*)rootSector);
+				return s;
+			}
+		}
+	}
+	return 0;
+}
 
 //should this return the cluster where the file is written ?
 void writeFile(char* name, uint8_t* data, uint32_t size){
@@ -147,16 +165,16 @@ void writeFile(char* name, uint8_t* data, uint32_t size){
 	//construct File Object. name should be absolute path
 
 	struct File file;
-	memset(file, 0 , sizeof(struct File));
+	memset(&file, 0 , sizeof(struct File));
 
 	memcpy(file.filename, name, 8);
-	memcpy(file.ext, name + 8, 3);
+	memcpy(file.extension, name + 8, 3);
 
-	file.attributes = 0x10; // anything not 0x01 is writeable, 0x01 is a fine default
+	file.attributes = 0x20; // anything not 0x01 is writeable 
 	//all time stuff is left as 0 for now as i have not implemented RTC stuff
 
 	file.cluster = firstCluster;
-	file.size = size;
+	file.fileSize = size;
 
 	//now that file struct has been created i need to add the struct to
 	// the root directory. so read root from disk and find the first available
@@ -164,22 +182,21 @@ void writeFile(char* name, uint8_t* data, uint32_t size){
 	addFileRoot(&file);
 }
 
-uint16_t addFileRoot(struct File* file){
-	uint32_t rootSector[SECTORSIZE / sizeof(struct File)];
-	for(uint16_t s = 1; s < 33; s++){ //reading each sector of root
-		disk_read_sector(ROOTSECTOR, rootSector);
-		for(uint32_t e = 0; e < SECTORSIZE; e += 32){ //e = entry ie file
-			if(e == 0x0000){
-				memcpy(rootSector + e, file, sizeof(struct File));
-				disk_write_sector(s, rootSector);
-				return s;
+
+
+uint8_t* readFile(char* filename, char* ext){
+	struct File rootSector[16];
+	for(uint16_t s = 0; s < 32; s++){ //reading each sector of root
+		disk_read_sector(ROOTSECTOR + s, (uint8_t*)rootSector);
+		for(uint32_t e = 0; e < 16; e++){ //e = entry ie file
+			struct File* entry = &rootSector[e];
+			if(!memcmp(entry->filename, filename, 8) && !memcmp(entry->extension, ext, 3)){
+				uint8_t* fileData = (uint8_t*)malloc(entry->fileSize);
+				disk_read_cluster(entry->cluster, fileData);
+				return fileData;
 			}
 		}
 	}
 	return 0;
-}
-
-void readFile(char* name){
-
 }
 

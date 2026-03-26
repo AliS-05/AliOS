@@ -24,4 +24,10 @@ void write_file(const char* filename, uint8_t *buffer, size_t size);
 boolean delete_file(const char* filename);
 uint8_t* cpy_file_buffer(const char* filename, uint8_t* buffer, size_t bufferSize);
 
+
+
+uint16_t findFreeCluster();
+uint16_t addFileRoot(struct File* file);
+void writeFile(char* name, uint8_t* data, uint32_t size);
+uint8_t* readFile(char* filename, char* ext);
 #endif

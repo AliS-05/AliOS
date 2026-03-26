@@ -1,8 +1,10 @@
 #include <structures.h>
+#include <memory.h>
 #include <utilities.h>
 #include <string.h>
 #include <tools.h>
 #include <fs.h>
+#include <fat16.h>
 #include <edit.h>
 
 extern volatile uint8_t enter_editor_flag;
@@ -103,13 +105,53 @@ void cmd_delfile(char* input_buffer){
 }
 
 void cmd_readfile(char* input_buffer){
+	print("READ CALLED\n");
 	token(input_buffer, ' ');
-	const char* filename = token(NULL, ' ');
-	if(filename == NULL){
+	const char* filename = token(NULL, '.');
+	const char* extension = token(NULL, ' ');
+	if(filename == NULL || extension == NULL){
 		print("Error finding file to read");
 		return;
 	}
-	read_file(filename);
+	
+	print(filename);
+	print(extension);
+
+	//read will just print 3..? lines as a default
+	const char* size = token(NULL, ' ');
+
+	print("Num Bytes Wanted: ");
+	print_num(atoi(size));
+	print("\n");
+
+	uint8_t* fileData = readFile(filename, extension);
+	int requestedSize = atoi(size);
+	if(requestedSize == 0){ 
+		print("File: ");
+		print(filename);
+		print("\n");
+
+		print("Filesize: \n");
+		print_num(fileSize(filename));
+		print("\n");
+
+		//line legnth = 80 bytes
+		for(uint8_t i = 0; i < 180; i++){
+		//	if(i >= fileSize(filename)){
+		//		return;
+		//	}
+			print_char((unsigned char)fileData[i]);
+		}
+	} else{
+		for(uint32_t i = 0; i < requestedSize; i++){
+		//	if(i >= fileSize(filename)){
+		//		print("End of file reached.\n");
+		//		return;
+		//	}
+			print_char((unsigned char)fileData[i]);
+		}
+	}
+	return;
 }
 
 

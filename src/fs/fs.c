@@ -11,6 +11,7 @@
 #define SECTORSIZE 512
 #define MAXFILES 12
 #define ROOTSECTOR 41
+#define CLUSTERSIZE 2048
 
 struct FileObject{
 	char name[32];

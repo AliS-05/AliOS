@@ -182,21 +182,40 @@ void writeFile(char* name, uint8_t* data, uint32_t size){
 	addFileRoot(&file);
 }
 
-
-
-uint8_t* readFile(char* filename, char* ext){
+//helper function that returns a pointer to a File struct with the name and extension passed in
+struct File* findFileRoot(char* filename, char* ext){
 	struct File rootSector[16];
 	for(uint16_t s = 0; s < 32; s++){ //reading each sector of root
 		disk_read_sector(ROOTSECTOR + s, (uint8_t*)rootSector);
 		for(uint32_t e = 0; e < 16; e++){ //e = entry ie file
 			struct File* entry = &rootSector[e];
 			if(!memcmp(entry->filename, filename, 8) && !memcmp(entry->extension, ext, 3)){
-				uint8_t* fileData = (uint8_t*)malloc(entry->fileSize);
-				disk_read_cluster(entry->cluster, fileData);
-				return fileData;
+				return entry;
 			}
 		}
 	}
 	return 0;
+}
+
+//returns pointer to uint8 buffer found by findFileRoot NOT the File struct
+uint8_t* readFile(char* filename, char* ext){
+	struct File* file = findFileRoot(filename, ext);
+	if(file->fileSize){
+		uint8_t* fileData = (uint8_t*)malloc(file->fileSize);
+		disk_read_cluster(file->cluster, fileData);
+		return fileData;
+	}else{
+		return NULL;
+	}
+}
+
+//this function gives you the actual File struct so you can access attributes such as file size 
+size_t getFileSize(char* filename, char* ext){
+	struct File* file = findFileRoot(filename, ext);
+	if(file->fileSize){
+		return file->fileSize;
+	} else{
+		return NULL;
+	}
 }
 

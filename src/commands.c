@@ -117,7 +117,7 @@ void cmd_readfile(char* input_buffer){
 	print(filename);
 	print(extension);
 
-	//read will just print 3..? lines as a default
+	//read will just print 25 bytes as a default ig
 	const char* size = token(NULL, ' ');
 
 	print("Num Bytes Wanted: ");
@@ -132,14 +132,11 @@ void cmd_readfile(char* input_buffer){
 		print("\n");
 
 		print("Filesize: \n");
-		print_num(fileSize(filename));
+		print_num(getFileSize(filename, extension));
 		print("\n");
 
-		//line legnth = 80 bytes
-		for(uint8_t i = 0; i < 180; i++){
-		//	if(i >= fileSize(filename)){
-		//		return;
-		//	}
+		for(uint8_t i = 0; i < 25; i++){
+
 			print_char((unsigned char)fileData[i]);
 		}
 	} else{

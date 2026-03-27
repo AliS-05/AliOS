@@ -112,13 +112,16 @@ void cmd_makefile(char* input_buffer){
 }
 
 void cmd_delfile(char* input_buffer){
+	//del test.txt
 	token(input_buffer, ' ');
-	const char* filename = token(NULL, ' ');
-	if(filename == NULL){
+	const char* filename = token(NULL, '.');
+	const char* extension = token(NULL, ' ');
+
+	if(!filename || !extension){
 		print("Error finding file to delete");
 		return;
 	}
-	delete_file(filename);
+	deleteFile(filename, extension);
 }
 
 void cmd_readfile(char* input_buffer){

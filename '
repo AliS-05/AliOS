@@ -204,7 +204,7 @@ int findFileRoot(const char* filename, const char* ext, struct File* file){
 uint8_t* readFile(const char* filename, const char* ext){
 	struct File file;
 	memset(&file, 0, sizeof(struct File));
-	findFileRoot(filename, ext, &file);
+	findFileRoot(filename, ext, &file)
 	if(file.filename[0] == 0){
 		print("Failed to find file\n");
 		return NULL;
@@ -230,73 +230,54 @@ void deleteFile(const char* filename, const char* extension){
 	if(file.filename[0] != 0){ 
 		print("Found File To Delete!\n");  
 	} else{
-		print("File NOT found to delete\n");
+		print("File NOT found to delete"\n);
 		return;
 	}
 	
+	file.filename = 0x05; //marked as deleted, NOTE update ls to check for this
 	
-	struct File rootDir[16];
+	uint8_t* rootDir[SECTORSIZE];
 	//memset(rootDir, 0, SECTORSIZE);
-	disk_read_sector(ROOTSECTOR + rootSector, (uint8_t*)rootDir);
+	disk_read_sector(rootSector, rootDir);
 	for(uint32_t e = 0; e < 16; e++){ //e = entry ie file
-		struct File* entry = &rootDir[e];
-		if(!memcmp(file.filename, entry->filename, 8) && !memcmp(file.extension, entry->extension, 3)){
-			memset(entry->filename, 0xE5, 8);
-			disk_write_sector(ROOTSECTOR + rootSector, (uint8_t*)rootDir);
-			break;
+		struct File* entry = &rootSector[e];
+	}
+
+	//remove file from BOTH FatTables
+	uint8_t fatTable[SECTORSIZE];
+	for(int i = 0; i < FAT_TABLE_SIZE; i++){
+		//fattable 1 starts at sector 1
+		disk_read_sector(1 + i, fatTable);
+		//fat table stores 16 bit entries
+		for(uint16_t e = 0; e < SECTORSIZE / 2; e++){
+			if(fatTable[e] == file.cluster){
+				fatTable[e].cluster = 0;
+				disk_write_sector(1 + i, fatTable);
+				print("DELETING FILE");
+			}
 		}
 	}
-	
-	
-	uint16_t fatTable[256];
 
-	//fat 1
-	disk_read_sector(FAT1SECTOR + (file.cluster / 256), (uint8_t*)fatTable);
-
-	fatTable[file.cluster % 256] = 0x0000;
-
-	disk_write_sector(FAT1SECTOR + (file.cluster / 256), (uint8_t*)fatTable);
-	
-	//fat 2
-	disk_read_sector(FAT2SECTOR + (file.cluster / 256), (uint8_t*)fatTable);
-
-	fatTable[file.cluster % 256] = 0x0000;
-
-	disk_write_sector(FAT2SECTOR + (file.cluster / 256), (uint8_t*)fatTable);
-//	//remove file from BOTH FatTables
-//	for(int i = 0; i < FAT_TABLE_SIZE; i++){
-//		//fattable 1 starts at sector 1
-//		disk_read_sector(1 + i, (uint8_t*)fatTable);
-//		//fat table stores 16 bit entries
-//		for(uint16_t e = 0; e < SECTORSIZE / 2; e++){
-//			if(fatTable[e] == file.cluster){
-//				fatTable[e] = 0;
-//				disk_write_sector(1 + i, fatTable);
-//				print("DELETING FILE");
-//			}
-//		}
-//	}
-//
-//	for(int i = 0; i < FAT_TABLE_SIZE; i++){
-//		//fattable2 starts at sector 21
-//		disk_read_sector(21 + i, fatTable);
-//		//fat table stores 16 bit entries
-//		for(uint16_t e = 0; e < SECTORSIZE / 2; e++){
-//			if(fatTable[e].cluster == file.cluster){
-//				fatTable[e].cluster = 0;
-//				disk_write_sector(21 + i, fatTable);
-//				print("DELETING FILE");
-//			}
-//		}
-//	}
+	for(int i = 0; i < FAT_TABLE_SIZE; i++){
+		//fattable2 starts at sector 21
+		disk_read_sector(21 + i, fatTable);
+		//fat table stores 16 bit entries
+		for(uint16_t e = 0; e < SECTORSIZE / 2; e++){
+			if(fatTable[e].cluster == file.cluster){
+				fatTable[e].cluster == 0;
+				disk_write_sector(21 + i, fatTable);
+				print("DELETING FILE");
+			}
+		}
+	}
 	return;
 }
 
 //this function gives you the actual File struct so you can access attributes such as file size 
 uint32_t getFileSize(const char* filename, const char* ext){
 	struct File file;
-	findFileRoot(filename, ext, &file);
-	if(file.filename[0] == 0){
+	findFileRoot(filename, ext, &file)
+	if(file.filename[0] == 0;){
 		return 0;
 	}
 	return file.fileSize;

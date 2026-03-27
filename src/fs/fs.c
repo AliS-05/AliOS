@@ -54,18 +54,20 @@ void listfiles_fat16(){
 				print("No more files");
 				return;
 			} else{
-				print(" ");
-				char filename[9];
-				char ext[4];
-				memcpy(filename, entry->filename, 8);
-				memcpy(ext, entry->extension, 3);
+				if((uint8_t)entry->filename[0] != (uint8_t)0xE5){
+					print(" ");
+					char filename[9];
+					char ext[4];
+					memcpy(filename, entry->filename, 8);
+					memcpy(ext, entry->extension, 3);
 
-				filename[8] = '\0';
-				ext[3] = '\0';
-				print(filename);
-				print(".");
-				print(ext);
-				print(" ");
+					filename[8] = '\0';
+					ext[3] = '\0';
+					print(filename);
+					print(".");
+					print(ext);
+					print(" ");
+				}
 			}
 		}
 	}

@@ -73,25 +73,42 @@ void cmd_ls(){
 	listfiles_fat16();
 }
 
+//i guess i need a function for simply making a new file
+//and another for writing data to a file
 void cmd_makefile(char* input_buffer){
-	size_t inputSize = strlen(input_buffer);
-	const char* buf1 = token(input_buffer, ' ');
+	//expected input something like
+	//write test.txt hello world!
 
-	const char* filename = token(NULL, ' ');
+	token(input_buffer, ' ');//write
+
+	const char* filename = token(NULL, '.'); //test
+	const char* extension = token(NULL, ' '); //txt
+
+	
+	
+
+
 	if(filename == NULL){
 		print("Error finding file to delete");
 		return;
 	}
-	
-	uint8_t buffer[SECTORSIZE];
-	buffer[0] = '\0';
 
-	size_t offset = strlen(buf1) + strlen(filename) + 2; //i think +2 because of spaces ?
+	if(!extension){ print("Please provide the file extension\n"); return; }
+
+	print("\nFILENAME: ");
+	print(filename);
+	print("\nEXTENSION: ");
+	print(extension);
+
+	const char* data = input_buffer + strlen("write\0") + 1 + strlen(filename) + 1 + strlen(extension) + 1;//hello
 	
-	strcpy((char*)buffer, &input_buffer[offset]); //this is how we will write the remaining buffer to disk
-					      
-	size_t size = inputSize - offset;
-	write_file(filename, buffer, size);
+	print("\nData points to: ");
+	print(data);
+	print("\nData length: ");
+	print_num(strlen(data));
+
+	writeFile(filename, extension, (uint8_t*)data, strlen(data));
+	return;
 }
 
 void cmd_delfile(char* input_buffer){
@@ -136,18 +153,15 @@ void cmd_readfile(char* input_buffer){
 		print("\n");
 
 		for(uint8_t i = 0; i < 25; i++){
-
 			print_char((unsigned char)fileData[i]);
 		}
 	} else{
-		for(uint32_t i = 0; i < requestedSize; i++){
-		//	if(i >= fileSize(filename)){
-		//		print("End of file reached.\n");
-		//		return;
-		//	}
+		uint32_t fsize = getFileSize(filename, extension);
+		for(uint32_t i = 0; i < requestedSize && i < fsize; i++){
 			print_char((unsigned char)fileData[i]);
 		}
 	}
+	free((void*)fileData);
 	return;
 }
 

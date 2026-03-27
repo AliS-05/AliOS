@@ -246,18 +246,18 @@ int main() {
 	uint8_t* data;
 	printf("Adding test.bin\n");
 	data = read_file("./bin/test.bin", &size);
-	if(data) { writeFile("TEST    BIN", data, size); free(data); }
+	if(data) { writeFile("test    bin", data, size); free(data); }
 	else{ printf("FILE NOT FOUND"); }
 	
 	printf("Adding snake.bin\n");
 	data = read_file("./games/snake.bin", &size);
-	if(data) { writeFile("SNAKE   BIN", data, size); free(data); }
+	if(data) { writeFile("snake   bin", data, size); free(data); }
 	else{ printf("FILE NOT FOUND"); }
 	
 	printf("Adding a.bin\n");
 	data = read_file("./assembler/a.bin", &size);
 	if(data) { 
-		writeFile("A       BIN", data, size); free(data); 
+		writeFile("a       bin", data, size); free(data); 
 	} else{
 		printf("FILE NOT FOUND - A.BIN");
 	}

@@ -124,7 +124,7 @@ uint16_t findFreeCluster(){
 				print("Cluster Found!\n");
 				fatTable[e] = 0xFFFF;
 				disk_write_sector(s, (uint8_t*)fatTable);
-				disk_write_sector(FAT1SECTOR + s - 1, (uint8_t*)fatTable);
+				disk_write_sector(FAT2SECTOR + s - 1, (uint8_t*)fatTable);
 				return (s - 1) * 256 + e + 2;
 			}
 		}
@@ -151,12 +151,15 @@ uint16_t addFileRoot(struct File* file){
 }
 
 //should this return the cluster where the file is written ?
-void writeFile(char* name, uint8_t* data, uint32_t size){
+void writeFile(char* filename, char* extension, uint8_t* data, uint32_t size){
 	//size will be used later to calculate amount of clusters needed
 	//will need to implement a findMultipleClusters
 
 	uint16_t firstCluster = findFreeCluster();
-	
+
+	print("\nCluster Number: ");
+	print_num(firstCluster);
+
 	//files should be 2048 byte aligned to maximize storage otherwise this is very inefficient
 	disk_write_cluster(firstCluster, data);
 
@@ -166,9 +169,9 @@ void writeFile(char* name, uint8_t* data, uint32_t size){
 
 	struct File file;
 	memset(&file, 0 , sizeof(struct File));
-
-	memcpy(file.filename, name, 8);
-	memcpy(file.extension, name + 8, 3);
+	
+	memcpy(file.filename, filename, 8);
+	memcpy(file.extension, extension, 3);
 
 	file.attributes = 0x20; // anything not 0x01 is writeable 
 	//all time stuff is left as 0 for now as i have not implemented RTC stuff
@@ -177,32 +180,43 @@ void writeFile(char* name, uint8_t* data, uint32_t size){
 	file.fileSize = size;
 
 	//now that file struct has been created i need to add the struct to
-	// the root directory. so read root from disk and find the first available
+	// the root directory. so 
 	//section,memcpy to buffer and write back to disk
 	addFileRoot(&file);
 }
 
 //helper function that returns a pointer to a File struct with the name and extension passed in
-struct File* findFileRoot(char* filename, char* ext){
-	struct File rootSector[16];
+boolean findFileRoot(const char* filename, const char* ext, struct File* file){
+	struct File rootSector[16]; 
 	for(uint16_t s = 0; s < 32; s++){ //reading each sector of root
 		disk_read_sector(ROOTSECTOR + s, (uint8_t*)rootSector);
 		for(uint32_t e = 0; e < 16; e++){ //e = entry ie file
-			struct File* entry = &rootSector[e];
-			if(!memcmp(entry->filename, filename, 8) && !memcmp(entry->extension, ext, 3)){
-				return entry;
+			if(!memcmp(rootSector[e].filename, (void*)filename, 8) && !memcmp(rootSector[e].extension, (void*)ext, 3)){
+				*file = rootSector[e];
+				return true;
 			}
 		}
 	}
-	return 0;
+	return false;
 }
 
 //returns pointer to uint8 buffer found by findFileRoot NOT the File struct
-uint8_t* readFile(char* filename, char* ext){
-	struct File* file = findFileRoot(filename, ext);
-	if(file->fileSize){
-		uint8_t* fileData = (uint8_t*)malloc(file->fileSize);
-		disk_read_cluster(file->cluster, fileData);
+uint8_t* readFile(const char* filename, const char* ext){
+	struct File file;
+	memset(&file, 0, sizeof(struct File));
+
+	if(!findFileRoot(filename, ext, &file)){
+		print("Failed to find file\n");
+		return NULL;
+	}
+	print("\nReading Cluster: ");
+	print_num(file.cluster);
+	if(file.fileSize){
+		uint8_t* fileData = (uint8_t*)malloc(file.fileSize);
+		disk_read_cluster(file.cluster, fileData);
+		for(int i = 0; i < 5; i++){
+			print_hex8(fileData[i]);
+		}
 		return fileData;
 	}else{
 		return NULL;
@@ -210,12 +224,11 @@ uint8_t* readFile(char* filename, char* ext){
 }
 
 //this function gives you the actual File struct so you can access attributes such as file size 
-size_t getFileSize(char* filename, char* ext){
-	struct File* file = findFileRoot(filename, ext);
-	if(file->fileSize){
-		return file->fileSize;
-	} else{
-		return NULL;
+uint32_t getFileSize(const char* filename, const char* ext){
+	struct File file;
+	if(!findFileRoot(filename, ext, &file)){
+		return 0;
 	}
+	return file.fileSize;
 }
 

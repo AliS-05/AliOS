@@ -1,8 +1,10 @@
 #include <structures.h>
+#include <memory.h>
 #include <utilities.h>
 #include <string.h>
 #include <tools.h>
 #include <fs.h>
+#include <fat16.h>
 #include <edit.h>
 
 extern volatile uint8_t enter_editor_flag;
@@ -68,78 +70,106 @@ void cmd_hexdump(char* input_buffer){
 }
 
 void cmd_ls(){
-	listfiles();
+	listfiles_fat16();
 }
 
+//i guess i need a function for simply making a new file
+//and another for writing data to a file
 void cmd_makefile(char* input_buffer){
-	size_t inputSize = strlen(input_buffer);
-	const char* buf1 = token(input_buffer, ' ');
+	//expected input something like
+	//write test.txt hello world!
 
-	const char* filename = token(NULL, ' ');
+	token(input_buffer, ' ');//write
+
+	const char* filename = token(NULL, '.'); //test
+	const char* extension = token(NULL, ' '); //txt
+
 	if(filename == NULL){
 		print("Error finding file to delete");
 		return;
 	}
-	
-	uint8_t buffer[SECTORSIZE];
-	buffer[0] = '\0';
 
-	size_t offset = strlen(buf1) + strlen(filename) + 2; //i think +2 because of spaces ?
+	if(!extension){ print("Please provide the file extension\n"); return; }
 	
-	strcpy((char*)buffer, &input_buffer[offset]); //this is how we will write the remaining buffer to disk
-					      
-	size_t size = inputSize - offset;
-	write_file(filename, buffer, size);
+	//inputbuffer offset since token null terminates after each token
+	const char* data = input_buffer + strlen("write\0") + 1 + strlen(filename) + 1 + strlen(extension) + 1;//hello
+	
+	writeFile(filename, extension, (uint8_t*)data, strlen(data));
+	return;
 }
 
 void cmd_delfile(char* input_buffer){
+	//del test.txt
 	token(input_buffer, ' ');
-	const char* filename = token(NULL, ' ');
-	if(filename == NULL){
+	const char* filename = token(NULL, '.');
+	const char* extension = token(NULL, ' ');
+
+	if(!filename || !extension){
 		print("Error finding file to delete");
 		return;
 	}
-	delete_file(filename);
+	deleteFile(filename, extension);
 }
 
 void cmd_readfile(char* input_buffer){
+	print("READ CALLED\n");
 	token(input_buffer, ' ');
-	const char* filename = token(NULL, ' ');
-	if(filename == NULL){
+	const char* filename = token(NULL, '.');
+	const char* extension = token(NULL, ' ');
+	if(filename == NULL || extension == NULL){
 		print("Error finding file to read");
 		return;
 	}
-	read_file(filename);
+
+	//read will just print 25 bytes as a default ig
+	const char* size = token(NULL, ' ');
+
+	uint8_t* fileData = readFile(filename, extension);
+	int requestedSize = atoi(size);
+	if(requestedSize == 0){ 
+		for(uint8_t i = 0; i < 25; i++){
+			print_char((unsigned char)fileData[i]);
+		}
+	} else{
+		uint32_t fsize = getFileSize(filename, extension);
+		for(uint32_t i = 0; i < requestedSize && i < fsize; i++){
+			print_char((unsigned char)fileData[i]);
+		}
+	}
+	free((void*)fileData);
+	return;
 }
 
 
 void cmd_run(char* input_buffer){
 
 	token(input_buffer, ' ');
-	const char* filename = token(NULL, ' ');
-	//print("Attempting to run ");
-	//print(filename);
+	const char* filename = token(NULL, '.');
+	const char* extension = token(NULL, ' ');
+	
 
-	if(!filename){
-		print("No file\n");
+	if(!filename || !extension){
+		print("File not found\n");
 		return;
+	}
+
+
+	uint8_t* fileData = readFile(filename, extension);
+	if(fileData == NULL){
+		print("ERROR RUNNING FILEDATA NULL\n");
 	}
 
 	uint8_t* memory = (uint8_t*)0x200000;
+	memcpy(memory, fileData, getFileSize(filename, extension));
 
-
-	if(!cpy_file_buffer(filename, memory, fileSize(filename))){
-		print("Load failed\n");
-		return;
-	}
-	
 	//print_num((uint32_t)memory);
 
 	typedef int (*Program)();
 	Program program = (Program)memory;
 
 	int ret = program();
-
+	
+	free(fileData);
 	print("Program Finished: ");
 	print_num(ret);
 }
@@ -164,6 +194,15 @@ void cmd_color(char* input_buffer){
 		print("Must enter an integer number, try 'color 02' or 'color 30'");
 	}
 	init_editor_screen((uint8_t)col);
+}
+
+void getDate(){ 
+	//RTC hardware register stuff... ugh
+	//PDF downloaded implement later
+}
+
+void getTime(){
+
 }
 
 void parse_command() {

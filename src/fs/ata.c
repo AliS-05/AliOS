@@ -16,6 +16,8 @@
 #define SUCCESS true
 #define FAILURE false
 #define SECTORSIZE 512
+#define SECTORS_PER_CLUSTER 4
+
 
 void disk_read_sector(uint32_t lba, uint8_t* buffer){
 	ata_wait_busy();
@@ -33,9 +35,9 @@ void disk_read_sector(uint32_t lba, uint8_t* buffer){
 
 }
 
-void disk_read_sector_count(uint32_t lba, uint32_t count, uint8_t* buffer){
+void disk_read_sector_count(uint32_t lba, uint8_t* buffer, uint32_t count){
 	for(uint32_t i = 0; i < count; i++){
-		disk_read_sector(lba, buffer + (i * 512)); //ie size of sector
+		disk_read_sector(lba + i, buffer + (i * 512)); //ie size of sector
 	}
 			
 }
@@ -59,18 +61,23 @@ void disk_write_sector(uint32_t lba, uint8_t* buffer){
 	ata_wait_busy();
 }
 
-void disk_write_sector_count(uint32_t lba, uint32_t count, uint8_t* buffer){
+void disk_write_sector_count(uint32_t lba, uint8_t* buffer, uint32_t count){
 	for(uint32_t i = 0; i < count; i++){
-		disk_write_sector(lba, buffer + (i * 512)); //ie size of sector
+		disk_write_sector(lba + i, buffer + (i * 512)); //ie size of sector
 	}
 			
 }
 //clusters will be 4 sectors, 512 * 4 = 2048 
 //read expects a buffer of size 2048
-void read_cluster(uint32_t cluster_start, uint8_t* buffer){
-	disk_read_sector_count(cluster_start, CLUSTER_SIZE, buffer);
+void disk_read_cluster(uint16_t cluster, uint8_t* buffer){
+	//subtract 2 because cluster numbers start at 2, ie 2 reserved
+	uint32_t sector = 73 + ((cluster - 2) * 4); //data region offset
+	disk_read_sector_count(sector, buffer, SECTORS_PER_CLUSTER);
 }
 
-void write_cluster(uint32_t cluster_start, uint8_t* buffer){
-	disk_write_sector_count(cluster_start, CLUSTER_SIZE, buffer);
+
+
+void disk_write_cluster(uint16_t cluster, uint8_t* buffer){
+	uint32_t sector = 73 + ((cluster - 2) * 4);
+	disk_write_sector_count(sector, buffer, SECTORS_PER_CLUSTER);
 }

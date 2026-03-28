@@ -16,9 +16,9 @@ extern void kernel_main(){
 	uint8_t test_packet[64] = {
 		// Destination MAC (broadcast)
 		0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-		// Source MAC (placeholder - fill from mac_address array)
+		// Source MAC 
 		0x52, 0x054, 0x00, 0x12, 0x34, 0x56,
-		// EtherType (0x8888 = experimental/test)
+		// EtherType 	
 		0x88, 0x88,
 		// Payload (46 bytes to reach 60 minimum frame size)
 		0x68, 0x65, 0x6C, 0x6C, 0x6F, 0x00, 0x00, 0x00, //hello
@@ -29,13 +29,11 @@ extern void kernel_main(){
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 	};
 
-	// Fill in source MAC from your NIC
 	//for (int i = 0; i < 6; i++) {
 	//    test_packet[6 + i] = mac_address[i];
 	//}
 
 	//transmit_packet(test_packet, 60);
-	
-	init_bpb();
+	//init_fat16_filesystem();
 	print(shell_prompt);
 }

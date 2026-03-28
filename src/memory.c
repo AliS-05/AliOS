@@ -73,14 +73,14 @@ void* memset(void* dst, int c, size_t n){
 	return dstBuf;
 }
 
-int memcmp(void* mem1, void* mem2){
+int memcmp(void* mem1, void* mem2, size_t n){
 	unsigned char* m1 = (unsigned char*)mem1;
 	unsigned char* m2 = (unsigned char*)mem2;
-	while(*m1 && *m2 && (*m1 == *m2)){
-		m1++;
-		m2++;
+	for(size_t i = 0; i < n; ++i){
+		if(*m1 == *m2) continue;
+		else{ return (*m1 - *m2); }
 	}
-	return (*m1 - *m2);
+	return 0;
 }
 
 void* aligned_malloc(uint32_t size, uint32_t alignment){

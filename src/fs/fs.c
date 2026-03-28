@@ -4,11 +4,14 @@
 #include <utilities.h>
 #include <memory.h>
 #include <string.h>
+#include <fat16.h>
 
 #define SUCCESS true
 #define FAILURE false
 #define SECTORSIZE 512
 #define MAXFILES 12
+#define ROOTSECTOR 41
+#define CLUSTERSIZE 2048
 
 struct FileObject{
 	char name[32];
@@ -36,6 +39,35 @@ size_t fileSize(const char* filename){
 
 uint32_t calcSectorsUsed(size_t size){
 	return (size + SECTORSIZE - 1) / SECTORSIZE;
+}
+
+void listfiles_fat16(){
+	struct File rootSector[16]; //16 files per sector in root directory
+	for(uint16_t s = 0; s < 32; s++){
+		disk_read_sector(ROOTSECTOR + s, (uint8_t*)rootSector);
+		//files should be contiguous so return upon first 0
+		for(uint32_t e = 0; e < 16; e++){
+			struct File* entry = &rootSector[e];
+			if(entry->filename[0] == 0){
+				return;
+			} else{
+				if((uint8_t)entry->filename[0] != (uint8_t)0xE5){
+					print(" ");
+					char filename[9];
+					char ext[4];
+					memcpy(filename, entry->filename, 8);
+					memcpy(ext, entry->extension, 3);
+
+					filename[8] = '\0';
+					ext[3] = '\0';
+					print(filename);
+					print(".");
+					print(ext);
+					print(" ");
+				}
+			}
+		}
+	}
 }
 
 void listfiles(){

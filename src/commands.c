@@ -84,29 +84,16 @@ void cmd_makefile(char* input_buffer){
 	const char* filename = token(NULL, '.'); //test
 	const char* extension = token(NULL, ' '); //txt
 
-	
-	
-
-
 	if(filename == NULL){
 		print("Error finding file to delete");
 		return;
 	}
 
 	if(!extension){ print("Please provide the file extension\n"); return; }
-
-	print("\nFILENAME: ");
-	print(filename);
-	print("\nEXTENSION: ");
-	print(extension);
-
+	
+	//inputbuffer offset since token null terminates after each token
 	const char* data = input_buffer + strlen("write\0") + 1 + strlen(filename) + 1 + strlen(extension) + 1;//hello
 	
-	print("\nData points to: ");
-	print(data);
-	print("\nData length: ");
-	print_num(strlen(data));
-
 	writeFile(filename, extension, (uint8_t*)data, strlen(data));
 	return;
 }
@@ -133,28 +120,13 @@ void cmd_readfile(char* input_buffer){
 		print("Error finding file to read");
 		return;
 	}
-	
-	print(filename);
-	print(extension);
 
 	//read will just print 25 bytes as a default ig
 	const char* size = token(NULL, ' ');
 
-	print("Num Bytes Wanted: ");
-	print_num(atoi(size));
-	print("\n");
-
 	uint8_t* fileData = readFile(filename, extension);
 	int requestedSize = atoi(size);
 	if(requestedSize == 0){ 
-		print("File: ");
-		print(filename);
-		print("\n");
-
-		print("Filesize: \n");
-		print_num(getFileSize(filename, extension));
-		print("\n");
-
 		for(uint8_t i = 0; i < 25; i++){
 			print_char((unsigned char)fileData[i]);
 		}
@@ -172,30 +144,32 @@ void cmd_readfile(char* input_buffer){
 void cmd_run(char* input_buffer){
 
 	token(input_buffer, ' ');
-	const char* filename = token(NULL, ' ');
-	//print("Attempting to run ");
-	//print(filename);
+	const char* filename = token(NULL, '.');
+	const char* extension = token(NULL, ' ');
+	
 
-	if(!filename){
-		print("No file\n");
+	if(!filename || !extension){
+		print("File not found\n");
 		return;
+	}
+
+
+	uint8_t* fileData = readFile(filename, extension);
+	if(fileData == NULL){
+		print("ERROR RUNNING FILEDATA NULL\n");
 	}
 
 	uint8_t* memory = (uint8_t*)0x200000;
+	memcpy(memory, fileData, getFileSize(filename, extension));
 
-
-	if(!cpy_file_buffer(filename, memory, fileSize(filename))){
-		print("Load failed\n");
-		return;
-	}
-	
 	//print_num((uint32_t)memory);
 
 	typedef int (*Program)();
 	Program program = (Program)memory;
 
 	int ret = program();
-
+	
+	free(fileData);
 	print("Program Finished: ");
 	print_num(ret);
 }

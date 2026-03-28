@@ -48,10 +48,7 @@ void listfiles_fat16(){
 		//files should be contiguous so return upon first 0
 		for(uint32_t e = 0; e < 16; e++){
 			struct File* entry = &rootSector[e];
-			print_hex8(entry->filename[0]);
-			print(" ");
 			if(entry->filename[0] == 0){
-				print("No more files");
 				return;
 			} else{
 				if((uint8_t)entry->filename[0] != (uint8_t)0xE5){

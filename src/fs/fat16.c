@@ -121,7 +121,6 @@ uint16_t findFreeCluster(){
 	// bc fatentry on sector 5 is being treated as the same as fat entry
 	//sector 20 right now.
 			if(fatTable[e] == 0x0000){
-				print("Cluster Found!\n");
 				fatTable[e] = 0xFFFF;
 				disk_write_sector(s, (uint8_t*)fatTable);
 				disk_write_sector(FAT2SECTOR + s - 1, (uint8_t*)fatTable);
@@ -157,16 +156,10 @@ void writeFile(char* filename, char* extension, uint8_t* data, uint32_t size){
 
 	uint16_t firstCluster = findFreeCluster();
 
-	print("\nCluster Number: ");
-	print_num(firstCluster);
-
 	//files should be 2048 byte aligned to maximize storage otherwise this is very inefficient
 	disk_write_cluster(firstCluster, data);
 
-	
-
 	//construct File Object. name should be absolute path
-
 	struct File file;
 	memset(&file, 0 , sizeof(struct File));
 	
@@ -209,14 +202,9 @@ uint8_t* readFile(const char* filename, const char* ext){
 		print("Failed to find file\n");
 		return NULL;
 	}
-	print("\nReading Cluster: ");
-	print_num(file.cluster);
 	if(file.fileSize){
 		uint8_t* fileData = (uint8_t*)malloc(file.fileSize);
 		disk_read_cluster(file.cluster, fileData);
-		for(int i = 0; i < 5; i++){
-			print_hex8(fileData[i]);
-		}
 		return fileData;
 	}else{
 		return NULL;
@@ -227,10 +215,8 @@ void deleteFile(const char* filename, const char* extension){
 	//remove file from root directory
 	struct File file;
 	uint32_t rootSector = findFileRoot(filename, extension, &file);
-	if(file.filename[0] != 0){ 
-		print("Found File To Delete!\n");  
-	} else{
-		print("File NOT found to delete\n");
+	if(file.filename[0] == 0){ 
+		print("File to delete not found\n");
 		return;
 	}
 	
@@ -263,32 +249,6 @@ void deleteFile(const char* filename, const char* extension){
 	fatTable[file.cluster % 256] = 0x0000;
 
 	disk_write_sector(FAT2SECTOR + (file.cluster / 256), (uint8_t*)fatTable);
-//	//remove file from BOTH FatTables
-//	for(int i = 0; i < FAT_TABLE_SIZE; i++){
-//		//fattable 1 starts at sector 1
-//		disk_read_sector(1 + i, (uint8_t*)fatTable);
-//		//fat table stores 16 bit entries
-//		for(uint16_t e = 0; e < SECTORSIZE / 2; e++){
-//			if(fatTable[e] == file.cluster){
-//				fatTable[e] = 0;
-//				disk_write_sector(1 + i, fatTable);
-//				print("DELETING FILE");
-//			}
-//		}
-//	}
-//
-//	for(int i = 0; i < FAT_TABLE_SIZE; i++){
-//		//fattable2 starts at sector 21
-//		disk_read_sector(21 + i, fatTable);
-//		//fat table stores 16 bit entries
-//		for(uint16_t e = 0; e < SECTORSIZE / 2; e++){
-//			if(fatTable[e].cluster == file.cluster){
-//				fatTable[e].cluster = 0;
-//				disk_write_sector(21 + i, fatTable);
-//				print("DELETING FILE");
-//			}
-//		}
-//	}
 	return;
 }
 

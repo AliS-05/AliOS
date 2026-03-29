@@ -112,6 +112,19 @@ boolean isHex(char digit){
 	return false;
 }
 
+boolean isLetter(char c){
+	if((c >= 65 && c <=90) || (c >=97 && c <= 122)){
+		return true;
+	}
+	return false;
+}
+
+boolean isalnum(char c){
+	if(isHex(c) || isLetter(c)){
+		return true;
+	}
+	return false;
+}
 
 uintptr_t stoh(const char* str){ //string to hex
 	uintptr_t res = 0;

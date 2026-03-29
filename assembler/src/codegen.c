@@ -1,7 +1,6 @@
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <stdint.h>
+#include "structures.h"
+#include "utilities.h"
+#include "memory.h"
 #include "codegen.h"
 #include "asm_parser.h"
 #include "symbol_table.h"
@@ -42,11 +41,13 @@ int getRegisterCode(const char* reg) {
 	if(!strcmp(reg, "esi")) return 6;
 	if(!strcmp(reg, "edi")) return 7;
 
-	print("Unknown register %s\n", reg);
-	exit(1);
+	print("Unknown register: ");
+	print(reg);
+	print("\n");
+	return -1;
 }
 
-void encodeMove(Instruction* inst, SymbolTable* table, ByteVector* byteVector){
+void encodeMove(Instruction* inst, ByteVector* byteVector){
 	int reg1 = getRegisterCode(inst->operand1.strValue);
 
 	if(inst->operand2.type == NUMBER){
@@ -57,8 +58,9 @@ void encodeMove(Instruction* inst, SymbolTable* table, ByteVector* byteVector){
 		int reg2 = getRegisterCode(inst->operand2.strValue);
 
 		ByteVectorPush(byteVector, 0x89);
-		
-		uint8_t modrm = 0xC0 | (reg2 << 3) | reg1; // ?
+
+		//mod rm calculations
+		uint8_t modrm = 0xC0 | (reg2 << 3) | reg1; 
 		ByteVectorPush(byteVector, modrm);
 	}
 }
@@ -68,13 +70,16 @@ uint8_t getMod(int mod, int reg, int rm) {
 }
 
 void encodeInstruction(Instruction* inst, SymbolTable* table, ByteVector* byteVector){
-	print("DEBUG encodeInstruction mnemonic value: %d\n", inst->mnemonic);
+	//NOTE commenting this out but might want later
+//	print("DEBUG encode Instruction mnemonic value: ");
+//	print(inst->mnemonic);
+//	print("\n");
 	switch(inst->mnemonic) {
 		case INST_LABEL: {
 			return;
 		}
 		case INST_MOV: {
-			encodeMove(inst, table, byteVector);
+			encodeMove(inst, byteVector);
 			break;
 		}
 		case INST_RET: {
@@ -206,7 +211,7 @@ void encodeInstruction(Instruction* inst, SymbolTable* table, ByteVector* byteVe
 
 		default: {
 			print("Error encoding instruction from codegen.c\n");
-			exit(1);
+			return;
 			break;
 		}
 	}

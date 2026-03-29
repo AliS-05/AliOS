@@ -1,5 +1,5 @@
 #include <utilities.h>
-
+#include <memory.h>
 int strcmp(const char* s1, const char* s2){
 	while (*s1 && *s2 && (*s1 == *s2)){
 		s1++;
@@ -54,3 +54,19 @@ char* strcpy(char* dst, const char* src){
 	return dst;
 }
 
+char* strdup(const char* src){
+	//malloc strlen
+	//memcpy string data
+	//return pointer to malloc
+	size_t size = strlen(src) + 1;
+	char* dupData = (char*)malloc(size);
+	memcpy(dupData, (void*)src, size);
+	return dupData;
+}
+
+char tolower(const char c){
+	if(c >= 65 && c <=90){ //A and Z
+		return c + 32;
+	}
+	return c; //return same character if not capital letter
+}

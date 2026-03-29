@@ -22,5 +22,3 @@ const char* tokenTypeToString(TokenType type) {
         default: return "UNKNOWN";
     }
 }
-
-

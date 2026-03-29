@@ -1,5 +1,5 @@
 BITS 32
-GLOBAL _start
+global _start
 
 _start:
 

@@ -1,6 +1,7 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include "structures.h"
+#include "utilities.h"
+#include "string.h"
+#include "memory.h"
 #include "symbol_table.h"
 
 
@@ -11,7 +12,6 @@ void symbolTableInit(SymbolTable* table) {
 	table->data = malloc(table->capacity * sizeof(Symbol));
 	if (!table->data) {
 		print("Failed to initialize symbol table\n");
-		exit(1);
 	}
 }
 
@@ -35,7 +35,6 @@ void symbolTablePush(SymbolTable* vec, const char* name, int address){
 
 
 int symbolTableLookup(SymbolTable* table, const char* name) {
-
 	for (int i = 0; i < table->size; i++) {
 		if (strcmp(table->data[i].name, name) == 0) {
 		    
@@ -43,14 +42,18 @@ int symbolTableLookup(SymbolTable* table, const char* name) {
 		}
 	}
 
-	print("Undefined label: %s\n", name);
-	exit(1);
-	}
+	print("Undefined label: ");
+	print(name);
+	return -1;
+}
 
 
 void printSymbolTable(SymbolTable* table){
 	for(int i = 0; i < table->size; i++){
-		print("Symbol %s at address %d\n", table->data[i].name, table->data[i].address);
+		print("Symbol ");
+		print(table->data[i].name);
+		print("at address ");
+		print_num(table->data[i].address);
 	}
 }
 

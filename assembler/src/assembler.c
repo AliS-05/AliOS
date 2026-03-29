@@ -4,9 +4,8 @@
 #include "symbol_table.h"
 #include "codegen.h"
 #include "vector.h"
-#include "fs.hpp"  
-#include <stdint.h>
-
+#include "structures.h"
+#include "memory.h"
 
 char* source = NULL; 	
 int currentTokenIndex = 0;
@@ -41,7 +40,9 @@ void assemble_buffer(const char* buffer, uint32_t size){
 	
 	line = 1;
 	currentTokenIndex = 0;
-	parseTokenArray(tokenArray, totalTokens, &instVec);
+	parseTokenArray(tokenArray, &instVec);
+
+	free(tokenArray);
 	
 	SymbolTable table;
 	symbolTableInit(&table);
@@ -58,8 +59,9 @@ void assemble_buffer(const char* buffer, uint32_t size){
 	ByteVectorInit(&byteVector);
 
 	startCodeGen(&instVec, &table, &byteVector);
-
+	
 	// write result to OS filesystem
-	write_file("a.bin", byteVector.data, byteVector.size);
+	// shouldnt i just do this manually in mkfs ?
+	//write_file("a.bin", byteVector.data, byteVector.size);
 }
 

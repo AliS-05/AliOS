@@ -48,6 +48,6 @@ void expect(Token* tokenArray, int* index, TokenType expectedType);
 Operand parseOperand(TokVector* vec, int* pos);
 Instruction parseInstruction(TokVector* vec);
 void parseLine(Token* tokenArray, int* index, InstructionVector* instVec);
-void parseTokenArray(Token* tokenArray, int totalToken, InstructionVector* instVec);
+void parseTokenArray(Token* tokenArray, InstructionVector* instVec);
 
 

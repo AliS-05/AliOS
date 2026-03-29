@@ -254,13 +254,11 @@ int main() {
 	if(data) { writeFile("snake   bin", data, size); free(data); }
 	else{ printf("FILE NOT FOUND"); }
 	
-	printf("Adding a.bin\n");
-	data = read_file("./assembler/a.bin", &size);
-	if(data) { 
-		writeFile("a       bin", data, size); free(data); 
-	} else{
-		printf("FILE NOT FOUND - A.BIN");
-	}
+
+	printf("Adding assemblr.bin\n");
+	data = read_file("./assembler/assemblr.bin", &size);
+	if(data) { writeFile("assemblrbin", data, size); free(data); }
+	else{ printf("FILE NOT FOUND"); }
 
 	// pad to 10MB
 	fseek(disk, 10*1024*1024-1, SEEK_SET);

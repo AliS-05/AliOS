@@ -1,6 +1,8 @@
-#pragma once
-#include "asm_token.h"
+#ifndef VECTOR_H
+#define VECTOR_H
 
+#include "asm_token.h"
+#include "structures.h"
 struct Instruction;
 struct Symbol;
 
@@ -24,3 +26,4 @@ void instVecInit(InstructionVector* vec);
 void instVecPush(InstructionVector* vec, struct Instruction inst);
 void instVecFree(InstructionVector* vec);
 
+#endif

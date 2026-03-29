@@ -1,7 +1,7 @@
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <ctype.h>
+#include "structures.h"
+#include "utilities.h"
+#include "string.h"
+#include "memory.h"
 #include "asm_token.h"
 
 extern int line;
@@ -30,7 +30,6 @@ Token nextToken() {
 	}
 
 	// Single character tokens
-
 	switch (c) {
 		case ',':
 			curPos++;
@@ -75,7 +74,7 @@ Token nextToken() {
 	}
 
 	// Identifier or keyword
-	if (isalpha(c) || c == '_') {
+	if (isLetter(c) || c == '_') {
 		char buffer[64];
 		int i = 0;	
 
@@ -84,7 +83,6 @@ Token nextToken() {
 		}
 
 		buffer[i] = '\0';	
-
 		if (!strcmp(buffer, "rax") ||
 		    !strcmp(buffer, "rbx") ||
 		    !strcmp(buffer, "rcx") ||
@@ -104,20 +102,17 @@ Token nextToken() {
 	    }
 
 	    // Number (decimal or hex 0x)
-	    if (isdigit(c)) {
+	    if (isDigit(c)) {
 		long value = 0;
 
 		if (c == '0' && source[curPos+1] == 'x') {
 		    curPos += 2;
-		    while (isxdigit(source[curPos])) {
-			value = value * 16 +
-			    (isdigit(source[curPos])
-			    ? source[curPos] - '0'
-			    : tolower(source[curPos]) - 'a' + 10);
+		    while (isDigit(source[curPos]) || (source[curPos] >= 65 && source[curPos] <=70) || (source[curPos] >= 97 && source[curPos] <=102)){
+			value = value * 16 + (isDigit(source[curPos]) ? source[curPos] - '0' : tolower(source[curPos]) - 'a' + 10); //clever single liner to convert hex digits shoutout gpt
 			curPos++;
 		    }
 		} else {
-		    while (isdigit(source[curPos])) {
+		    while (isDigit(source[curPos])) {
 			value = value * 10 + (source[curPos] - '0');
 			curPos++;
 		    }

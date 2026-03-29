@@ -6,12 +6,16 @@
 #include "vector.h"
 #include "structures.h"
 #include "memory.h"
+#include "fs.h"
+#include "fat16.h"
+#include "utilities.h"
 
 char* source = NULL; 	
 int currentTokenIndex = 0;
 int curPos = 0;
 int line = 1;
 int currentAddress = 0x200000;
+
 
 void assemble_buffer(char* buffer){
 	source = buffer;
@@ -23,6 +27,7 @@ void assemble_buffer(char* buffer){
 
 	int totalTokens = 0;
 	//start lexing
+	print("Starting Lexing\n");
 	do{
 		tok = nextToken();
 		tokenArray[totalTokens] = tok;
@@ -32,6 +37,7 @@ void assemble_buffer(char* buffer){
 	
 	line = 1;
 	currentTokenIndex = 0;
+	print("Starting parsing phase..\n");
 	parseTokenArray(tokenArray, &instVec);
 
 	free(tokenArray);
@@ -39,6 +45,7 @@ void assemble_buffer(char* buffer){
 	SymbolTable table;
 	symbolTableInit(&table);
 	
+	print("Constructing symbol table\n");
 	// loop over instructionVector looking for INST_LABEL's and filling
 	// in addresses
 	for(int i = 0; i < instVec.size; i++){
@@ -49,11 +56,16 @@ void assemble_buffer(char* buffer){
 	
 	ByteVector byteVector;
 	ByteVectorInit(&byteVector);
-
+	
+	print("Constructing executable binary\n");
 	startCodeGen(&instVec, &table, &byteVector);
 	
 	// write result to OS filesystem
 	// shouldnt i just do this manually in mkfs ?
 	//write_file("a.bin", byteVector.data, byteVector.size);
+
+	print("Writing to output file\n");
+	writeFile("asoutput", "exe", byteVector.data, byteVector.size);
+	print("Finished writing to output file. Enjoy!\n");
 }
 

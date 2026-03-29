@@ -65,8 +65,7 @@ run: $(BINARY)
 		-device e1000,netdev=net0 \
 		-object filter-dump,id=dump0,netdev=net0,file=packets.pcap
 
-clean:
-	rm $(BUILD_DIR)/*.o $(BUILD_DIR)/*.bin 
-	rm -rf $(BUILD_DIR)/fs
- 
+clean:	
+	rm -rf $(BUILD_DIR)
+	 
 .PHONY: all run clean

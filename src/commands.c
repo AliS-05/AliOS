@@ -8,6 +8,7 @@
 #include <edit.h>
 
 extern volatile uint8_t enter_editor_flag;
+char* global_source; 
 
 void cmd_help() {
     print(help_response);
@@ -140,30 +141,28 @@ void cmd_readfile(char* input_buffer){
 	return;
 }
 
-void run_assemblr(const char* filename, const char* extension){
-	//this function is only needed for checking for extra arguments in input_buffer
-	//already have run assemblr.bin 
-	
-	const char* assemblyFileName = token(NULL, '.'); //test.
-	const char* assemblyFileExt  = token(NULL, ' '); //s
 
-	char* fileData = (char*)readFile(assemblyFileName, assemblyFileExt); //assembler expect char pointers
-	if(fileData == NULL){
-		print("Error finding file to assemblr, did you type the name and extension?\n");
+void cmd_assemble(char* input_buffer){
+	token(input_buffer, ' '); // "assemble"
+	const char* input_file = token(NULL, '.'); 
+	const char* input_ext = token(NULL, ' ');
+
+	if(!input_file || !input_ext){
+		print("Usage: assemble <input.asm>\n");
+		return;
 	}
 
-	uint8_t* memory = (uint8_t*)0x200000;
-	memcpy(memory, fileData, getFileSize(filename, extension));
+	char* source = (char*)readFile(input_file, input_ext);
+	print(source);
+	if(!source){
+		print("File not found\n");
+		return;
+	}
 
-	typedef int (*Program)(char* sourceFile);
-	Program program = (Program)memory;
+	extern void assemble_buffer(char* buffer);
+	assemble_buffer(source);
 
-	int ret = program(fileData);
-	
-	free(fileData);
-	print("Program Finished: ");
-	print_num(ret);
-
+	free(source);
 }
 
 void cmd_run(char* input_buffer){
@@ -177,10 +176,13 @@ void cmd_run(char* input_buffer){
 		print("File not found\n");
 		return;
 	}
+	
 
-	if(!strcmp(filename, "assemblr")){
-		run_assemblr(filename, extension);
-	}
+	print("FILENAME: ");
+	print(filename);
+	print("\nEXTENSION: ");
+	print(extension);
+	
 
 	uint8_t* fileData = readFile(filename, extension);
 	if(fileData == NULL){
@@ -263,10 +265,11 @@ void parse_command() {
 	} else if (strncmp(input_buffer, "run", 3) == 0){
 		cmd_run(input_buffer);
 	} else if (strncmp(input_buffer, "edit", 4) == 0){
-		print("EDIT RECEIVED IN INPUT BUFFER");
 		cmd_edit(input_buffer);
 	} else if (strncmp(input_buffer, "color", 5) == 0){
 		cmd_color(input_buffer);
+	} else if (strncmp(input_buffer, "assemble", 8) == 0){
+		cmd_assemble(input_buffer);
 	}
 	else {
 		print(unknown_response);

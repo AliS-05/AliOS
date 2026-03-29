@@ -1,29 +1,19 @@
-ENTRY(assemble_buffer)
-
+ENTRY(_start)
 SECTIONS
 {
-    . = 0x8000; /* load address */
-
+    . = 0x200000;
     .text :
     {
-        *(.text)
+        *(.text.startup)  /* ← _start goes here first */
+        *(.text)          /* ← Everything else after */
     }
-
-    .rodata :
-    {
-        *(.rodata)
-    }
-
-    .data ALIGN(4) :
-    {
-        *(.data)
-    }
-
+    .rodata : { *(.rodata) }
+    .data ALIGN(4) : { *(.data) }
     .bss ALIGN(4) :
     {
-        bss_start = .;      /* start of BSS */
+        bss_start = .;
         *(.bss)
         *(COMMON)
-        bss_end = .;        /* end of BSS */
+        bss_end = .;
     }
 }

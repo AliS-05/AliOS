@@ -10,7 +10,6 @@ extern char help_response[];
 extern char unknown_response[];
 extern void print(const char* str);
 extern uint8_t vga_color;
-
 void init_editor_screen(uint8_t colorByte){
 	vga_color = colorByte;
 	int pos = 0;

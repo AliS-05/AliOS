@@ -49,11 +49,23 @@ volatile uint8_t editor_char = 0;
 void save_editor_content(const char* filename, const char* extension) {
 	// 50 lines * 80 chars = 4000 bytes
 	uint8_t save_buffer[2000]; 
+	int write_pos = 0;
 
-	// Flatten the 2D 'lines' array into 'save_buffer'
 	for (int r = 0; r < 25; r++) {
-		for (int c = 0; c < 80; c++) {
-			save_buffer[r * 80 + c] = (uint8_t)lines[r][c];
+		// Find actual end of line (last non-space char)
+		int line_end = 79;
+		while (line_end >= 0 && (lines[r][line_end] == ' ' || lines[r][line_end] == 0)) {
+		    line_end--;
+		}
+		
+		// Copy line content
+		for (int c = 0; c <= line_end; c++) {
+		    save_buffer[write_pos++] = lines[r][c];
+		}
+		
+		// Add newline if line had content
+		if (line_end >= 0) {
+		    save_buffer[write_pos++] = '\n';
 		}
 	}
 	deleteFile(filename, extension);

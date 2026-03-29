@@ -1,4 +1,4 @@
-ENTRY(kernel)
+ENTRY(assemble_buffer)
 
 SECTIONS
 {

@@ -122,4 +122,7 @@ Token nextToken() {
 		tok.intValue = value;
 		return tok;
 	    }
+	    tok.type = INVALID;
+	    curPos++;
+	    return tok;
 }

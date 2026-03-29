@@ -140,6 +140,31 @@ void cmd_readfile(char* input_buffer){
 	return;
 }
 
+void run_assemblr(const char* filename, const char* extension){
+	//this function is only needed for checking for extra arguments in input_buffer
+	//already have run assemblr.bin 
+	
+	const char* assemblyFileName = token(NULL, '.'); //test.
+	const char* assemblyFileExt  = token(NULL, ' '); //s
+
+	char* fileData = (char*)readFile(assemblyFileName, assemblyFileExt); //assembler expect char pointers
+	if(fileData == NULL){
+		print("Error finding file to assemblr, did you type the name and extension?\n");
+	}
+
+	uint8_t* memory = (uint8_t*)0x200000;
+	memcpy(memory, fileData, getFileSize(filename, extension));
+
+	typedef int (*Program)(char* sourceFile);
+	Program program = (Program)memory;
+
+	int ret = program(fileData);
+	
+	free(fileData);
+	print("Program Finished: ");
+	print_num(ret);
+
+}
 
 void cmd_run(char* input_buffer){
 
@@ -153,6 +178,9 @@ void cmd_run(char* input_buffer){
 		return;
 	}
 
+	if(!strcmp(filename, "assemblr")){
+		run_assemblr(filename, extension);
+	}
 
 	uint8_t* fileData = readFile(filename, extension);
 	if(fileData == NULL){

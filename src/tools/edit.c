@@ -22,7 +22,6 @@ extern volatile uint8_t enter_editor_flag;
 extern volatile uint8_t editor_scancode;
 extern volatile uint8_t editor_mode; // normal, insert, command
 
-
 #define MODE_NORMAL  0
 #define MODE_INSERT  1
 #define MODE_COMMAND 2
@@ -44,19 +43,21 @@ char lines[50][80];
 int cursor_row = 0, cursor_col = 0, num_lines = 1;
 char cmd[80];
 int cmd_len = 0;
+volatile uint8_t editor_char = 0;
 
-void save_editor_content(const char* filename) {
-    // 50 lines * 80 chars = 4000 bytes
-    uint8_t save_buffer[4000]; 
-    
-    // Flatten the 2D 'lines' array into 'save_buffer'
-    for (int r = 0; r < 50; r++) {
-        for (int c = 0; c < 80; c++) {
-            save_buffer[r * 80 + c] = (uint8_t)lines[r][c];
-        }
-    }
 
-    overwrite_file(filename, save_buffer, 4000);
+void save_editor_content(const char* filename, const char* extension) {
+	// 50 lines * 80 chars = 4000 bytes
+	uint8_t save_buffer[2000]; 
+
+	// Flatten the 2D 'lines' array into 'save_buffer'
+	for (int r = 0; r < 25; r++) {
+		for (int c = 0; c < 80; c++) {
+			save_buffer[r * 80 + c] = (uint8_t)lines[r][c];
+		}
+	}
+	deleteFile(filename, extension);
+	writeFile(filename, extension, save_buffer, 2048); //NOTE this will truncate files over 2048 bytes since i dont have multi cluster reads / writes
 }
 
 uint8_t getkey() {
@@ -70,13 +71,6 @@ uint8_t getkey() {
 	return k;
 }
 
-char sc2char(uint8_t sc) {
-	const char map[] = {0,0,'1','2','3','4','5','6','7','8','9','0','-','=',
-	   0,0,'q','w','e','r','t','y','u','i','o','p','[',']',0,0,
-	   'a','s','d','f','g','h','j','k','l',';','\'','`',0,'\\',
-	   'z','x','c','v','b','n','m',',','.','/',0,0,0,' '};
-	return sc < sizeof(map) ? map[sc] : 0;
-}
 
 void redraw(uint8_t color) {
     unsigned char* vga = (unsigned char*)0xB8000;
@@ -96,20 +90,21 @@ void redraw(uint8_t color) {
     cursor_pos = cursor_row * 160 + cursor_col * 2;
 }
 
-extern void edit_loop(const char* filename) {
+extern void edit_loop(const char* filename, const char* extension) {
+	print("ENTERING EDITOR\n");
 	in_editor = 0;
 	editor_scancode = 0;
 	editor_mode = 0;
 
 	init_editor_screen(0x0E);
-
+	
 	memset(lines, 0, sizeof(lines));
 	
 
-	static uint8_t load_buffer[4000];
-	if(cpy_file_buffer(filename, load_buffer, 4000) != NULL) {
+	uint8_t* load_buffer = readFile(filename, extension);
+	if(load_buffer != NULL) {
 		// Unflatten the buffer back into the 2D lines array
-		for (int r = 0; r < 50; r++) {
+		for (int r = 0; r < 25; r++) {
 		    boolean line_has_data = false;
 		    for (int c = 0; c < 80; c++) {
 			char val = load_buffer[r * 80 + c];
@@ -129,8 +124,9 @@ extern void edit_loop(const char* filename) {
 	cursor_col = strlen(lines[cursor_row]);
 
 	
-     in_editor = 1;
-    init_editor_screen(0x0F);
+	in_editor = 1;
+	init_editor_screen(0x0F);
+	print("IN_EDITOR SET TO 1\n");
 
 	while(in_editor) {
 	   redraw(vga_color);
@@ -160,14 +156,14 @@ extern void edit_loop(const char* filename) {
 			  }
 			  cursor_col--;		
 		  }
-		  else { char c = sc2char(k); if(c) lines[cursor_row][cursor_col++] = c; }
+		  else { char c = editor_char; if(c && c != 0) lines[cursor_row][cursor_col++] = c; }
 	   }
 	   else {  // COMMAND
 		  if(k == KEY_ESC) editor_mode = 0;						
 		  else if(k == KEY_ENTER) {							  
 			 cmd[cmd_len] = 0;
 			 if(strcmp(cmd, "wq") == 0) {
-				save_editor_content(filename); 
+				save_editor_content(filename, extension); 
 				in_editor = 0;
 			 } 
 			 else if(strcmp(cmd, "q") == 0 || strcmp(cmd, "q!") == 0) {
@@ -176,11 +172,12 @@ extern void edit_loop(const char* filename) {
 			 editor_mode = 0;
 		  }
 		  else if(k == 0x0E && cmd_len > 0) cmd_len--;			// Backspace
-		  else { char c = sc2char(k); if(c) cmd[cmd_len++] = c; }
+		  else { char c = editor_char; if(c && c != 0) cmd[cmd_len++] = c; }
 	   }
 	}
 	
 	in_editor = 0;
 	init_editor_screen(vga_color);
+	print("EXITING EDITOR\n");
 }
 

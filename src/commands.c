@@ -203,15 +203,19 @@ void cmd_run(char* input_buffer){
 }
 
 void cmd_edit(char* input_buffer){
-	token(input_buffer, ' ');
-	const char* filename =  token(NULL, ' ');
-	if(!filename){
-		print("Usage edit <filename>");
+	print("ATTEMPTING TO ENTER EDITOR\n");
+	token(input_buffer, ' '); //edit
+	const char* filename =  token(NULL, '.'); //test.
+	const char* extension = token(NULL, ' ');
+	if(!filename || !extension){
+		print("Usage edit <filename>.<extension>");
 	}
-//	edit_loop(filename);
-	extern char editor_filename[32];
+	extern char editor_filename[8];
+	extern char editor_extension[3];
 	strcpy(editor_filename, filename);
+	strcpy(editor_extension, extension);
 	enter_editor_flag = 1;
+	//edit_loop(filename, extension);
 }
 
 void cmd_color(char* input_buffer){
@@ -225,7 +229,7 @@ void cmd_color(char* input_buffer){
 }
 
 void getDate(){ 
-	//RTC hardware register stuff... ugh
+	//RTC hardware register stuff...
 	//PDF downloaded implement later
 }
 
@@ -259,6 +263,7 @@ void parse_command() {
 	} else if (strncmp(input_buffer, "run", 3) == 0){
 		cmd_run(input_buffer);
 	} else if (strncmp(input_buffer, "edit", 4) == 0){
+		print("EDIT RECEIVED IN INPUT BUFFER");
 		cmd_edit(input_buffer);
 	} else if (strncmp(input_buffer, "color", 5) == 0){
 		cmd_color(input_buffer);

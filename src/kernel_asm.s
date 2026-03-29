@@ -6,6 +6,7 @@ extern kernel_main
 extern parse_command
 extern print
 extern edit_loop
+extern editor_char
 
 global kernel
 global init_screen
@@ -25,8 +26,7 @@ global enter_editor_flag
 global editor_scancode
 global editor_mode
 global editor_filename
-
-
+global editor_extension
 kernel:
 	mov ax, 0x10
 	mov ds, ax
@@ -59,9 +59,10 @@ kernel:
 	    jne .idle
 	    mov byte [enter_editor_flag], 0
 
+	    push dword editor_extension 
 	    push dword editor_filename
 	    call edit_loop
-	    add esp, 4
+	    add esp, 8
 	    ; restore shell after editor exits
 	    push shell_prompt
 	    call print
@@ -138,17 +139,17 @@ keyboard_handler:
 	
 	mov byte [editor_scancode], al
 
-	cmp byte [in_editor], 1
-	jne .not_in_editor
-
-	mov al, 0x20
-	out 0x20, al
-	popad
-	iretd
-
-	jmp .done
-
-.not_in_editor:
+;	cmp byte [in_editor], 1
+;	jne .not_in_editor
+;
+;	mov al, 0x20
+;	out 0x20, al
+;	popad
+;	iretd
+;
+;	jmp .done
+;
+;.not_in_editor:
 	test al, 0x80 
 	jnz .check_release
 
@@ -184,6 +185,7 @@ keyboard_handler:
 .use_shifted:
 	mov byte al, [scancode_table_shifted + ebx]
 .got_char:
+	mov byte [editor_char], al ; giving key to editor
 	mov byte [0xB8000 + edi], al
 	mov byte ah, [vga_color]
 	mov byte [0xB8001 + edi], ah
@@ -218,18 +220,22 @@ keyboard_handler:
 
 .shift_press:
 	mov byte [shift_pressed], 1
+	mov byte [editor_char], 0
 	jmp .done
 
 .shift_release:
 	mov byte [shift_pressed], 0
+	mov byte [editor_char], 0
 	jmp .done
 
 .ctrl_press:
 	mov byte [ctrl_pressed], 1
+	mov byte [editor_char], 0
 	jmp .done
 
 .ctrl_release:
 	mov byte [ctrl_pressed], 0
+	mov byte [editor_char], 0
 	jmp .done
 
 
@@ -387,7 +393,8 @@ section .data
 	enter_editor_flag db 0
 	editor_scancode db 0
 	editor_mode db 0 ; 0 = normal , 1 insert, 2 = command ?
-	editor_filename times 32 db 0
+	editor_filename times 8 db 0
+	editor_extension times 3 db 0
 
 	scancode_table:
 		db 0, 27, '1' , '2' , '3' , '4' , '5' , '6' , '7' , '8' , '9' , '0' , '-' , '='

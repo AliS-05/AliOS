@@ -85,22 +85,22 @@ MnemonicType strToInstructionType(const char* str) {
 
 
 const char* mnemonicTypeToStr(MnemonicType type){
-    switch(type){
-	case INST_LABEL: return "label";
-        case INST_MOV:  return "mov";
-        case INST_ADD:  return "add";
-        case INST_SUB:  return "sub";
-        case INST_JMP:  return "jmp";
-        case INST_CALL: return "call";
-        case INST_RET:  return "ret";
-        case INST_PUSH: return "push";
-        case INST_POP:  return "pop";
-        case INST_CMP:  return "cmp";
-        case INST_JE:   return "je";
-        case INST_JNE:  return "jne";
-        case INST_NOP:  return "nop";
-	default:        return "invalid";
-    }
+	switch(type){
+		case INST_LABEL: return "label";
+		case INST_MOV:  return "mov";
+		case INST_ADD:  return "add";
+		case INST_SUB:  return "sub";
+		case INST_JMP:  return "jmp";
+		case INST_CALL: return "call";
+		case INST_RET:  return "ret";
+		case INST_PUSH: return "push";
+		case INST_POP:  return "pop";
+		case INST_CMP:  return "cmp";
+		case INST_JE:   return "je";
+		case INST_JNE:  return "jne";
+		case INST_NOP:  return "nop";
+		default:        return "invalid";
+	    }
 }
 
 
@@ -154,7 +154,8 @@ Token advanceTokVector(TokVector* vec, int* position){
 Token peek(Token* t, int index){
 	return t[index+1];
 }
-//this should either not advance or calls advance inside im not sure
+
+//simple check, if the two types dont match print an error. I dont have exit(1) implemented unfortunately so i think errors will just not really matter
 void expect(Token* tokenArray, int* index, TokenType expectedType){
 	if(tokenArray[*index].type != expectedType){
 		print("Error on line: ");

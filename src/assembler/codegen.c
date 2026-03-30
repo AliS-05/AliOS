@@ -69,6 +69,9 @@ uint8_t getMod(int mod, int reg, int rm) {
 	return (mod << 6) | (reg << 3) | rm;
 }
 
+
+//http://ref.x86asm.net/coder32.html
+//such a goated website
 void encodeInstruction(Instruction* inst, SymbolTable* table, ByteVector* byteVector){
 	//NOTE commenting this out but might want later
 //	print("DEBUG encode Instruction mnemonic value: ");

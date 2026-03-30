@@ -16,7 +16,7 @@ int curPos = 0;
 int line = 1;
 int currentAddress = 0x200000;
 
-
+//basically the main.c file, calls all other phases of the assembler
 void assemble_buffer(char* buffer){
 	source = buffer;
 	Token tok;
@@ -61,9 +61,6 @@ void assemble_buffer(char* buffer){
 	startCodeGen(&instVec, &table, &byteVector);
 	
 	// write result to OS filesystem
-	// shouldnt i just do this manually in mkfs ?
-	//write_file("a.bin", byteVector.data, byteVector.size);
-
 	print("Writing to output file\n");
 	writeFile("asoutput", "exe", byteVector.data, byteVector.size);
 	print("Finished writing to output file. Enjoy!\n");

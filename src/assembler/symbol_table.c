@@ -5,7 +5,7 @@
 #include "symbol_table.h"
 
 
-
+//vector stuff copied from vector.c, it needed to be in this file and NOT vector.c for some reason that i forgot. i think.
 void symbolTableInit(SymbolTable* table) {
 	table->size = 0;
 	table->capacity = 16;

@@ -1,4 +1,3 @@
-// mkfs_fat16.c
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>

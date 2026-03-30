@@ -15,9 +15,9 @@ SECTIONS
 
 	.bss ALIGN(4) :
 	{
-		bss_start = .;      /* <-- ADD THIS */
+		bss_start = .;      /* hyper important for the kernel to not triple fault */
 		*(.bss)
 		*(COMMON)
-		bss_end = .;        /* <-- ADD THIS */
+		bss_end = .;        
 	}
 }

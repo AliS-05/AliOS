@@ -37,7 +37,7 @@ void disk_read_sector(uint32_t lba, uint8_t* buffer){
 
 void disk_read_sector_count(uint32_t lba, uint8_t* buffer, uint32_t count){
 	for(uint32_t i = 0; i < count; i++){
-		disk_read_sector(lba + i, buffer + (i * 512)); //ie size of sector
+		disk_read_sector(lba + i, buffer + (i * SECTORSIZE)); 
 	}
 			
 }
@@ -78,6 +78,6 @@ void disk_read_cluster(uint16_t cluster, uint8_t* buffer){
 
 
 void disk_write_cluster(uint16_t cluster, uint8_t* buffer){
-	uint32_t sector = 73 + ((cluster - 2) * 4);
+	uint32_t sector = 73 + ((cluster - 2) * 4); //data region offset and subtract 2 for reserved clusters
 	disk_write_sector_count(sector, buffer, SECTORS_PER_CLUSTER);
 }

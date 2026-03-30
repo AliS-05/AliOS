@@ -70,8 +70,6 @@ kernel:
 	    jmp .idle
 
 remap_pic:
-	
-
 	; Remap PIC
 	mov al, 0x11
 	out 0x20, al
@@ -98,7 +96,6 @@ remap_pic:
 	out 0xA1, al
 
 	ret
-
 
 idt_start:
     times 32 dq 0 ; Exceptions
@@ -139,17 +136,6 @@ keyboard_handler:
 	
 	mov byte [editor_scancode], al
 
-;	cmp byte [in_editor], 1
-;	jne .not_in_editor
-;
-;	mov al, 0x20
-;	out 0x20, al
-;	popad
-;	iretd
-;
-;	jmp .done
-;
-;.not_in_editor:
 	test al, 0x80 
 	jnz .check_release
 
@@ -218,6 +204,7 @@ keyboard_handler:
 
 	jmp .done
 
+;mostly the same logic for this section
 .shift_press:
 	mov byte [shift_pressed], 1
 	mov byte [editor_char], 0
@@ -247,10 +234,10 @@ keyboard_handler:
 
 .handle_backspace:
 
-	cmp byte [in_editor], 1
+	cmp byte [in_editor], 1 ;special case
 	je .editor_backspace
 	
-	cmp dword [buffer_pos], 0
+	cmp dword [buffer_pos], 0 ;nothing to do if at beginning of line / buffer
 	je .done
 
 	cmp edi, 0
@@ -264,15 +251,13 @@ keyboard_handler:
 	mov byte [input_buffer + edi], 0
 	pop edi
 
-	sub dword [cursor_pos], 2 ;moving cursor back one
+	sub dword [cursor_pos], 2 ;moving cursor back one (2 bytes = 1 square)
 	mov edi, [cursor_pos];
 
 	mov byte [0xB8000 + edi], ' '
 	mov byte ah, [vga_color]
 	mov byte [0xB8001 + edi], ah
 	
-	
-	;mov [input_buffer + edi], byte 0 ;replacing with 0
 	jmp .done
 
 .editor_backspace: ;need special logic for editor backspace
@@ -294,7 +279,6 @@ keyboard_handler:
 	;goal = echo hello0
 	;current = buffer not resetting
 	;solved, wasnt resetting buffer_pos lol
-
 
 	mov edi, [buffer_pos] ;end of buffer
 	mov [input_buffer + edi], byte 0 ; null terminate buffer
@@ -361,7 +345,7 @@ init_screen:
 .draw:
 	mov byte [0xB8000 + ebx], ' '
 	mov byte ah, [vga_color]
-	mov byte [0xB8001 + ebx], ah ;black
+	mov byte [0xB8001 + ebx], ah ;black by default 
 	add ebx, byte 2
 	loop .draw
 	popad
@@ -369,10 +353,7 @@ init_screen:
 
 section .bss
 	input_buffer resb 80 ;reserve 80 bytes for user inputs (line length)
-
 	;not used currently but might need later if i implement command history
-	;command_buffer resb 10 ; 10 character command should be more than enough
-
 section .data
 	cursor_pos dd 0
 	buffer_pos dd 0

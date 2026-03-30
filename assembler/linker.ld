@@ -4,8 +4,8 @@ SECTIONS
     . = 0x200000;
     .text :
     {
-        *(.text.startup)  /* ← _start goes here first */
-        *(.text)          /* ← Everything else after */
+        *(.text.startup)  /*hyper important for assembler to run*/
+        *(.text)          
     }
     .rodata : { *(.rodata) }
     .data ALIGN(4) : { *(.data) }

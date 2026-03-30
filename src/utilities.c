@@ -10,6 +10,8 @@ extern char help_response[];
 extern char unknown_response[];
 extern void print(const char* str);
 extern uint8_t vga_color;
+
+
 void init_editor_screen(uint8_t colorByte){
 	vga_color = colorByte;
 	int pos = 0;
@@ -89,7 +91,6 @@ void print_addr(uintptr_t addr) {
 
 void print_byte(unsigned char b){
 	if(cursor_pos >= 3998) return;
-
 	print_hex8(b);
 	print(" ");
 }
@@ -161,39 +162,39 @@ int atoi(const char* str){ //converts a string to an integer
 }
 
 void itoa(int num, char* buf) { //converts an integer to a string
-    int i = 0;
-    unsigned int n; // Use unsigned to handle INT_MIN safely
+	int i = 0;
+	unsigned int n; // Use unsigned to handle INT_MIN safely
 
-    if (num == 0) {
-        buf[i++] = '0';
-        buf[i] = 0;
-        return;
-    }
+	if (num == 0) {
+		buf[i++] = '0';
+		buf[i] = 0;
+		return;
+	}
 
-    if (num < 0) {
-        buf[i++] = '-';
-        n = (unsigned int)(-num);
-    } else {
-        n = (unsigned int)num;
-    }
+	if (num < 0) {
+		buf[i++] = '-';
+		n = (unsigned int)(-num);
+	} else {
+		n = (unsigned int)num;
+	}
 
-    // Now work with 'n' (unsigned)
-    int start_index = i; // Save where the digits actually start
-    while (n > 0) {
-        buf[i++] = (n % 10) + '0';
-        n /= 10;
-    }
-    buf[i] = 0;
+	// Now work with 'n' (unsigned)
+	int start_index = i; // Save where the digits actually start
+	while (n > 0) {
+		buf[i++] = (n % 10) + '0';
+		n /= 10;
+	}
+	buf[i] = 0;
 
-    // Reverse ONLY the digits, leave the '-' alone at buf[0]
-    int end_index = i - 1;
-    while (start_index < end_index) {
-        char temp = buf[start_index];
-        buf[start_index] = buf[end_index];
-        buf[end_index] = temp;
-        start_index++;
-        end_index--;
-    }
+	// Reverse ONLY the digits, leave the '-' alone at buf[0]
+	int end_index = i - 1;
+	while (start_index < end_index) {
+		char temp = buf[start_index];
+		buf[start_index] = buf[end_index];
+		buf[end_index] = temp;
+		start_index++;
+		end_index--;
+	}
 }
 
 void clearBuf(void*ptr, size_t size){

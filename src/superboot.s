@@ -2,14 +2,14 @@ bits 16
 [org 0x7c00]
 
 start:
-	;
+	;init regs
 	xor ax, ax
 	mov ds, ax
 	mov ss, ax
 	mov es, ax
 	mov sp, 0x9000  ;stack pointer
 	
-	; loading kernel from 'disk'
+	; loading kernel from disk
 	mov ah, 0x02    
 	mov al, 100 ; 100 sectors
 	mov ch, 0       
@@ -30,7 +30,7 @@ start:
 	or eax, 1
 	mov cr0, eax
 
-	jmp 0x08:0x8000 ; jumping to kernel
+	jmp 0x08:0x8000 ; far jumping to kernel
 
 gdt_start:
     dq 0 
@@ -46,4 +46,4 @@ gdtr:
     dd gdt_start
 
 times 510-($-$$) db 0
-dw 0xAA55
+dw 0xAA55 ;marking MBR

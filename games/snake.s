@@ -97,15 +97,13 @@ read_input:
 	je   .done
 	mov  byte [gameOver], 0
 	jmp  .done
-
 .esc:
-	mov eax, 0
+	mov eax, 0 ; return code 0 = success, however returning to shell lowkey just reboots the system 
 	jmp start.returnToShell
 .done:
 	ret	
-
 delay:
-	mov  ecx, 20000000
+	mov  ecx, 20000000 ;this seems to be a good enough framerate / speed
 .loop:
 	dec  ecx
 	jnz  .loop
@@ -191,17 +189,17 @@ draw_player:
 
 .draw_body_loop:
 	push ecx
-	; Calculate offset: y * 160 + x * 2
-	mov   eax, [body + esi*8 + 4] ; Get Y of this segment
+	; calculate offset formula = y * 160 + x * 2
+	mov   eax, [body + esi*8 + 4] ; get y of this segment
 	mov   ebx, 160
 	mul   ebx
-	mov   ebx, [body + esi*8]     ; Get X of this segment
+	mov   ebx, [body + esi*8]     ; get x of this segment
 	shl   ebx, 1
 	add   eax, ebx
 	add   eax, 0xB8000
 
 	mov   byte [eax], '@' 
-	mov   byte [eax+1], 0x02      ; Green
+	mov   byte [eax+1], 0x02      ; green
 
 	inc   esi
 	pop   ecx
@@ -257,6 +255,7 @@ draw_border:
 
 spawn_apple:
 	.getCoords:
+		;simulate randomness by modding the value in rdtsc with desired range
 		rdtsc
 		xor  edx, edx
 		mov  ecx, 80

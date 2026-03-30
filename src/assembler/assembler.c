@@ -4,34 +4,30 @@
 #include "symbol_table.h"
 #include "codegen.h"
 #include "vector.h"
-#include "fs.hpp"  
-#include <stdint.h>
-
+#include "structures.h"
+#include "memory.h"
+#include "fs.h"
+#include "fat16.h"
+#include "utilities.h"
 
 char* source = NULL; 	
 int currentTokenIndex = 0;
 int curPos = 0;
-long filesize = -1;
 int line = 1;
 int currentAddress = 0x200000;
 
-
-void init(const char* buffer, uint32_t size){
-	source = (char*)buffer;
-	filesize = size;
-}
-
-
-void assemble_buffer(const char* buffer, uint32_t size){
-	init(buffer, size);
-
+//basically the main.c file, calls all other phases of the assembler
+void assemble_buffer(char* buffer){
+	source = buffer;
 	Token tok;
-	Token* tokenArray = (Token*)malloc(sizeof(Token) * filesize * 2);  
+	//hardcode 2048 token limit, should be fine for this scope
+	Token* tokenArray = (Token*)malloc(sizeof(Token) * 2048);   
 	InstructionVector instVec;
 	instVecInit(&instVec);
 
 	int totalTokens = 0;
 	//start lexing
+	print("Starting Lexing\n");
 	do{
 		tok = nextToken();
 		tokenArray[totalTokens] = tok;
@@ -41,11 +37,15 @@ void assemble_buffer(const char* buffer, uint32_t size){
 	
 	line = 1;
 	currentTokenIndex = 0;
-	parseTokenArray(tokenArray, totalTokens, &instVec);
+	print("Starting parsing phase..\n");
+	parseTokenArray(tokenArray, &instVec);
+
+	free(tokenArray);
 	
 	SymbolTable table;
 	symbolTableInit(&table);
 	
+	print("Constructing symbol table\n");
 	// loop over instructionVector looking for INST_LABEL's and filling
 	// in addresses
 	for(int i = 0; i < instVec.size; i++){
@@ -56,10 +56,13 @@ void assemble_buffer(const char* buffer, uint32_t size){
 	
 	ByteVector byteVector;
 	ByteVectorInit(&byteVector);
-
+	
+	print("Constructing executable binary\n");
 	startCodeGen(&instVec, &table, &byteVector);
-
+	
 	// write result to OS filesystem
-	write_file("a.bin", byteVector.data, byteVector.size);
+	print("Writing to output file\n");
+	writeFile("asoutput", "exe", byteVector.data, byteVector.size);
+	print("Finished writing to output file. Enjoy!\n");
 }
 

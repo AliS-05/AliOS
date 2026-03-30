@@ -13,7 +13,8 @@ typedef enum {
 	STAR,
 	COLON,
 	LBRACKET,
-	RBRACKET
+	RBRACKET,
+	INVALID
 } TokenType;
 
 typedef struct {

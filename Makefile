@@ -6,12 +6,9 @@ SRC_DIR = src
 HEADER_DIR = include
 BUILD_DIR = build
 
-# 1. FIND ALL SOURCES RECURSIVELY
-# This finds every .cpp file in src/ and any sub-directory (like fs/)
+# This finds every .c file in src/ and any sub-directory (like fs/ or assembler/)
 C_SOURCES := $(shell find $(SRC_DIR) -name "*.c")
 
-# 2. MAP SOURCES TO OBJECTS IN BUILD DIR
-# This converts src/fs/ata.cpp -> build/fs/ata.o
 C_OBJECTS := $(patsubst $(SRC_DIR)/%.c, $(BUILD_DIR)/%.o, $(C_SOURCES))
 
 BINARY = $(BUILD_DIR)/os.bin
@@ -32,29 +29,24 @@ LDFLAGS = -m elf_i386 -T linker.ld
 
 all: $(BINARY)
 
-# Combine bootloader and kernel
+# cat binaries to single .bin file (needed because different origin points)
 $(BINARY): $(BOOT_BIN) $(KERNEL_BIN)
 	cat $^ > $@
 
-# Link kernel (Uses all discovered CPP objects + asm object)
 $(KERNEL_ELF): $(KERNEL_ASM_OBJ) $(C_OBJECTS)
 	$(LD) $(LDFLAGS) -o $@ $^
 
-# Extract kernel binary
 $(KERNEL_BIN): $(KERNEL_ELF)
 	objcopy -O binary $< $@
 
-# Build bootloader
 $(BOOT_BIN): $(BOOT)
 	@mkdir -p $(BUILD_DIR)
 	$(AS) -f bin $< -o $@
 
-# Assemble kernel assembly
 $(KERNEL_ASM_OBJ): $(KERNEL_ASM)
 	@mkdir -p $(BUILD_DIR)
 	$(AS) -f elf32 $< -o $@
 
-# THE MAGIC RULE: Compiles any .cpp in any subfolder
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.c
 	@mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) --std=c99 -c $< -o $@
@@ -65,8 +57,7 @@ run: $(BINARY)
 		-device e1000,netdev=net0 \
 		-object filter-dump,id=dump0,netdev=net0,file=packets.pcap
 
-clean:
-	rm $(BUILD_DIR)/*.o $(BUILD_DIR)/*.bin 
-	rm -rf $(BUILD_DIR)/fs
- 
+clean:	
+	rm -rf $(BUILD_DIR)
+	 
 .PHONY: all run clean

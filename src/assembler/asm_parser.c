@@ -1,7 +1,6 @@
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <ctype.h>
+#include "structures.h"
+#include "utilities.h"
+#include "memory.h"
 #include "asm_token.h"
 #include "asm_parser.h"
 #include "vector.h"
@@ -61,8 +60,9 @@ int instructionSize(Instruction* i){
 			return 6;
 		default:
 			print("Error calculating instruction size\n");
-			exit(1);		
+			return -1;		
 	}
+	return -1;
 }
 
 
@@ -85,45 +85,59 @@ MnemonicType strToInstructionType(const char* str) {
 
 
 const char* mnemonicTypeToStr(MnemonicType type){
-    switch(type){
-	case INST_LABEL: return "label";
-        case INST_MOV:  return "mov";
-        case INST_ADD:  return "add";
-        case INST_SUB:  return "sub";
-        case INST_JMP:  return "jmp";
-        case INST_CALL: return "call";
-        case INST_RET:  return "ret";
-        case INST_PUSH: return "push";
-        case INST_POP:  return "pop";
-        case INST_CMP:  return "cmp";
-        case INST_JE:   return "je";
-        case INST_JNE:  return "jne";
-        case INST_NOP:  return "nop";
-        default:        return "invalid";
-    }
+	switch(type){
+		case INST_LABEL: return "label";
+		case INST_MOV:  return "mov";
+		case INST_ADD:  return "add";
+		case INST_SUB:  return "sub";
+		case INST_JMP:  return "jmp";
+		case INST_CALL: return "call";
+		case INST_RET:  return "ret";
+		case INST_PUSH: return "push";
+		case INST_POP:  return "pop";
+		case INST_CMP:  return "cmp";
+		case INST_JE:   return "je";
+		case INST_JNE:  return "jne";
+		case INST_NOP:  return "nop";
+		default:        return "invalid";
+	    }
 }
 
 
 void printInstruction(Instruction* i){
 	if(!i) return;
 
-	print("Instruction{ %s }", mnemonicTypeToStr(i->mnemonic));
+	print("Instruction{ ");
+	print(mnemonicTypeToStr(i->mnemonic));
+	print(" }\n");
 	if(i->operandCount >= 1){
 		if(i->operand1.type == NUMBER){
-			print(" Operand 1 { %d }", i->operand1.intValue);
+			print(" Operand 1 { ");
+			print_num(i->operand1.intValue);
+			print(" }\n");
 		} else{
-			print(" Operand 1 { %s }", i->operand1.strValue);
+			print(" Operand 1 { ");
+			print(i->operand1.strValue);
+			print(" }\n");
 		}
 	}
 
 	if(i->operandCount >= 2){
 		if(i->operand2.type == NUMBER){
-			print(" Operand 2 { %d }", i->operand2.intValue);
+			print(" Operand 2 { ");
+			print_num(i->operand2.intValue);
+			print(" }\n");
 		} else{
-			print(" Operand 2 { %s }", i->operand2.strValue);
+			print(" Operand 2 { ");
+			print(i->operand2.strValue);
+			print(" }\n");
 		}
 	}
-	print(" Size of Instruction {%d} , Address of Instruction {%d}", i->size, i->address);
+	print("Size of Instruction: ");
+	print_num(i->size);
+	print("\n");
+	print("Address of Instruction: ");
+	print_num(i->address);
 	print("\n");
 }
 
@@ -140,11 +154,18 @@ Token advanceTokVector(TokVector* vec, int* position){
 Token peek(Token* t, int index){
 	return t[index+1];
 }
-//this should either not advance or calls advance inside im not sure
+
+//simple check, if the two types dont match print an error. I dont have exit(1) implemented unfortunately so i think errors will just not really matter
 void expect(Token* tokenArray, int* index, TokenType expectedType){
 	if(tokenArray[*index].type != expectedType){
-		print("Error on line %ld: Expected: %s Got: %s\n",line, tokenTypeToString(expectedType), tokenTypeToString(tokenArray[*index].type));
-		exit(1);
+		print("Error on line: ");
+		print_num(line);
+		print("Expected: ");
+		print((tokenTypeToString(expectedType)));
+		print("Got: ");	
+		print(tokenTypeToString(tokenArray[*index].type));
+		print("\n");
+		return;
 	}
 	(*index)++;
 }
@@ -154,7 +175,6 @@ Operand parseOperand(TokVector* vec, int* pos){
 	Token t = vec->data[*pos];
 	op.type = t.type;
 	op.line = t.line;
-	// think i need something called a tagged union fml
 	if(t.type == NUMBER){
 		op.intValue = t.intValue;
 	} else{
@@ -178,16 +198,13 @@ Instruction parseInstruction(TokVector* vec){
 		return instruction;
 	}
 
-	//if(vec->data[instructionPos].type != IDENTIFIER){
-	//	printf("Error on line: %d, Expected IDENTIFIER/mnemonic got %s\n", vec->data[instructionPos].line, tokenTypeToString(vec->data[instructionPos].type));
-	//	exit(1); 
-	//}
-
-	//label case
 	if(vec->size == 2 && vec->data[0].type == IDENTIFIER && vec->data[1].type == COLON){
 		instruction.mnemonic = INST_LABEL;
 		instruction.labelName = vec->data[0].strValue;
-		print("LABEL: %s Address: %ld\n", vec->data[0].strValue, currentAddress);
+		print("LABEL: ");
+		print(vec->data[0].strValue); 
+		print("Address: ");
+		print_num(currentAddress);
 
 		return instruction; // skip adding to instruction vector
 	}
@@ -197,8 +214,11 @@ Instruction parseInstruction(TokVector* vec){
 	}
 	
 	if(vec->data[0].type != IDENTIFIER){ //error not a label directive or mnemonic
-		print("Error line on %d: Expected mnemonic, got %s\n", vec->data[0].line, tokenTypeToString(vec->data[0].type));
-		exit(1);
+		print("Error on line: ");
+		print_num(vec->data[0].line);
+		print("Expected mnemonic, got: ");
+		print(tokenTypeToString(vec->data[0].type));
+		return instruction;
 	}
 	instructionPos++;
 	instruction.mnemonic = strToInstructionType(vec->data[0].strValue);
@@ -249,7 +269,7 @@ void parseLine(Token* tokenArray, int* index, InstructionVector* instVec){
 	tokenVecFree(&tokVec);
 }
 
-void parseTokenArray(Token* tokenArray, int totalToken, InstructionVector* instVec){
+void parseTokenArray(Token* tokenArray, InstructionVector* instVec){
 	int index = 0;
 	while(tokenArray[index].type != TOK_EOF){
 		parseLine(tokenArray, &index, instVec);	

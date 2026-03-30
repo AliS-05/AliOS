@@ -23,6 +23,9 @@ void init_editor_screen(uint8_t colorByte);
 void updateCursorPos(int newPos);
 boolean isDigit(char digit);
 boolean isHex(char digit);
+boolean isLetter(char c);
+boolean isalnum(char c);
+
 
 int atoi(const char* str);
 void itoa(int num, char* buf);
@@ -41,4 +44,6 @@ void print_hex16(unsigned short b);
 void print_hex32(unsigned int b);
 void print_addr(uintptr_t addr);
 void print_byte(unsigned char b);
+
+
 #endif

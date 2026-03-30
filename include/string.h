@@ -12,4 +12,8 @@ int strncmp(const char* s1, const char* s2, size_t n);
 //string modifying functions
 char* strcat(char* dst, const char* src);
 char* strcpy(char* dst, const char* src);
+
+//other
+char* strdup(const char* src);
+char tolower(char c);
 #endif 

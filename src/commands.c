@@ -8,20 +8,42 @@
 #include <edit.h>
 
 extern volatile uint8_t enter_editor_flag;
+char* global_source; 
 
 void cmd_help() {
-    print(help_response);
-    print(" ls hexdump read write del edit");
+	print("AliOS v1.0 - Available Commands:\n");
+	print("**NOTE** IF your cursor goes off screen, type clear and press enter (like now)\n");
+	print("FILESYSTEM: **NOTE** you MUST pad filenames to 8 characters with spaces\n");
+	print("  ls                    - List files\n");
+	print("  write <file.ext> data - Create file with data\n");
+	print("  read <file.ext> [n]   - Read file (n bytes, default 25)\n");
+	print("  del <file.ext>        - Delete file\n");
+	print("  edit <file.ext>       - Open text editor\n\n");
+
+	print("EXECUTION: **AGAIN** you MUST pad filenames, run snake<SPACE><SPACE><SPACE>.bin\n");
+	print("  run <file.ext>        - Execute binary file\n");
+	print("  assemble <file.asm>   - Assemble x86 code to asoutput.exe\n\n");
+
+	print("UTILITIES:\n");
+	print("  echo <text>           - Print text\n");
+	print("  calc <expression>     - Simple calculator\n");
+	print("  hexdump <addr> [size] - Dump memory (default 0x100000, 256)\n");
+	print("  color <num>           - Change screen color (0-255)\n");
+	print("  clear                 - Clear screen\n");
+	print("  reboot                - Restart system\n\n");
+
+	print("EDITOR: i=insert, ESC=normal, :wq=save+quit, :q=quit, hjkl=move\n");
+	print("  edit <filename>       - Open editor on file\n");
 }
 
 void cmd_clear() {
-    init_screen();
-    cursor_pos = 0;
-    skip_newline = 1;
+	init_screen();
+	cursor_pos = 0;
+	skip_newline = 1;
 }
 
 void cmd_reboot() {
-    __asm__ __volatile__ ("jmp $0xFFFF, $0");
+	__asm__ __volatile__ ("jmp $0xFFFF, $0");
 }
 
 
@@ -31,7 +53,6 @@ void cmd_echo(){
 		print_char(*c);
 		c++;
 	}
-	//print(&input_buffer[12]);
 }
 
 void cmd_calc(char* input_buffer){
@@ -56,8 +77,8 @@ void cmd_hexdump(char* input_buffer){
 	} else if(strlen(arg1) >= 3 && (arg1[0] == '0' && (arg1[1] == 'x' || arg1[1] == 'X'))){ //checking for x ie 0x123
 		uintptr_t address = stoh(arg1); //converting address
 
-		const char* arg2 = token(NULL, ' ');
-		if(strlen(arg2) < 1){
+		const char* arg2 = token(NULL, ' '); 
+		if(strlen(arg2) < 1){ //ie no arg2 -> default value 256
 			hexdump((void*)address, 256);
 		}else{
 			int size = atoi(arg2);
@@ -73,8 +94,6 @@ void cmd_ls(){
 	listfiles_fat16();
 }
 
-//i guess i need a function for simply making a new file
-//and another for writing data to a file
 void cmd_makefile(char* input_buffer){
 	//expected input something like
 	//write test.txt hello world!
@@ -89,9 +108,13 @@ void cmd_makefile(char* input_buffer){
 		return;
 	}
 
-	if(!extension){ print("Please provide the file extension\n"); return; }
+	if(!extension){ 
+		print("Please provide the file extension\n"); 
+		return; 
+	}
 	
 	//inputbuffer offset since token null terminates after each token
+	// + 1 to skip null terminator
 	const char* data = input_buffer + strlen("write\0") + 1 + strlen(filename) + 1 + strlen(extension) + 1;//hello
 	
 	writeFile(filename, extension, (uint8_t*)data, strlen(data));
@@ -132,7 +155,7 @@ void cmd_readfile(char* input_buffer){
 		}
 	} else{
 		uint32_t fsize = getFileSize(filename, extension);
-		for(uint32_t i = 0; i < requestedSize && i < fsize; i++){
+		for(uint32_t i = 0; i < requestedSize && i < fsize; i++){ //making sure not to read garbage data
 			print_char((unsigned char)fileData[i]);
 		}
 	}
@@ -141,18 +164,38 @@ void cmd_readfile(char* input_buffer){
 }
 
 
-void cmd_run(char* input_buffer){
+void cmd_assemble(char* input_buffer){
+	token(input_buffer, ' '); // "assemble"
+	const char* input_file = token(NULL, '.'); 
+	const char* input_ext = token(NULL, ' ');
 
-	token(input_buffer, ' ');
-	const char* filename = token(NULL, '.');
-	const char* extension = token(NULL, ' ');
-	
+	if(!input_file || !input_ext){
+		print("Usage: assemble <input.asm>\n");
+		return;
+	}
+
+	char* source = (char*)readFile(input_file, input_ext);
+	print(source);
+	if(!source){
+		print("File not found\n");
+		return;
+	}
+
+	extern void assemble_buffer(char* buffer);
+	assemble_buffer(source);
+
+	free(source);
+}
+
+void cmd_run(char* input_buffer){
+	token(input_buffer, ' ');//run 
+	const char* filename = token(NULL, '.'); //asoutput
+	const char* extension = token(NULL, ' ');//exe
 
 	if(!filename || !extension){
 		print("File not found\n");
 		return;
 	}
-
 
 	uint8_t* fileData = readFile(filename, extension);
 	if(fileData == NULL){
@@ -165,7 +208,7 @@ void cmd_run(char* input_buffer){
 	//print_num((uint32_t)memory);
 
 	typedef int (*Program)();
-	Program program = (Program)memory;
+	Program program = (Program)memory; //cast typedef'd function pointer to malloc memory and then call it
 
 	int ret = program();
 	
@@ -175,14 +218,18 @@ void cmd_run(char* input_buffer){
 }
 
 void cmd_edit(char* input_buffer){
-	token(input_buffer, ' ');
-	const char* filename =  token(NULL, ' ');
-	if(!filename){
-		print("Usage edit <filename>");
+	token(input_buffer, ' '); //edit
+	const char* filename =  token(NULL, '.'); //test.
+	const char* extension = token(NULL, ' ');
+	if(!filename || !extension){
+		print("Usage edit <filename>.<extension>");
 	}
-//	edit_loop(filename);
-	extern char editor_filename[32];
+	extern char editor_filename[8];
+	extern char editor_extension[3];
 	strcpy(editor_filename, filename);
+	strcpy(editor_extension, extension);
+	//editor gets called from kernel_asm.s file for some reason
+	//i tried changing it but if it ain't broke don't fix it
 	enter_editor_flag = 1;
 }
 
@@ -197,7 +244,7 @@ void cmd_color(char* input_buffer){
 }
 
 void getDate(){ 
-	//RTC hardware register stuff... ugh
+	//RTC hardware register stuff...
 	//PDF downloaded implement later
 }
 
@@ -212,7 +259,7 @@ void parse_command() {
 		cmd_clear();
 	} else if (strcmp(input_buffer, "reboot") == 0) {
 		cmd_reboot();
-	} else if (strncmp(input_buffer, "echo", 4) == 0 || strcmp(input_buffer, "echo") == 0) {
+	} else if (strncmp(input_buffer, "echo", 4) == 0) {
 		cmd_echo();
 	} else if (strncmp(input_buffer, "calc", 4) == 0){
 		calc(input_buffer);
@@ -234,6 +281,8 @@ void parse_command() {
 		cmd_edit(input_buffer);
 	} else if (strncmp(input_buffer, "color", 5) == 0){
 		cmd_color(input_buffer);
+	} else if (strncmp(input_buffer, "assemble", 8) == 0){
+		cmd_assemble(input_buffer);
 	}
 	else {
 		print(unknown_response);

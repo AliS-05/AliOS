@@ -84,11 +84,18 @@ int memcmp(void* mem1, void* mem2, size_t n){
 }
 
 void* aligned_malloc(uint32_t size, uint32_t alignment){
+	//this is exactly the same as malloc except i calculate the 
 	struct MemoryBlock* current = (struct MemoryBlock*)0x100000;
+	uint32_t aligned_addr;
 	while(current != NULL){
 		if(current->available == 0 && current->size >= size + alignment){
 			uint32_t base_addr = (uint32_t)current + sizeof(struct MemoryBlock);
-			uint32_t aligned_addr = (base_addr + (alignment - 1)) & ~(alignment - 1);
+			uint32_t remainder = base_addr % alignment;
+			if(remainder != 0){
+				aligned_addr = base_addr + (alignment - remainder);
+			} else{
+				aligned_addr = base_addr;
+			}
 			uint32_t padding = aligned_addr - base_addr;
 
 			// create new block for remaining heap
@@ -108,4 +115,29 @@ void* aligned_malloc(uint32_t size, uint32_t alignment){
 	current = current->next;
 	}
 	return NULL;
+}
+
+//NOTE this might break if aligned_malloc is used since metaData placement will be off
+void* realloc(void* ptr, size_t newSize){
+	//read MemoryBlock info from ptr - sizeof(MemoryBlock)
+	//then newLocation = malloc(newSize)
+	//then compare that blocks size to the new size (since realloc can reduce size not just for increasing)
+	//if newSize > oldSize then memcpy(newData, oldData, oldSize)
+	//else memcpy(newData, oldData, newSize)
+	//[if i naively use newSize then I would write garbage bytes since its not initialized]
+	//free(ptr)
+	//return newLocation
+	struct MemoryBlock* blockData = (struct MemoryBlock*)((uint8_t*)ptr - sizeof(struct MemoryBlock));
+	size_t oldSize = blockData->size; 
+
+	void* newLocation = malloc(newSize);
+
+	if(newSize > oldSize){
+		memcpy(newLocation, ptr, oldSize); //normal case
+	} else{
+		memcpy(newLocation, ptr, newSize); //truncation case
+	}
+	
+	free(ptr);
+	return newLocation;
 }

@@ -1,128 +1,129 @@
-# AliOS
-
-A minimal x86 operating system built from scratch with the goal of achieving self-hosting capability (compiling itself from within itself).
-
-## Project Status
-- Active Development
-
-### Implemented
-- **Bootloader** - Custom x86 bootloader in assembly
-- **VGA Text Mode** - 80x25 text display with cursor management
-- **Keyboard Driver** - PS/2 keyboard input with scancode translation
-- **Memory Management** - malloc/free implementation
-- **ATA Disk Driver** - Read/write support from hard drive
-- **Filesystem** - Custom simple filesystem with:
-  - File creation, reading, writing, deletion
-  - Multi-sector file support
-  - Max 12 files (expansion planned)
-- **Shell** - Interactive command-line interface with built-in commands
-- **Program Loader** - Load and execute binary programs from disk (DOS-style single-tasking)
-
-### In Progress
-- NIC Driver / Network Capability
-
-### Planned
-- Self-compilation capability
-- Enhanced filesystem (more files, better allocation)
-- More utilities and programs
-
+# *AliOS* 
+A minimal x86 operating system built from scratch in C and assembly, featuring an x86 assembler, FAT16 filesystem, and text editor for writing and running programs entirely within the OS.
 ## Features
+### Core System
 
-### Shell Commands
-- `ls` - List files on disk
-- `read <file>` - Display file contents
-- `write <file> <content>` - Create/write file
-- `del <file>` - Delete file
-- `run <program>` - Execute binary program
-- `hexdump [addr] [size]` - Memory hex dump
-- `calc <expression>` - Calculator
-- `echo <text>` - Print text
-- `clear` - Clear screen
-- `reboot` - Restart system
-- `help` - Show available commands
-- `run snake` - Play my x86 Assembly Snake game !
+- Custom Bootloader - x86 bootloader written in assembly
+- Protected Mode Kernel - 32-bit kernel in C
+- Keyboard Driver - PS/2 keyboard scancodes to ascii 
+- Memory Management - Custom malloc, realloc, and free implementation
+- ATA Disk Driver - Reads and writes sectors
 
 ### Filesystem
-- Simple flat filesystem design
-- 512-byte sectors
-- File table at sector 0
-- Support for multi-sector files
-- Read/write operations from kernel and programs
 
-### Program Loading
-- Load raw binary files (.bin) from disk
-- Execute at fixed memory location (0x200000)
-- Single-tasking (one program at a time)
-- Return to shell on program completion
+*FAT16 Implementation* - Read, write, create, and delete files
+Disk Operations - Multi-sector read/write
+File Execution - Load and run binary programs from disk
 
-## Building
+### Dev Tools
 
-### Prerequisites
-- `nasm` - Netwide Assembler
-- `g++` - C++ compiler with freestanding support
-- `ld` - GNU linker
-- `make` - Build automation
-- `qemu-system-x86_64` - Emulator for testing
+*Text Editor* - Vim based editor (normal/insert/command modes)
+<img width="330" height="80" alt="image" src="https://github.com/user-attachments/assets/08592556-5f4b-44bb-8410-adc4d0cbf695" />
 
-### Build Commands
-```bash
-# Build the OS
-make
+Write and edit files inside of the OS
+Navigation with hjkl keys
+Save with :wq, quit with :q
 
-# Create filesystem image
-g++ mkfs.cpp -o mkfs && ./mkfs
+*x86 Assembler* - Two-pass assembler built into the shell
 
-# Run in QEMU
-make run
+Write assembly code in the editor
+Assemble into machine code
+Run generated binaries
 
-# Clean build artifacts
-make clean
+*E1000 Driver* - Only able to transmit packets at the moment, 
+receive packets planned in next version
+
+### Game
+
+*Snake* - It's Snake but written in x86 assembly
+<img width="731" height="468" alt="image" src="https://github.com/user-attachments/assets/8c59f2ab-c269-4c80-bbca-590dc928c638" />
+
+
+
+
+### Shell Commands
+*Filesystem*:
+
+- `ls` - Lists files
+- `write <file.ext> <data>` - Create file with data
+- `read <file.ext> [bytes]` - Read file contents
+- `del <file.ext>` - Delete file
+- `edit <file.ext>` - Open text editor
+
+*Execution*:
+
+- `run <file.ext>` - Execute binary program
+- `assemble <file.asm>` - Assemble x86 code to asoutput.exe
+
+
+*Utilities*:
+
+
+- `echo <text>` - Print text
+- `calc <expression>` - Simple calculator
+- `hexdump <addr> <size>` - Memory dump (default: 0x100000, 256 bytes)
+- `color <num>` - Change screen color (0-255)
+- `clear` - Clear screen
+- `reboot` - Restart system
+- `help` - Show all commands
+
+## *Prerequisites*
+
+- nasm - Assembler
+- gcc - C compiler
+- make - Build system
+- qemu-system-x86_64 - Emulator
+
+### *Build & Run*
+```
+./mkfat           # Create disk image
+make run          # Boot in QEMU
 ```
 
 ## Architecture
 
-### Memory Layout
-```
-0x00000000 - 0x000FFFFF: Low memory (BIOS, VGA, etc.)
-0x00080000 - 0x00090000: Kernel
-0x00100000 - 0x00200000: Heap
-0x00200000+ : Program loading
-```
+*Disk Layout (FAT16):*
 
-### Disk Layout 
-```
-Sector 0: File table (12 file entries)
-Sector 1+: File data
-```
+Sector 0      : Boot sector
+Sector 1-20   : FAT table 1
+Sector 21-40  : FAT table 2
+Sector 41-72  : Root directory (512 entries)
+Sector 73+    : Data area (clusters)
 
-### File Entry Structure
-```c
-struct FileObject {
-    char name[32];
-    uint32_t startSector;
-    uint32_t size;
-} __attribute__((packed));
-```
+*Technical Details*
 
-## Roadmap to Self-Hosting
+- Language: C (kernel), x86 Assembly (bootloader, drivers, games)
+- Architecture: x86 32-bit protected mode
+- Filesystem: FAT16
+- Execution Model: Single tasking (DOS-Like)
+- Lines of Code: ~4000
 
-1. Basic OS infrastructure (bootloader, kernel, drivers)
-2. Filesystem implementation
-3. Program loading
-4. Text editor for writing code within OS
-5. C compiler (lexer, parser, code generation)
-6. Assembler and linker
-7. Self-compilation test (compile kernel.c from within AliOS)
+## Known Limitations
 
-## Goals
+- Single cluster files only (2048 bytes max per file)
+- No subdirectories
+- No virtual memory
 
-- **Primary Goal:** Achieve self-hosting , ability to recompile the kernel from within the OS itself
-- **Learning Focus:** Deep understanding of systems programming, OS internals, and low-level x86 architecture
-- **Philosophy:** Build everything from scratch to understand fundamentals
+## Planned
+- Currently the Networking Stack only transmits packets, so receiving packets is an obvious next step.
+- Switching from flat memory to virtual memory, along with adding processes and a user space.
+- Improving the assembler to be able to assemble more complex programs.
+- A C compiler robust enough to compile the source code of the operating system
 
-## Technical Details
-
-- **Language:** C (kernel, filesystem), x86 Assembly (bootloader, low-level, snake)
-- **Architecture:** x86 (32-bit protected mode)
-- **Filesystem:** Custom simple flat filesystem
-- **Execution Model:** Single-tasking (DOS like program loading)
+## What I Learned
+What started as a simple project to learn x86 assembly 
+turned into an amazing project over the course of 2 months.
+I genuinely learned so much in such a short period of time.
+Of course I have a much more intimate understanding of how
+the computer actually functions and in turn am now a better 
+programmer, but more specifically many things that once seemed like pure magic no longer seem so unfathomable.
+For example, software interacting with hardware
+and driver code. It might sound obvious but hardware is 
+made to be interacted with software. Crazy right? 
+But that's not really something you can truly grasp until
+you interact with the manuals yourself I guess. At least I
+didn't. If you're interested in doing something similar to
+this project, the best advice I could give is to just get 
+started. I literally didn't know a single bit of assembly
+syntax other than mov and rax. And I ended up writing my own
+bootloader, keyboard driver, and snake game all in assembly

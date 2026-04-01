@@ -18,6 +18,7 @@ File Execution - Load and run binary programs from disk
 ### Dev Tools
 
 *Text Editor* - Vim based editor (normal/insert/command modes)
+
 <img width="330" height="80" alt="image" src="https://github.com/user-attachments/assets/08592556-5f4b-44bb-8410-adc4d0cbf695" />
 
 Write and edit files inside of the OS
@@ -36,6 +37,7 @@ receive packets planned in next version
 ### Game
 
 *Snake* - It's Snake but written in x86 assembly
+
 <img width="731" height="468" alt="image" src="https://github.com/user-attachments/assets/8c59f2ab-c269-4c80-bbca-590dc928c638" />
 
 

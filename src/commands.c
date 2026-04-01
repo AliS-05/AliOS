@@ -135,7 +135,6 @@ void cmd_delfile(char* input_buffer){
 }
 
 void cmd_readfile(char* input_buffer){
-	print("READ CALLED\n");
 	token(input_buffer, ' ');
 	const char* filename = token(NULL, '.');
 	const char* extension = token(NULL, ' ');

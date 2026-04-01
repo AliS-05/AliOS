@@ -103,7 +103,6 @@ void redraw(uint8_t color) {
 }
 
 extern void edit_loop(const char* filename, const char* extension) {
-	print("ENTERING EDITOR\n");
 	in_editor = 0;
 	editor_scancode = 0;
 	editor_mode = 0;
@@ -138,7 +137,6 @@ extern void edit_loop(const char* filename, const char* extension) {
 	
 	in_editor = 1;
 	init_editor_screen(0x0F);
-	print("IN_EDITOR SET TO 1\n");
 
 	while(in_editor) {
 	   redraw(vga_color);
@@ -190,6 +188,5 @@ extern void edit_loop(const char* filename, const char* extension) {
 	
 	in_editor = 0;
 	init_editor_screen(vga_color);
-	print("EXITING EDITOR\n");
 }
 

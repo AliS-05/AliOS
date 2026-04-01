@@ -21,18 +21,17 @@ File Execution - Load and run binary programs from disk
 
 <img width="330" height="80" alt="image" src="https://github.com/user-attachments/assets/08592556-5f4b-44bb-8410-adc4d0cbf695" />
 
-Write and edit files inside of the OS
-Navigation with hjkl keys
-Save with :wq, quit with :q
+- Write and edit files inside of the OS
+- Navigation with hjkl keys
+- Save with :wq, quit with :q
 
-*x86 Assembler* - Two-pass assembler built into the shell
+*x86 Assembler*:
+- Two-pass assembler built into the shell 
+- Write assembly code in the editor 
+- Assemble into machine code
+- Run generated binaries
 
-Write assembly code in the editor
-Assemble into machine code
-Run generated binaries
-
-*E1000 Driver* - Only able to transmit packets at the moment, 
-receive packets planned in next version
+*E1000 Driver* - Only able to transmit packets at the moment, receive packets planned in next version
 
 ### Game
 

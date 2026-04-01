@@ -47,7 +47,7 @@ File Execution - Load and run binary programs from disk
 
 - `ls` - Lists files
 - `write <file.ext> <data>` - Create file with data
-- `read <file.ext> [bytes]` - Read file contents
+- `read <file.ext> <bytes>` - Read file contents
 - `del <file.ext>` - Delete file
 - `edit <file.ext>` - Open text editor
 

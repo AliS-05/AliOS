@@ -11,9 +11,10 @@ A minimal x86 operating system built from scratch in C and assembly, featuring a
 
 ### Filesystem
 
-*FAT16 Implementation* - Read, write, create, and delete files
-Disk Operations - Multi-sector read/write
-File Execution - Load and run binary programs from disk
+*FAT16 Implementation* 
+- Read, write, create, and delete files
+- Disk Operations: Sector read/write
+- File Execution:  Load and run binary programs from disk
 
 ### Dev Tools
 

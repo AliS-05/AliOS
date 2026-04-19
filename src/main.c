@@ -15,12 +15,12 @@ void print_welcome_banner() {
 	print("             A L I   O S   v1.0          \n");
 	print("  ========================================\n");
 	print("\n");
-	print("  * x86 Operating System from scratch\n");
-	print("  * FAT16 Filesystem | Text Editor\n");
-	print("  * Native x86 Assembler | Snake Game\n");
+	print("  - x86 Assembler\n");
+	print("  - FAT16 Filesystem\n");
+	print("  - Text Editor\n");
+	print("  - Snake written in assembly!\n");
 	print("\n");
-	print("  Type 'help' to see available commands\n");
-	print("  Type 'clear' for a clean screen\n");
+	print("  Type 'clear' and then 'help' to see a list of all the commands!\n");
 	print("\n");
 }
 

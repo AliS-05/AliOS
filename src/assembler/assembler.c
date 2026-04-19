@@ -33,7 +33,7 @@ void assemble_buffer(char* buffer){
 		tokenArray[totalTokens] = tok;
 		totalTokens++;
 
-	} while(tok.type != TOK_EOF);
+	} while(tok.type != TOK_EOF && totalTokens < 2048);
 	
 	line = 1;
 	currentTokenIndex = 0;

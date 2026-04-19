@@ -62,7 +62,13 @@ void encodeMove(Instruction* inst, ByteVector* byteVector){
 		//mod rm calculations
 		uint8_t modrm = 0xC0 | (reg2 << 3) | reg1; 
 		ByteVectorPush(byteVector, modrm);
+	}else if(inst->operand2.type == MEMORY){
+		int dst = getRegisterCode(inst->operand1.strValue);
+		int src = getRegisterCode(inst->operand2.strValue);
+		ByteVectorPush(byteVector, 0x8B); // MOV r32, [r/m32]
+		ByteVectorPush(byteVector, getMod(0, dst, src));
 	}
+  
 }
 
 uint8_t getMod(int mod, int reg, int rm) {
@@ -102,8 +108,38 @@ void encodeInstruction(Instruction* inst, SymbolTable* table, ByteVector* byteVe
 		}
 
 		case INST_ADD: {
+			if(inst->operand1.type == MEMORY){
+				//opcode 01 for op2 = r16/32
+				if(inst->operand2.type == REGISTER){ //add [eax], ebx
+					ByteVectorPush(byteVector, 0x01);
+
+					int sourceReg = getRegisterCode(inst->operand2.strValue);
+					int destinationReg = getRegisterCode(inst->operand1.strValue);
+
+					uint8_t modrm = getMod(0, sourceReg, destinationReg);
+					ByteVectorPush(byteVector, modrm);
+				} else{ //else immediate ie add [eax], 5
+					//0x81
+					ByteVectorPush(byteVector, 0x81);
+					int destinationReg = getRegisterCode(inst->operand1.strValue);
+					uint8_t modrm = getMod(0, 0, destinationReg); // 11101xx
+					ByteVectorPush(byteVector, modrm);
+					ByteVectorWrite32(byteVector, inst->operand2.intValue);
+
+				}
+
+			}	//add eax, [myVar]
+			else if(inst->operand2.type == MEMORY && inst->operand1.type == REGISTER){ // REG MEM case 0x03
+				ByteVectorPush(byteVector, 0x03);
+				
+				int destinationReg = getRegisterCode(inst->operand1.strValue);
+				int sourceReg = getRegisterCode(inst->operand2.strValue);
+
+				uint8_t modrm = getMod(0, sourceReg, destinationReg);
+				ByteVectorPush(byteVector, modrm);
+			}
 			//NOTE check if operand is REG REG or REG IMM. REG REG == 0x01 REG IMM == 0x81
-			if(inst->operand2.type == NUMBER){
+			else if(inst->operand2.type == NUMBER){
 				ByteVectorPush(byteVector, 0x81);
 				int reg1 = getRegisterCode(inst->operand1.strValue);
 				uint8_t modrm = getMod(3, 0, reg1); // 11101xx

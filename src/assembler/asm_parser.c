@@ -8,8 +8,11 @@
 extern long line;
 extern long currentAddress;
 
-int instructionSize(Instruction* i){
+int instructionSize(Instruction* i, boolean modrmNeeded){
 	if(!i) return 0;
+
+	int extra = modrmNeeded ? 1 : 0;
+
 	switch(i->mnemonic){
 		case INST_INVALID:
 			return 0;
@@ -17,13 +20,13 @@ int instructionSize(Instruction* i){
 			//B8 00 00 00 00 (little endian immediate)
 			// mov reg, imm
 			if(i->operand1.type == REGISTER && i->operand2.type == NUMBER){
-				i->size = 5;
-				return 5;
+				i->size = 5 + extra;
+				return 5 + extra;
 			//89 /r 
 			//mov reg, reg
 			} else if (i->operand1.type == REGISTER && i->operand2.type == REGISTER){
-				i->size = 2;
-				return 2;
+				i->size = 2 + extra;
+				return 2 + extra;
 			}
 			break;
 		case INST_LABEL:
@@ -31,33 +34,33 @@ int instructionSize(Instruction* i){
 			break;
 		// C3
 		case INST_RET:
-			i->size = 1;
-			return 1;
+			i->size = 1 + extra;
+			return 1 + extra;
 		// E9 + 32 bit imm
 		case INST_JMP:
-			i->size = 5;
-			return 5; //near jump for now
+			i->size = 5 + extra;
+			return 5 + extra; //near jump for now
 
 		case INST_ADD:
 		case INST_SUB:
 		case INST_CMP:
-			i->size = 2;
-			return 2;
+			i->size = 2 + extra;
+			return 2 + extra;
 
 		case INST_PUSH:
 		case INST_POP:
-			i->size = 1;
-			return 1;
+			i->size = 1 + extra;
+			return 1 + extra;
 		case INST_NOP:
-			i->size = 1;
-			return 1;
+			i->size = 1 + extra;
+			return 1 + extra;
 		case INST_CALL:
-			i->size = 5;
-			return 5;
+			i->size = 5 + extra;
+			return 5 + extra;
 		case INST_JE:
 		case INST_JNE:
-			i->size = 6;
-			return 6;
+			i->size = 6 + extra;
+			return 6 + extra;
 		default:
 			print("Error calculating instruction size\n");
 			return -1;		
@@ -172,10 +175,17 @@ void expect(Token* tokenArray, int* index, TokenType expectedType){
 
 Operand parseOperand(TokVector* vec, int* pos){
 	Operand op;
-	Token t = vec->data[*pos];
+	Token t = vec->data[*pos]; //t is current Token
 	op.type = t.type;
 	op.line = t.line;
-	if(t.type == NUMBER){
+	
+	if(t.type == LBRACKET){
+		(*pos)++; //skip [
+		op.type = MEMORY; // dont want it to stay LBRACKET
+		op.strValue = vec->data[*pos].strValue; //copying register value
+		(*pos)++; //done with register now sitting at ] which gets skipped below
+	}
+	else if(t.type == NUMBER){
 		op.intValue = t.intValue;
 	} else{
 		op.strValue = t.strValue;
@@ -197,7 +207,8 @@ Instruction parseInstruction(TokVector* vec){
 	if(vec->size == 0){
 		return instruction;
 	}
-
+	//i have no idea what this is rereading it
+	//sayinhg if there are 2 tokens and the first oh its skipping start: i think
 	if(vec->size == 2 && vec->data[0].type == IDENTIFIER && vec->data[1].type == COLON){
 		instruction.mnemonic = INST_LABEL;
 		instruction.labelName = vec->data[0].strValue;
@@ -228,7 +239,7 @@ Instruction parseInstruction(TokVector* vec){
 		instruction.operandCount = 1;
 	}
 	
-	//skipping commma
+	//skipping commma 
 	if(instructionPos < vec->size && vec->data[instructionPos].type == COMMA){
 		instructionPos++;
 	}
@@ -245,6 +256,7 @@ Instruction parseInstruction(TokVector* vec){
 void parseLine(Token* tokenArray, int* index, InstructionVector* instVec){
 	TokVector tokVec;
 	tokenVecInit(&tokVec);
+	boolean modrmNeeded = false;
 
 	while(tokenArray[*index].type != NEWLINE &&
 	      tokenArray[*index].type != TOK_EOF){
@@ -254,11 +266,16 @@ void parseLine(Token* tokenArray, int* index, InstructionVector* instVec){
 	}
 	// vector should contain something like {MOV EAX COMMA 5 SEMICOLON NEWLINE}
 	// or is empty
+	
+	
+	
+
 	if(tokVec.size > 0) {
 		Instruction inst = parseInstruction(&tokVec);
+		boolean modrmNeeded = (inst.operand1.type == MEMORY || inst.operand2.type == MEMORY); //modrm needed if either operand is a MEMORY type
 		if(inst.mnemonic != INST_INVALID){
 			inst.address = currentAddress;
-			currentAddress += instructionSize(&inst);
+			currentAddress += instructionSize(&inst, modrmNeeded);
 			instVecPush(instVec, inst);
 			printInstruction(&inst);
 		}

@@ -11,9 +11,11 @@ typedef enum {
 	PLUS,
 	MINUS,
 	STAR,
+	DIV,
 	COLON,
-	LBRACKET,
-	RBRACKET,
+	LBRACKET, // [
+	RBRACKET, // ]
+	MEMORY,
 	INVALID
 } TokenType;
 

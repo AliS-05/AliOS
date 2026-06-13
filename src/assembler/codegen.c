@@ -47,6 +47,10 @@ int getRegisterCode(const char* reg) {
 	return -1;
 }
 
+uint8_t getMod(int mod, int reg, int rm) {
+	return (mod << 6) | (reg << 3) | rm;
+}
+
 void encodeMove(Instruction* inst, ByteVector* byteVector){
 	int reg1 = getRegisterCode(inst->operand1.strValue);
 
@@ -62,7 +66,8 @@ void encodeMove(Instruction* inst, ByteVector* byteVector){
 		//mod rm calculations
 		uint8_t modrm = 0xC0 | (reg2 << 3) | reg1; 
 		ByteVectorPush(byteVector, modrm);
-	}else if(inst->operand2.type == MEMORY){
+	}
+	if(inst->operand2.type == MEMORY){
 		int dst = getRegisterCode(inst->operand1.strValue);
 		int src = getRegisterCode(inst->operand2.strValue);
 		ByteVectorPush(byteVector, 0x8B); // MOV r32, [r/m32]
@@ -71,9 +76,6 @@ void encodeMove(Instruction* inst, ByteVector* byteVector){
   
 }
 
-uint8_t getMod(int mod, int reg, int rm) {
-	return (mod << 6) | (reg << 3) | rm;
-}
 
 
 //http://ref.x86asm.net/coder32.html
@@ -110,7 +112,8 @@ void encodeInstruction(Instruction* inst, SymbolTable* table, ByteVector* byteVe
 		case INST_ADD: {
 			if(inst->operand1.type == MEMORY){
 				//opcode 01 for op2 = r16/32
-				if(inst->operand2.type == REGISTER){ //add [eax], ebx
+				if(inst->operand2.type == REGISTER){ 
+					//add [eax], ebx
 					ByteVectorPush(byteVector, 0x01);
 
 					int sourceReg = getRegisterCode(inst->operand2.strValue);
@@ -118,7 +121,8 @@ void encodeInstruction(Instruction* inst, SymbolTable* table, ByteVector* byteVe
 
 					uint8_t modrm = getMod(0, sourceReg, destinationReg);
 					ByteVectorPush(byteVector, modrm);
-				} else{ //else immediate ie add [eax], 5
+				} else{ 
+					//else immediate ie add [eax], 5
 					//0x81
 					ByteVectorPush(byteVector, 0x81);
 					int destinationReg = getRegisterCode(inst->operand1.strValue);
@@ -128,7 +132,8 @@ void encodeInstruction(Instruction* inst, SymbolTable* table, ByteVector* byteVe
 
 				}
 
-			}	//add eax, [myVar]
+			}	
+			//add eax, [myVar]
 			else if(inst->operand2.type == MEMORY && inst->operand1.type == REGISTER){ // REG MEM case 0x03
 				ByteVectorPush(byteVector, 0x03);
 				
@@ -145,7 +150,8 @@ void encodeInstruction(Instruction* inst, SymbolTable* table, ByteVector* byteVe
 				uint8_t modrm = getMod(3, 0, reg1); // 11101xx
 				ByteVectorPush(byteVector, modrm);
 				ByteVectorWrite32(byteVector, inst->operand2.intValue);
-			} else if(inst->operand2.type == REGISTER){
+			} 
+			else if(inst->operand2.type == REGISTER){
 				ByteVectorPush(byteVector, 0x01);
 				int destinationReg = getRegisterCode(inst->operand1.strValue);
 				int sourceReg = getRegisterCode(inst->operand2.strValue);

@@ -52,13 +52,39 @@ uint8_t getMod(int mod, int reg, int rm) {
 }
 
 void encodeMove(Instruction* inst, ByteVector* byteVector){
+	// mov reg, [mem]  = 8B
+	// mov [mem], reg = 89
+	// mov [reg], imm = C7
+	if(inst->operand1.type == REGISTER && inst->operand2.type == MEMORY){
+		//8B is RM op1 = ModRM:reg, op2 = ModRM:r/m
+		int dst = getRegisterCode(inst->operand1.strValue);
+		int src = getRegisterCode(inst->operand2.strValue);
+		ByteVectorPush(byteVector, 0x8B);
+		ByteVectorPush(byteVector, getMod(0b00, dst, src));
+	}
+	else if(inst->operand1.type == MEMORY && inst->operand2.type == REGISTER){
+		//89 is MR op1 = ModRM:r/m op2 = ModRM:reg
+		int dst = getRegisterCode(inst->operand1.strValue);
+		int src = getRegisterCode(inst->operand2.strValue);
+		ByteVectorPush(byteVector, 0x89);
+		//NOTE might need to switch src dst here
+		ByteVectorPush(byteVector, getMod(0b00, src, dst));
+	}
+	else if(inst->operand1.type == MEMORY && inst->operand2.type == NUMBER){
+		//C7 is MI op1 = ModRM:r/m op2 = imm32
+		int dst = getRegisterCode(inst->operand1.strValue);
+		ByteVectorPush(byteVector, 0xC7);
+		ByteVectorPush(byteVector, getMod(0b00, 0, dst));
+		ByteVectorWrite32(byteVector, inst->operand2.intValue);
+	}
+
 	int reg1 = getRegisterCode(inst->operand1.strValue);
 
-	if(inst->operand2.type == NUMBER){
+	if(inst->operand1.type == REGISTER && inst->operand2.type == NUMBER){
 		// b8 for immediate to register
 		ByteVectorPush(byteVector, 0xB8 + reg1); // b9 ba etc
 		ByteVectorWrite32(byteVector, inst->operand2.intValue);
-	}else{
+	}else if(inst->operand1.type == REGISTER && inst->operand2.type == REGISTER){
 		int reg2 = getRegisterCode(inst->operand2.strValue);
 
 		ByteVectorPush(byteVector, 0x89);
@@ -67,13 +93,6 @@ void encodeMove(Instruction* inst, ByteVector* byteVector){
 		uint8_t modrm = 0xC0 | (reg2 << 3) | reg1; 
 		ByteVectorPush(byteVector, modrm);
 	}
-	if(inst->operand2.type == MEMORY){
-		int dst = getRegisterCode(inst->operand1.strValue);
-		int src = getRegisterCode(inst->operand2.strValue);
-		ByteVectorPush(byteVector, 0x8B); // MOV r32, [r/m32]
-		ByteVectorPush(byteVector, getMod(0, dst, src));
-	}
-  
 }
 
 

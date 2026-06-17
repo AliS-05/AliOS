@@ -27,6 +27,22 @@ int instructionSize(Instruction* i, boolean modrmNeeded){
 			} else if (i->operand1.type == REGISTER && i->operand2.type == REGISTER){
 				i->size = 2 + extra;
 				return 2 + extra;
+			} else if(i->operand1.type == MEMORY){
+				if(i->operand2.type == NUMBER){
+					//C7 case
+					i->size = 5 + extra;
+					return 5 + extra;
+				}
+				else{
+					//8B opcode, mov [reg], reg
+					//displacement byte ?
+					i->size = 2 + extra;
+					return 2 + extra;
+				}
+			} else if(i->operand2.type == MEMORY){
+				//8B opcode, mov reg, [reg]
+				i->size = 2 + extra;
+				return 2 + extra;
 			}
 			break;
 		case INST_LABEL:

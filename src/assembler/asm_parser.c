@@ -8,11 +8,8 @@
 extern long line;
 extern long currentAddress;
 
-int instructionSize(Instruction* i, boolean modrmNeeded){
+int instructionSize(Instruction* i){
 	if(!i) return 0;
-
-	int extra = modrmNeeded ? 1 : 0;
-
 	switch(i->mnemonic){
 		case INST_INVALID:
 			return 0;
@@ -20,29 +17,28 @@ int instructionSize(Instruction* i, boolean modrmNeeded){
 			//B8 00 00 00 00 (little endian immediate)
 			// mov reg, imm
 			if(i->operand1.type == REGISTER && i->operand2.type == NUMBER){
-				i->size = 5 + extra;
-				return 5 + extra;
-			//89 /r 
+				i->size = 5;
+				return 5;
 			//mov reg, reg
 			} else if (i->operand1.type == REGISTER && i->operand2.type == REGISTER){
-				i->size = 2 + extra;
-				return 2 + extra;
+				i->size = 2;
+				return 2;
 			} else if(i->operand1.type == MEMORY){
 				if(i->operand2.type == NUMBER){
-					//C7 case
-					i->size = 5 + extra;
-					return 5 + extra;
+					//C7 case, opcode + modrm + imm
+					i->size = 6;
+					return 6;
 				}
+				//REGISTER
 				else{
 					//8B opcode, mov [reg], reg
-					//displacement byte ?
-					i->size = 2 + extra;
-					return 2 + extra;
+					i->size = 2;
+					return 2;
 				}
 			} else if(i->operand2.type == MEMORY){
-				//8B opcode, mov reg, [reg]
-				i->size = 2 + extra;
-				return 2 + extra;
+				//8B opcode, mov ebx, [eax]
+				i->size = 2;
+				return 2;
 			}
 			break;
 		case INST_LABEL:
@@ -50,35 +46,84 @@ int instructionSize(Instruction* i, boolean modrmNeeded){
 			break;
 		// C3
 		case INST_RET:
-			i->size = 1 + extra;
-			return 1 + extra;
+			i->size = 1;
+			return 1;
 		// E9 + 32 bit imm
 		case INST_JMP:
-			i->size = 5 + extra;
-			return 5 + extra; //near jump for now
+			i->size = 5;
+			return 5; //near jump for now
 
 		case INST_ADD:
+			if(i->operand1.type == MEMORY && i->operand2.type == REGISTER){
+				i->size = 2;
+				return 2;
+			} else if(i->operand1.type == MEMORY && i->operand2.type == NUMBER){
+				i->size = 6;
+				return 6;
+			} else if(i->operand1.type == REGISTER && i->operand2.type == MEMORY){
+				i->size = 2;
+				return 2;
+			}else if(i->operand1.type == REGISTER && i->operand2.type == NUMBER){
+				i->size = 6;
+				return 6;
+			}else if(i->operand1.type == REGISTER && i->operand2.type == REGISTER){
+				i->size = 2;
+				return 2;
+			}
 		case INST_SUB:
+			if(i->operand1.type == MEMORY && i->operand2.type == NUMBER){
+				i->size = 6;
+				return 6;
+			} else if(i->operand1.type == MEMORY && i->operand2.type == REGISTER){
+				i->size = 2;
+				return 2;
+			} else if(i->operand1.type == REGISTER && i->operand2.type == MEMORY){
+				i->size = 2;
+				return 2;
+			}else if(i->operand1.type == REGISTER && i->operand2.type == NUMBER){
+				i->size = 6;
+				return 6;
+			}else if(i->operand1.type == REGISTER && i->operand2.type == REGISTER){
+				i->size = 2;
+				return 2;
+			}
 		case INST_CMP:
-			i->size = 2 + extra;
-			return 2 + extra;
-
+			if(i->operand1.type == MEMORY && i->operand2.type == REGISTER){
+				i->size = 2;
+				return 2;
+			} else if(i->operand1.type == REGISTER && i->operand2.type == REGISTER){
+				i->size = 2;
+				return 2;
+			} else if(i->operand1.type == REGISTER && i->operand2.type == MEMORY){
+				i->size = 2;
+				return 2;
+			}else if(i->operand1.type == REGISTER && i->operand2.type == NUMBER){
+				i->size = 6;
+				return 6;
+			}else if(i->operand1.type == MEMORY && i->operand2.type == NUMBER){
+				i->size = 6;
+				return 6;
+			}
+			break;
+		case INST_CALL:
+			i->size = 5;
+			return 5;
+		case INST_JE:
+			i->size = 6;
+			return 6;
 		case INST_PUSH:
 		case INST_POP:
-			i->size = 1 + extra;
-			return 1 + extra;
-		case INST_NOP:
-			i->size = 1 + extra;
-			return 1 + extra;
-		case INST_CALL:
-			i->size = 5 + extra;
-			return 5 + extra;
-		case INST_JE:
+			i->size = 1;
+			return 1;
 		case INST_JNE:
-			i->size = 6 + extra;
-			return 6 + extra;
+			i->size = 6;
+			return 6;
 		default:
-			print("Error calculating instruction size\n");
+		case INST_NOP:
+			i->size = 1;
+			return 1;
+
+			print("Error calculating iruction size\n");
 			return -1;		
 	}
 	return -1;
@@ -288,10 +333,9 @@ void parseLine(Token* tokenArray, int* index, InstructionVector* instVec){
 
 	if(tokVec.size > 0) {
 		Instruction inst = parseInstruction(&tokVec);
-		boolean modrmNeeded = (inst.operand1.type == MEMORY || inst.operand2.type == MEMORY); //modrm needed if either operand is a MEMORY type
 		if(inst.mnemonic != INST_INVALID){
 			inst.address = currentAddress;
-			currentAddress += instructionSize(&inst, modrmNeeded);
+			currentAddress += instructionSize(&inst);
 			instVecPush(instVec, inst);
 			printInstruction(&inst);
 		}
@@ -309,5 +353,3 @@ void parseTokenArray(Token* tokenArray, InstructionVector* instVec){
 	}
 
 }
-
-

@@ -19,9 +19,24 @@ int instructionSize(Instruction* i){
 			if(i->operand1.type == REGISTER && i->operand2.type == NUMBER){
 				i->size = 5;
 				return 5;
-			//89 /r 
 			//mov reg, reg
 			} else if (i->operand1.type == REGISTER && i->operand2.type == REGISTER){
+				i->size = 2;
+				return 2;
+			} else if(i->operand1.type == MEMORY){
+				if(i->operand2.type == NUMBER){
+					//C7 case, opcode + modrm + imm
+					i->size = 6;
+					return 6;
+				}
+				//REGISTER
+				else{
+					//8B opcode, mov [reg], reg
+					i->size = 2;
+					return 2;
+				}
+			} else if(i->operand2.type == MEMORY){
+				//8B opcode, mov ebx, [eax]
 				i->size = 2;
 				return 2;
 			}
@@ -39,27 +54,76 @@ int instructionSize(Instruction* i){
 			return 5; //near jump for now
 
 		case INST_ADD:
+			if(i->operand1.type == MEMORY && i->operand2.type == REGISTER){
+				i->size = 2;
+				return 2;
+			} else if(i->operand1.type == MEMORY && i->operand2.type == NUMBER){
+				i->size = 6;
+				return 6;
+			} else if(i->operand1.type == REGISTER && i->operand2.type == MEMORY){
+				i->size = 2;
+				return 2;
+			}else if(i->operand1.type == REGISTER && i->operand2.type == NUMBER){
+				i->size = 6;
+				return 6;
+			}else if(i->operand1.type == REGISTER && i->operand2.type == REGISTER){
+				i->size = 2;
+				return 2;
+			}
 		case INST_SUB:
+			if(i->operand1.type == MEMORY && i->operand2.type == NUMBER){
+				i->size = 6;
+				return 6;
+			} else if(i->operand1.type == MEMORY && i->operand2.type == REGISTER){
+				i->size = 2;
+				return 2;
+			} else if(i->operand1.type == REGISTER && i->operand2.type == MEMORY){
+				i->size = 2;
+				return 2;
+			}else if(i->operand1.type == REGISTER && i->operand2.type == NUMBER){
+				i->size = 6;
+				return 6;
+			}else if(i->operand1.type == REGISTER && i->operand2.type == REGISTER){
+				i->size = 2;
+				return 2;
+			}
 		case INST_CMP:
-			i->size = 2;
-			return 2;
-
-		case INST_PUSH:
-		case INST_POP:
-			i->size = 1;
-			return 1;
-		case INST_NOP:
-			i->size = 1;
-			return 1;
+			if(i->operand1.type == MEMORY && i->operand2.type == REGISTER){
+				i->size = 2;
+				return 2;
+			} else if(i->operand1.type == REGISTER && i->operand2.type == REGISTER){
+				i->size = 2;
+				return 2;
+			} else if(i->operand1.type == REGISTER && i->operand2.type == MEMORY){
+				i->size = 2;
+				return 2;
+			}else if(i->operand1.type == REGISTER && i->operand2.type == NUMBER){
+				i->size = 6;
+				return 6;
+			}else if(i->operand1.type == MEMORY && i->operand2.type == NUMBER){
+				i->size = 6;
+				return 6;
+			}
+			break;
 		case INST_CALL:
 			i->size = 5;
 			return 5;
 		case INST_JE:
+			i->size = 6;
+			return 6;
+		case INST_PUSH:
+		case INST_POP:
+			i->size = 1;
+			return 1;
 		case INST_JNE:
 			i->size = 6;
 			return 6;
 		default:
-			print("Error calculating instruction size\n");
+		case INST_NOP:
+			i->size = 1;
+			return 1;
+
+			print("Error calculating iruction size\n");
 			return -1;		
 	}
 	return -1;
@@ -172,10 +236,17 @@ void expect(Token* tokenArray, int* index, TokenType expectedType){
 
 Operand parseOperand(TokVector* vec, int* pos){
 	Operand op;
-	Token t = vec->data[*pos];
+	Token t = vec->data[*pos]; //t is current Token
 	op.type = t.type;
 	op.line = t.line;
-	if(t.type == NUMBER){
+	
+	if(t.type == LBRACKET){
+		(*pos)++; //skip [
+		op.type = MEMORY; // dont want it to stay LBRACKET
+		op.strValue = vec->data[*pos].strValue; //copying register value
+		(*pos)++; //done with register now sitting at ] which gets skipped below
+	}
+	else if(t.type == NUMBER){
 		op.intValue = t.intValue;
 	} else{
 		op.strValue = t.strValue;
@@ -197,7 +268,8 @@ Instruction parseInstruction(TokVector* vec){
 	if(vec->size == 0){
 		return instruction;
 	}
-
+	//i have no idea what this is rereading it
+	//sayinhg if there are 2 tokens and the first oh its skipping start: i think
 	if(vec->size == 2 && vec->data[0].type == IDENTIFIER && vec->data[1].type == COLON){
 		instruction.mnemonic = INST_LABEL;
 		instruction.labelName = vec->data[0].strValue;
@@ -228,7 +300,7 @@ Instruction parseInstruction(TokVector* vec){
 		instruction.operandCount = 1;
 	}
 	
-	//skipping commma
+	//skipping commma 
 	if(instructionPos < vec->size && vec->data[instructionPos].type == COMMA){
 		instructionPos++;
 	}
@@ -245,6 +317,7 @@ Instruction parseInstruction(TokVector* vec){
 void parseLine(Token* tokenArray, int* index, InstructionVector* instVec){
 	TokVector tokVec;
 	tokenVecInit(&tokVec);
+	boolean modrmNeeded = false;
 
 	while(tokenArray[*index].type != NEWLINE &&
 	      tokenArray[*index].type != TOK_EOF){
@@ -254,6 +327,10 @@ void parseLine(Token* tokenArray, int* index, InstructionVector* instVec){
 	}
 	// vector should contain something like {MOV EAX COMMA 5 SEMICOLON NEWLINE}
 	// or is empty
+	
+	
+	
+
 	if(tokVec.size > 0) {
 		Instruction inst = parseInstruction(&tokVec);
 		if(inst.mnemonic != INST_INVALID){
@@ -276,5 +353,3 @@ void parseTokenArray(Token* tokenArray, InstructionVector* instVec){
 	}
 
 }
-
-

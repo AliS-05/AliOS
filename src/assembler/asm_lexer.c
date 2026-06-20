@@ -50,6 +50,10 @@ Token nextToken() {
 			curPos++;
 			tok.type = STAR;
 			return tok;
+		case '/':
+			curPos++;
+			tok.type = DIV;
+			return tok;
 
 		case ':':
 			curPos++;
@@ -79,50 +83,53 @@ Token nextToken() {
 		int i = 0;	
 		//read into buffer and cmp 
 		while (isalnum(source[curPos]) || source[curPos] == '_') {
-			buffer[i++] = tolower(source[curPos++]);
+			buffer[i++] = tolower(source[curPos++]); //advances curPos, reading entire word
 		}
 
 		buffer[i] = '\0';	
 		if (!strcmp(buffer, "rax") ||
-		    !strcmp(buffer, "rbx") ||
-		    !strcmp(buffer, "rcx") ||
-		    !strcmp(buffer, "rdx") ||
-		    !strcmp(buffer, "eax") ||
-		    !strcmp(buffer, "ebx") ||
-		    !strcmp(buffer, "ecx") ||
-		    !strcmp(buffer, "edx")) {
-		    tok.type = REGISTER;
-		    tok.strValue = strdup(buffer);
-		    return tok;
+			!strcmp(buffer, "rbx") ||
+			!strcmp(buffer, "rcx") ||
+		        !strcmp(buffer, "rdx") ||
+		        !strcmp(buffer, "eax") ||
+		        !strcmp(buffer, "ebx") ||
+		        !strcmp(buffer, "ecx") ||
+		        !strcmp(buffer, "edx") || 
+		        !strcmp(buffer, "esp") || 
+		        !strcmp(buffer, "ebp") || 
+		        !strcmp(buffer, "esi") || 
+		        !strcmp(buffer, "edi")) {
+		        tok.type = REGISTER;
+		        tok.strValue = strdup(buffer);
+		        return tok;
 		}
-
+		//else identifier
 		tok.type = IDENTIFIER;
 		tok.strValue = strdup(buffer);
 		return tok;
-	    }
+	}
 
-	    // Number ie decimal or hex 0x
-	    if (isDigit(c)) {
-		long value = 0;
+	// Number ie decimal or hex 0x
+	if (isDigit(c)) {
+	long value = 0;
 
-		if (c == '0' && source[curPos+1] == 'x') {
-		    curPos += 2;
-		    while (isDigit(source[curPos]) || (source[curPos] >= 65 && source[curPos] <=70) || (source[curPos] >= 97 && source[curPos] <=102)){ //if is digit or between a-f or A-F
+	if (c == '0' && source[curPos+1] == 'x') {
+		curPos += 2;
+		while (isDigit(source[curPos]) || (source[curPos] >= 65 && source[curPos] <=70) || (source[curPos] >= 97 && source[curPos] <=102)){ //if is digit or between a-f or A-F
 			value = value * 16 + (isDigit(source[curPos]) ? source[curPos] - '0' : tolower(source[curPos]) - 'a' + 10); //clever single liner to convert hex digits shoutout gpt
 			curPos++;
-		    }
-		} else {
-		    while (isDigit(source[curPos])) {
-			value = value * 10 + (source[curPos] - '0');
-			curPos++;
-		    }
 		}
-
+		} else {
+			while (isDigit(source[curPos])) {
+				value = value * 10 + (source[curPos] - '0');
+				curPos++;
+			}
+		}
 		tok.type = NUMBER;
 		tok.intValue = value;
 		return tok;
-	    }
-	    tok.type = INVALID;
-	    curPos++;
-	    return tok;
+	}
+	tok.type = INVALID;
+	curPos++;
+	return tok;
 }

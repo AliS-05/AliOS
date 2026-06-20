@@ -8,7 +8,7 @@
 #include <edit.h>
 
 extern volatile uint8_t enter_editor_flag;
-char* global_source; 
+char* global_source;
 
 void cmd_help() {
 	print("AliOS v1.0 - Available Commands:\n");
@@ -108,15 +108,15 @@ void cmd_makefile(char* input_buffer){
 		return;
 	}
 
-	if(!extension){ 
-		print("Please provide the file extension\n"); 
-		return; 
+	if(!extension){
+		print("Please provide the file extension\n");
+		return;
 	}
-	
+
 	//inputbuffer offset since token null terminates after each token
 	// + 1 to skip null terminator
 	const char* data = input_buffer + strlen("write\0") + 1 + strlen(filename) + 1 + strlen(extension) + 1;//hello
-	
+
 	writeFile(filename, extension, (uint8_t*)data, strlen(data));
 	return;
 }
@@ -148,7 +148,7 @@ void cmd_readfile(char* input_buffer){
 
 	uint8_t* fileData = readFile(filename, extension);
 	int requestedSize = atoi(size);
-	if(requestedSize == 0){ 
+	if(requestedSize == 0){
 		for(uint8_t i = 0; i < 25; i++){
 			print_char((unsigned char)fileData[i]);
 		}
@@ -165,7 +165,7 @@ void cmd_readfile(char* input_buffer){
 
 void cmd_assemble(char* input_buffer){
 	token(input_buffer, ' '); // "assemble"
-	const char* input_file = token(NULL, '.'); 
+	const char* input_file = token(NULL, '.');
 	const char* input_ext = token(NULL, ' ');
 
 	if(!input_file || !input_ext){
@@ -187,7 +187,7 @@ void cmd_assemble(char* input_buffer){
 }
 
 void cmd_run(char* input_buffer){
-	token(input_buffer, ' ');//run 
+	token(input_buffer, ' ');//run
 	const char* filename = token(NULL, '.'); //asoutput
 	const char* extension = token(NULL, ' ');//exe
 
@@ -210,7 +210,6 @@ void cmd_run(char* input_buffer){
 	Program program = (Program)memory; //cast typedef'd function pointer to malloc memory and then call it
 
 	int ret = program();
-	
 	free(fileData);
 	print("Program Finished: ");
 	print_num(ret);
@@ -242,7 +241,7 @@ void cmd_color(char* input_buffer){
 	init_editor_screen((uint8_t)col);
 }
 
-void getDate(){ 
+void getDate(){
 	//RTC hardware register stuff...
 	//PDF downloaded implement later
 }
@@ -287,3 +286,4 @@ void parse_command() {
 		print(unknown_response);
 	}
 }
+

@@ -31,10 +31,10 @@ typedef struct {
 
 typedef struct Instruction {
 	MnemonicType mnemonic; // mov jmp org lidt lgdt etc
-	Operand operand1; // necessary for every instruction
+	Operand operand1; // necessary for every instruction , well not nop
 	Operand operand2; //optional
 	int operandCount;
-	int size;
+	int size; // in bytes
 	int address;
 	char* labelName; 
 } Instruction;

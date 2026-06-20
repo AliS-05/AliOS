@@ -39,7 +39,7 @@ void instVecPush(InstructionVector* vec, Instruction inst){
 		vec->capacity *= 2;
 		vec->data = realloc(vec->data, sizeof(Instruction) * vec->capacity);
 	}
-	vec->data[vec->size++] = inst;
+	vec->data[vec->size++] = inst; //does increase size automatically when you push
 }
 
 

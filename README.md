@@ -26,7 +26,7 @@ A minimal x86 operating system built from scratch in C and assembly, featuring a
 - Navigation with hjkl keys
 - Save with :wq, quit with :q
 
-*x86 Assembler*:
+### x86 Assembler:
 - Two-pass assembler built into the shell 
 - Write assembly code in the editor 
 - Assemble into machine code

@@ -110,7 +110,6 @@ Sector 73+    : Data area (clusters)
 - Currently the Networking Stack only transmits packets, so receiving packets is an obvious next step.
 - Switching from flat memory to virtual memory, along with adding processes and a user space.
 - Improving the assembler to be able to assemble more complex programs.
-- A C compiler robust enough to compile the source code of the operating system
 
 ## What I Learned
 What started as a simple project to learn x86 assembly 

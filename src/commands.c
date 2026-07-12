@@ -14,7 +14,7 @@ char* global_source;
 
 void cmd_help() {
 	print("AliOS v1.0 - Available Commands:\n");
-	print("**NOTE** IF your cursor goes off screen, type clear and press enter (like now)\n");
+	print("Use CTRL-U and CTRL-D to scroll up and down respectively");
 	print("FILESYSTEM: **NOTE** you MUST pad filenames to 8 characters with spaces\n");
 	print("  ls                    - List files\n");
 	print("  write <file.ext> data - Create file with data\n");

@@ -8,7 +8,9 @@
 #include <edit.h>
 
 extern volatile uint8_t enter_editor_flag;
+extern char terminalScrollBuffer[1000][80];
 char* global_source;
+
 
 void cmd_help() {
 	print("AliOS v1.0 - Available Commands:\n");
@@ -37,6 +39,7 @@ void cmd_help() {
 }
 
 void cmd_clear() {
+	memset(terminalScrollBuffer, 0, sizeof(terminalScrollBuffer));
 	init_screen();
 	cursor_pos = 0;
 	skip_newline = 1;
@@ -251,6 +254,7 @@ void getTime(){
 }
 
 void parse_command() {
+	
 	if (strcmp(input_buffer, "help") == 0) {
 		cmd_help();
 	} else if (strcmp(input_buffer, "clear") == 0) {

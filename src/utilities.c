@@ -1,6 +1,6 @@
 #include <utilities.h>
 #include <string.h>
-
+#include <memory.h>
 extern int cursor_pos;
 extern int buffer_pos;
 extern unsigned char skip_newline; //1 byte
@@ -10,7 +10,11 @@ extern char help_response[];
 extern char unknown_response[];
 extern void print(const char* str);
 extern uint8_t vga_color;
+extern void putChar(char c);
 
+char terminalScrollBuffer[1000][80] = {0};  
+int terminalScrollPosition = 0; 
+int scrollView = 0;  
 
 void init_editor_screen(uint8_t colorByte){
 	vga_color = colorByte;
@@ -36,23 +40,65 @@ void updateCursorPos(int newPos){
 
 
 void print_char(const char c){
-	if(cursor_pos >= 3998) return;
-
+	if(cursor_pos >= 4000) return;
 	volatile unsigned char* vga = (volatile unsigned char*)0xB8000;
 	vga[cursor_pos] = (unsigned char)c;
 	vga[cursor_pos+1] = vga_color;
 	cursor_pos += 2;
 }
 
-void print(const char *s1){
-	while( *s1 != '\0' ){
-		if(*s1 == '\n'){
-			cursor_pos = newLine(cursor_pos);
-		}else{
-			print_char(*s1);
+void renderWindow(int top){
+	volatile unsigned char* vga = (volatile unsigned char*)0xB8000;
+	int p = 0;
+	for(int line = 0; line < 25; line++){
+		for(int col = 0; col < 80; col++){
+			char c = terminalScrollBuffer[top + line][col];
+			if(c == '\0' || c == '\n') c = ' ';
+			vga[p]   = (unsigned char)c;
+			vga[p+1] = vga_color;
+			p += 2;
 		}
+	}
+}
+
+void putChar(char c){
+	if(scrollView != 0){                    
+		scrollView = 0;
+		renderWindow(terminalScrollPosition);
+	}
+	if(c == '\n'){
+		if(cursor_pos / 160 >= 24){     
+			terminalScrollPosition++;
+			renderWindow(terminalScrollPosition);
+			cursor_pos = 24 * 160;
+		} else {
+			cursor_pos = newLine(cursor_pos);
+		}
+	} else {
+		int row = cursor_pos / 160;
+		int col = (cursor_pos / 2) % 80;
+		terminalScrollBuffer[terminalScrollPosition + row][col] = c;
+		print_char(c);
+	}
+}
+
+void print(const char *s1){
+	while(*s1 != '\0'){
+		putChar(*s1);
 		s1++;
 	}
+}
+
+void scrollUp(){
+	if(terminalScrollPosition - scrollView <= 0) return;
+	scrollView++;
+	renderWindow(terminalScrollPosition - scrollView);
+}
+
+void scrollDown(){
+	if(scrollView == 0) return;
+	scrollView--;
+	renderWindow(terminalScrollPosition - scrollView);
 }
 
 
@@ -228,3 +274,6 @@ char* token(char* str, const char delim){ //basically strtok
 	//savedpos now at first / next ' '
 	return token_start;
 }
+
+
+

@@ -369,6 +369,8 @@ keyboard_handler:
 	mov [cursor_pos], eax
 	add esp, 4
 
+	;C code seems to be working keeping assembly here just in case
+
 	;;formula = ((cursorpos/160) + 1 ) * 160
 	;mov eax, [cursor_pos] ;setting up cursor pos
 	;xor edx, edx ;zeroing out edx for division

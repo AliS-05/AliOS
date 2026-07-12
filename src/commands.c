@@ -8,6 +8,7 @@
 #include <edit.h>
 
 extern volatile uint8_t enter_editor_flag;
+extern char terminalScrollBuffer[1000][80];
 char* global_source;
 
 
@@ -38,6 +39,7 @@ void cmd_help() {
 }
 
 void cmd_clear() {
+	memset(terminalScrollBuffer, 0, sizeof(terminalScrollBuffer));
 	init_screen();
 	cursor_pos = 0;
 	skip_newline = 1;

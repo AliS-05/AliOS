@@ -11,9 +11,13 @@ extern char unknown_response[];
 extern void print(const char* str);
 extern uint8_t vga_color;
 
-char terminalScrollBuffer[1000][80] = {0};
-int terminalScrollPosition = 1;
 
+char terminalScrollBuffer[1000][80] = {0};  
+int terminalScrollPosition = 0; 
+int scrollView = 0;  
+
+//used to scroll automatically if print() goes off screen
+int autoScrollBounds = 1;
 
 void init_editor_screen(uint8_t colorByte){
 	vga_color = colorByte;
@@ -39,26 +43,63 @@ void updateCursorPos(int newPos){
 
 
 void print_char(const char c){
-	if(cursor_pos >= 3998) return;
-
-	memcpy(terminalScrollBuffer[terminalScrollPosition + cursor_pos % 80], &c, sizeof(char)); // copying line into scroll buffer
-
+	if(cursor_pos >= 4000) return;
 	volatile unsigned char* vga = (volatile unsigned char*)0xB8000;
 	vga[cursor_pos] = (unsigned char)c;
 	vga[cursor_pos+1] = vga_color;
 	cursor_pos += 2;
 }
 
+void renderWindow(int top){
+	volatile unsigned char* vga = (volatile unsigned char*)0xB8000;
+	int p = 0;
+	for(int line = 0; line < 25; line++){
+		for(int col = 0; col < 80; col++){
+			char c = terminalScrollBuffer[top + line][col];
+			if(c == '\0' || c == '\n') c = ' ';   
+			vga[p]   = (unsigned char)c;
+			vga[p+1] = vga_color;
+			p += 2;
+		}
+	}
+}
+
 void print(const char *s1){
-	while( *s1 != '\0' ){
+	if(scrollView != 0){                 // typing/output returns you to the live view
+		scrollView = 0;
+		renderWindow(terminalScrollPosition);
+	}
+	while(*s1 != '\0'){
 		if(*s1 == '\n'){
-			cursor_pos = newLine(cursor_pos);
-		}else{
+			if(cursor_pos / 160 >= 24){   
+				terminalScrollPosition++;
+				renderWindow(terminalScrollPosition);
+				cursor_pos = 24 * 160;    
+			} else {
+			  cursor_pos = newLine(cursor_pos);
+			}
+		} else {
+			int row = cursor_pos / 160;
+			int col = (cursor_pos / 2) % 80;
+			terminalScrollBuffer[terminalScrollPosition + row][col] = *s1;
 			print_char(*s1);
 		}
 		s1++;
 	}
 }
+
+void scrollUp(){
+	if(terminalScrollPosition - scrollView <= 0) return;   
+	scrollView++;
+	renderWindow(terminalScrollPosition - scrollView);
+}
+
+void scrollDown(){
+	if(scrollView == 0) return;                            
+	scrollView--;
+	renderWindow(terminalScrollPosition - scrollView);
+}
+
 
 void print_num(int num){
 	static char buf[32];
@@ -234,34 +275,4 @@ char* token(char* str, const char delim){ //basically strtok
 }
 
 
-void scrollUp(){
-	print("SCROLL UP RECEIVED\n");
-	//oob
-	if(terminalScrollPosition < 26) return;
-	else{
-		//a lower number means earlier in the history
-		terminalScrollPosition--;
-		int anchor = terminalScrollPosition;
-		for(int line = 0; line < 25; line++){
-			print(terminalScrollBuffer[anchor]);
-			anchor++;
-		}
-	}
-	return;
-}
 
-void scrollDown(){
-	print("SCROLL DOWN RECEIVED\n");
-	//oob
-	if(terminalScrollPosition < 26 || terminalScrollPosition > 974) return;
-	else{
-		//a higher number means more recently in the history
-		terminalScrollPosition++;
-		int anchor = terminalScrollPosition;
-		for(int line = 0; line < 25; line++){
-			print(terminalScrollBuffer[anchor]);
-			anchor++;
-		}
-	}
-	return;
-}

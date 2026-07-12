@@ -10,6 +10,7 @@
 extern volatile uint8_t enter_editor_flag;
 char* global_source;
 
+
 void cmd_help() {
 	print("AliOS v1.0 - Available Commands:\n");
 	print("**NOTE** IF your cursor goes off screen, type clear and press enter (like now)\n");
@@ -251,6 +252,7 @@ void getTime(){
 }
 
 void parse_command() {
+	
 	if (strcmp(input_buffer, "help") == 0) {
 		cmd_help();
 	} else if (strcmp(input_buffer, "clear") == 0) {

@@ -1,6 +1,6 @@
 #include <utilities.h>
 #include <string.h>
-
+#include <memory.h>
 extern int cursor_pos;
 extern int buffer_pos;
 extern unsigned char skip_newline; //1 byte
@@ -10,6 +10,9 @@ extern char help_response[];
 extern char unknown_response[];
 extern void print(const char* str);
 extern uint8_t vga_color;
+
+char terminalScrollBuffer[1000][80] = {0};
+int terminalScrollPosition = 1;
 
 
 void init_editor_screen(uint8_t colorByte){
@@ -38,6 +41,8 @@ void updateCursorPos(int newPos){
 void print_char(const char c){
 	if(cursor_pos >= 3998) return;
 
+	memcpy(terminalScrollBuffer[terminalScrollPosition + cursor_pos % 80], &c, sizeof(char)); // copying line into scroll buffer
+
 	volatile unsigned char* vga = (volatile unsigned char*)0xB8000;
 	vga[cursor_pos] = (unsigned char)c;
 	vga[cursor_pos+1] = vga_color;
@@ -54,7 +59,6 @@ void print(const char *s1){
 		s1++;
 	}
 }
-
 
 void print_num(int num){
 	static char buf[32];
@@ -227,4 +231,37 @@ char* token(char* str, const char delim){ //basically strtok
 
 	//savedpos now at first / next ' '
 	return token_start;
+}
+
+
+void scrollUp(){
+	print("SCROLL UP RECEIVED\n");
+	//oob
+	if(terminalScrollPosition < 26) return;
+	else{
+		//a lower number means earlier in the history
+		terminalScrollPosition--;
+		int anchor = terminalScrollPosition;
+		for(int line = 0; line < 25; line++){
+			print(terminalScrollBuffer[anchor]);
+			anchor++;
+		}
+	}
+	return;
+}
+
+void scrollDown(){
+	print("SCROLL DOWN RECEIVED\n");
+	//oob
+	if(terminalScrollPosition < 26 || terminalScrollPosition > 974) return;
+	else{
+		//a higher number means more recently in the history
+		terminalScrollPosition++;
+		int anchor = terminalScrollPosition;
+		for(int line = 0; line < 25; line++){
+			print(terminalScrollBuffer[anchor]);
+			anchor++;
+		}
+	}
+	return;
 }

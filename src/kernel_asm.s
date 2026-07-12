@@ -7,6 +7,9 @@ extern parse_command
 extern print
 extern edit_loop
 extern editor_char
+extern scrollUp
+extern scrollDown
+extern newLine
 
 global kernel
 global init_screen
@@ -27,6 +30,8 @@ global editor_scancode
 global editor_mode
 global editor_filename
 global editor_extension
+
+
 kernel:
 	mov ax, 0x10
 	mov ds, ax
@@ -143,6 +148,7 @@ keyboard_handler:
 	jne .normal
 	mov byte [esc_pressed] , 1
 	jmp .done
+;editor label
 .normal:
 	cmp al, 0x2A ;left shift
 	je .shift_press
@@ -164,12 +170,37 @@ keyboard_handler:
 	;checking if shift is pressed
 	cmp byte [shift_pressed], 1
 	je .use_shifted
+	
+	
 
 	mov al, [scancode_table + ebx] ; finding actual character
+
+	; ctrl + keypress
+	cmp byte [ctrl_pressed], 1
+	je .scroll
+
 	jmp .got_char
+
+.scroll:
+	;ctrl + 'u' scroll up
+	cmp dword ebx, 0x16
+	je .scroll_up
+	;ctrl + 'd' scroll down
+	cmp dword ebx, 0x20
+	je .scroll_down
+	jmp .done
+
+.scroll_up:
+	call scrollUp
+	jmp .done
+.scroll_down:
+	call scrollDown
+	jmp .done
 
 .use_shifted:
 	mov byte al, [scancode_table_shifted + ebx]
+
+;main printing logic, every normal key press is moved to vga memory in this label
 .got_char:
 	mov byte [editor_char], al ; giving key to editor
 	mov byte [0xB8000 + edi], al
@@ -181,6 +212,8 @@ keyboard_handler:
 	; not filling in buffer if in editor
 	cmp byte [in_editor], 1
 	je .done
+	
+	
 
 	mov edi, [buffer_pos] ; writing to buffe
 	cmp edi, 79 ;leave room for 0 at end of buffer
@@ -190,6 +223,8 @@ keyboard_handler:
 	inc dword [buffer_pos]
 
 	jmp .done
+
+
 
 .check_release:
 
@@ -290,11 +325,12 @@ keyboard_handler:
 
 	call parse_command
 
-	cmp byte [skip_newline], 1 ;need this to avoid printing 2 new lines
+
+	cmp byte [skip_newline], 1 ;need this to avoid printing 2 new lterminalScrollPosition < 26 || ines
 	je .skip_nl
 
 	call .newline
-
+	
 	mov dword [buffer_pos], 0 ;resetting buffer
 	
 	cmp byte [in_editor], 1 ;ie in editor so dont want to print shell_prompt
@@ -327,14 +363,20 @@ keyboard_handler:
 	jmp .done
 
 .newline:
-	;formula = ((cursorpos/160) + 1 ) * 160
-	mov eax, [cursor_pos] ;setting up cursor pos
-	xor edx, edx ;zeroing out edx for division
-	mov ebx, 160 ;  
-	div ebx
-	inc eax
-	mul ebx
+
+	push dword [cursor_pos]
+	call newLine
 	mov [cursor_pos], eax
+	add esp, 4
+
+	;;formula = ((cursorpos/160) + 1 ) * 160
+	;mov eax, [cursor_pos] ;setting up cursor pos
+	;xor edx, edx ;zeroing out edx for division
+	;mov ebx, 160 ;  
+	;div ebx
+	;inc eax
+	;mul ebx
+	;mov [cursor_pos], eax
 	ret
 
 init_screen:
@@ -353,7 +395,6 @@ init_screen:
 
 section .bss
 	input_buffer resb 80 ;reserve 80 bytes for user inputs (line length)
-	;not used currently but might need later if i implement command history
 section .data
 	cursor_pos dd 0
 	buffer_pos dd 0
@@ -376,7 +417,7 @@ section .data
 	editor_mode db 0 ; 0 = normal , 1 insert, 2 = command ?
 	editor_filename times 8 db 0
 	editor_extension times 3 db 0
-
+	;ps/2 Set 1 Make in PS/2 scancode chart
 	scancode_table:
 		db 0, 27, '1' , '2' , '3' , '4' , '5' , '6' , '7' , '8' , '9' , '0' , '-' , '='
 		db 0x08, 0x09, 'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']'

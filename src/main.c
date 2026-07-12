@@ -25,6 +25,8 @@ void print_welcome_banner() {
 }
 
 extern void kernel_main(){
+
+
 	//uint8_t* mac_address = init_nic();
 	//print_mac(mac_address);
 	

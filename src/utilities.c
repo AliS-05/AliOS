@@ -10,14 +10,11 @@ extern char help_response[];
 extern char unknown_response[];
 extern void print(const char* str);
 extern uint8_t vga_color;
-
+extern void putChar(char c);
 
 char terminalScrollBuffer[1000][80] = {0};  
 int terminalScrollPosition = 0; 
 int scrollView = 0;  
-
-//used to scroll automatically if print() goes off screen
-int autoScrollBounds = 1;
 
 void init_editor_screen(uint8_t colorByte){
 	vga_color = colorByte;
@@ -56,7 +53,7 @@ void renderWindow(int top){
 	for(int line = 0; line < 25; line++){
 		for(int col = 0; col < 80; col++){
 			char c = terminalScrollBuffer[top + line][col];
-			if(c == '\0' || c == '\n') c = ' ';   
+			if(c == '\0' || c == '\n') c = ' ';
 			vga[p]   = (unsigned char)c;
 			vga[p+1] = vga_color;
 			p += 2;
@@ -64,38 +61,42 @@ void renderWindow(int top){
 	}
 }
 
-void print(const char *s1){
-	if(scrollView != 0){                 // typing/output returns you to the live view
+void putChar(char c){
+	if(scrollView != 0){                    
 		scrollView = 0;
 		renderWindow(terminalScrollPosition);
 	}
-	while(*s1 != '\0'){
-		if(*s1 == '\n'){
-			if(cursor_pos / 160 >= 24){   
-				terminalScrollPosition++;
-				renderWindow(terminalScrollPosition);
-				cursor_pos = 24 * 160;    
-			} else {
-			  cursor_pos = newLine(cursor_pos);
-			}
+	if(c == '\n'){
+		if(cursor_pos / 160 >= 24){     
+			terminalScrollPosition++;
+			renderWindow(terminalScrollPosition);
+			cursor_pos = 24 * 160;
 		} else {
-			int row = cursor_pos / 160;
-			int col = (cursor_pos / 2) % 80;
-			terminalScrollBuffer[terminalScrollPosition + row][col] = *s1;
-			print_char(*s1);
+			cursor_pos = newLine(cursor_pos);
 		}
+	} else {
+		int row = cursor_pos / 160;
+		int col = (cursor_pos / 2) % 80;
+		terminalScrollBuffer[terminalScrollPosition + row][col] = c;
+		print_char(c);
+	}
+}
+
+void print(const char *s1){
+	while(*s1 != '\0'){
+		putChar(*s1);
 		s1++;
 	}
 }
 
 void scrollUp(){
-	if(terminalScrollPosition - scrollView <= 0) return;   
+	if(terminalScrollPosition - scrollView <= 0) return;
 	scrollView++;
 	renderWindow(terminalScrollPosition - scrollView);
 }
 
 void scrollDown(){
-	if(scrollView == 0) return;                            
+	if(scrollView == 0) return;
 	scrollView--;
 	renderWindow(terminalScrollPosition - scrollView);
 }

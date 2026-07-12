@@ -10,6 +10,7 @@ extern editor_char
 extern scrollUp
 extern scrollDown
 extern newLine
+extern putChar
 
 global kernel
 global init_screen
@@ -200,31 +201,32 @@ keyboard_handler:
 .use_shifted:
 	mov byte al, [scancode_table_shifted + ebx]
 
-;main printing logic, every normal key press is moved to vga memory in this label
 .got_char:
-	mov byte [editor_char], al ; giving key to editor
+	mov byte [editor_char], al
+	cmp byte [in_editor], 1
+	jne .shell_echo
+
+	;editor manages its own screen 
 	mov byte [0xB8000 + edi], al
 	mov byte ah, [vga_color]
 	mov byte [0xB8001 + edi], ah
-
-	add dword [cursor_pos], 2 ;moving to next character
-
-	; not filling in buffer if in editor
-	cmp byte [in_editor], 1
-	je .done
-	
-	
-
-	mov edi, [buffer_pos] ; writing to buffe
-	cmp edi, 79 ;leave room for 0 at end of buffer
-	jae .done
-
-	mov [input_buffer + edi], al ;COMMAND BUFFER
-	inc dword [buffer_pos]
-
+	add dword [cursor_pos], 2
 	jmp .done
 
+.shell_echo:
+	; echo through C so it scrolls + lands in the scroll buffer
+	movzx eax, al
+	push eax
+	call putChar
+	add esp, 4
 
+	mov al, [editor_char]
+	mov edi, [buffer_pos]
+	cmp edi, 79
+	jae .done
+	mov [input_buffer + edi], al
+	inc dword [buffer_pos]
+	jmp .done
 
 .check_release:
 
@@ -321,7 +323,9 @@ keyboard_handler:
 	cmp dword [buffer_pos], 0 ;empty new line if no command and press enter
 	je .empty_line
 
-	call .newline
+	push dword 10           ; '\n'
+        call putChar
+        add esp, 4
 
 	call parse_command
 
@@ -329,8 +333,10 @@ keyboard_handler:
 	cmp byte [skip_newline], 1 ;need this to avoid printing 2 new lterminalScrollPosition < 26 || ines
 	je .skip_nl
 
-	call .newline
-	
+	push dword 10           ; '\n'
+        call putChar
+        add esp, 4	
+
 	mov dword [buffer_pos], 0 ;resetting buffer
 	
 	cmp byte [in_editor], 1 ;ie in editor so dont want to print shell_prompt
@@ -342,7 +348,9 @@ keyboard_handler:
 	jmp .done
 
 .editor_enter:
-	call .newline
+	push dword 10           ; '\n'
+        call putChar
+        add esp, 4
 	jmp .done
 
 .skip_nl:
@@ -355,7 +363,9 @@ keyboard_handler:
 	jmp .done
 
 .empty_line:
-	call .newline 
+	push dword 10           ; '\n'
+        call putChar
+        add esp, 4
 	push shell_prompt
 	call print
 	add esp, 4

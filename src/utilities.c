@@ -17,6 +17,7 @@ int terminalScrollPosition = 0;
 int scrollView = 0;  
 
 void init_editor_screen(uint8_t colorByte){
+	memset(terminalScrollBuffer, 0, sizeof(terminalScrollBuffer));
 	vga_color = colorByte;
 	int pos = 0;
 	unsigned char* vga = (unsigned char*)0xB8000;

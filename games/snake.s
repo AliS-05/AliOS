@@ -333,7 +333,7 @@ collisions:
 	call game_over
 	ret
 	
-print:
+print_game:
 	; expects esi containing message
 	; and expects edi to contain coordinates
 	; ex. 
@@ -359,12 +359,12 @@ game_over:
 	mov  esi, gameOverMessage
 	mov  edi, 0xB8000 + center - 22
 
-	call print
+	call print_game
 
 	mov esi, gameOverInstructions
 	mov edi, 0xB8000 + center + 106
 
-	call print
+	call print_game
 
 .hang:	
 	; calls read_input and waits for enter key to be pressed
@@ -385,27 +385,27 @@ reset_game:
 	ret
 
 draw_score:
-	; prints "Score: XX" at top-left
+	; print_games "Score: XX" at top-left
 
 	mov  esi, scoreMsg
 	mov  edi, 0xB8000
-	call print
+	call print_game
 
 	; edi now points right after "Score: "
-	; print two-digit score
+	; print_game two-digit score
 
 	movzx eax, byte [score]   ; load score (0– 255)
 	xor  edx, edx
 	mov  ecx, 10
 	div  ecx                  ; eax = tens, edx = ones
 
-	; print tens
+	; print_game tens
 	add  al, '0'
 	mov  [edi], al
 	mov  byte [edi+1], 0x0F
 	add  edi, 2
 
-	; print ones
+	; print_game ones
 	add  dl, '0'
 	mov  [edi], dl
 	mov  byte [edi+1], 0x0F

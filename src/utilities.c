@@ -48,6 +48,16 @@ void print_char(const char c){
 	cursor_pos += 2;
 }
 
+void print_game(const char* s1){
+	while(*s1 != '\0'){
+		if(*s1 == '\n'){
+			cursor_pos = newLine(cursor_pos);
+		}
+		print_char(*s1);
+		s1++;
+	}
+}
+
 void renderWindow(int top){
 	volatile unsigned char* vga = (volatile unsigned char*)0xB8000;
 	int p = 0;

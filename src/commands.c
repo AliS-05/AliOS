@@ -9,6 +9,7 @@
 
 extern volatile uint8_t enter_editor_flag;
 extern char terminalScrollBuffer[1000][80];
+extern program_running;
 char* global_source;
 
 
@@ -211,9 +212,10 @@ void cmd_run(char* input_buffer){
 
 	typedef int (*Program)();
 	Program program = (Program)memory; //cast typedef'd function pointer to malloc memory and then call it
-
+	program_running = 1;
 	int ret = program();
 	free(fileData);
+	program_running = 0;
 	print("Program Finished: ");
 	print_num(ret);
 }

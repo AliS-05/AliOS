@@ -31,7 +31,7 @@ global editor_scancode
 global editor_mode
 global editor_filename
 global editor_extension
-
+global program_running
 
 kernel:
 	mov ax, 0x10
@@ -214,6 +214,10 @@ keyboard_handler:
 	jmp .done
 
 .shell_echo:
+	;snake program
+	cmp byte [program_running], 1
+	je .done
+
 	; echo through C so it scrolls + lands in the scroll buffer
 	movzx eax, al
 	push eax
@@ -423,6 +427,7 @@ section .data
 	shift_pressed db 0
 	ctrl_pressed db 0
 	in_editor db 0 ;flag specifically for whether or not to print shell_prompt on enter press
+	program_running db 0 ;program not running by default
 	esc_pressed db 0
 	enter_editor_flag db 0
 	editor_scancode db 0

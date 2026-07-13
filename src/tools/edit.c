@@ -38,8 +38,8 @@ extern volatile uint8_t editor_mode; // normal, insert, command
 #define KEY_COLON	0x27
 
 
-
-char lines[50][80];
+//100 lines of 80 characters to start with
+char lines[100][80];
 int cursor_row = 0, cursor_col = 0, num_lines = 1;
 char cmd[80];
 int cmd_len = 0;
@@ -47,7 +47,6 @@ volatile uint8_t editor_char = 0;
 
 
 void save_editor_content(const char* filename, const char* extension) {
-	// 50 lines * 80 chars = 4000 bytes
 	uint8_t save_buffer[2000]; 
 	int write_pos = 0;
 

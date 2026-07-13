@@ -276,4 +276,6 @@ char* token(char* str, const char delim){ //basically strtok
 }
 
 
-
+int ceil(int n, int k){
+	
+}

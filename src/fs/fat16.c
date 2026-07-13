@@ -2,6 +2,7 @@
 #include <utilities.h>
 #include <fat16.h>
 #include <memory.h>
+#include <math.h>
 
 #define SECTORSIZE 512 //sector size
 #define NUM_TABLES 2 // 2 fat tables
@@ -116,15 +117,11 @@ uint16_t findFreeCluster(){
 	for(int s = 1; s < 21; s++){
 		disk_read_sector(s, (uint8_t*)fatTable); //read sector into mem
 		for(uint16_t e = 0; e < 256; e++){
-	//this doesnt actually work for multiple sectors
-	// i need some way to return the sector AND the fat entry
-	// bc fatentry on sector 5 is being treated as the same as fat entry
-	//sector 20 right now.
 			if(fatTable[e] == 0x0000){
 				fatTable[e] = 0xFFFF;
 				disk_write_sector(s, (uint8_t*)fatTable);
 				disk_write_sector(FAT2SECTOR + s - 1, (uint8_t*)fatTable);
-				return (s - 1) * 256 + e + 2;
+				return (s - 1) * 256 + e;
 			}
 		}
 	}
@@ -132,6 +129,26 @@ uint16_t findFreeCluster(){
 	return 0; //0 is reserved so make sure not to use this !
 }
 
+//returns the head to a chain of clusters
+uint16_t findFreeClusterCount(int count){
+        uint16_t head = findFreeCluster();
+        if(head == 0) return 0;
+        uint16_t prev = head;
+        for(int i = 1; i < count; i++){
+                uint16_t cur = findFreeCluster();
+                if(cur == 0){
+                        print("ERROR: out of clusters\n");
+                        return 0;
+                }
+                updateFatTables(prev, cur);      
+                prev = cur;                      
+        }
+	return head;
+}
+
+uint16_t getNextCluster(uint16_t curCluster){
+	return 0;
+}
 
 uint16_t addFileRoot(struct File* file){
 	struct File rootSector[16];
@@ -149,20 +166,52 @@ uint16_t addFileRoot(struct File* file){
 	return 0;
 }
 
+
+//returns the File struct that matches filename and extension from the root table
+//new function so other functions may not use this, if it aint broke dont fix it
+struct File* getFileEntry(const char* fileName, const char* extension){
+	struct File rootDir[16];
+	disk_read_sector(ROOTSECTOR + rootSector, (uint8_t*)rootDir);
+	for(uint32_t e = 0; e < 16; e++){ //e = entry ie file
+		struct File* entry = &rootDir[e];
+		if(!memcmp(file.filename, entry->filename, 8) && !memcmp(file.extension, entry->extension, 3)){
+			return entry;
+			break;
+		}
+	}
+}
+
+//clusterStatus should be 0x0000 (free cluster), a 16 bit hex number for the next cluster in the chain or 0xFFFF for end of chain
+void updateFatTables(uint16_t cluster, uint16_t clusterStatus){
+	uint16_t fatTable[256];
+
+	//fat 1
+	disk_read_sector(FAT1SECTOR + (cluster / 256), (uint8_t*)fatTable);
+
+	fatTable[cluster % 256] = clusterStatus;
+
+	disk_write_sector(FAT1SECTOR + (cluster / 256), (uint8_t*)fatTable);
+	
+	//fat 2
+	disk_read_sector(FAT2SECTOR + (cluster / 256), (uint8_t*)fatTable);
+
+	fatTable[cluster % 256] = clusterStatus;
+
+	disk_write_sector(FAT2SECTOR + (cluster / 256), (uint8_t*)fatTable);
+	return;
+}
+
+
 //should this return the cluster where the file is written ?
 void writeFile(char* filename, char* extension, uint8_t* data, uint32_t size){
 	//size will be used later to calculate amount of clusters needed
 	//will need to implement a findMultipleClusters
-
-	uint16_t firstCluster = findFreeCluster();
-
-	//files should be 2048 byte aligned to maximize storage otherwise this is very inefficient
-	disk_write_cluster(firstCluster, data);
-
-	//construct File Object. name should be absolute path
-	struct File file;
-	memset(&file, 0 , sizeof(struct File));
 	
+	int clustersNeeded = ceil_div(size, SECTORSIZE * SECTORS_PER_CLUSTER);
+	uint16_t headCluster = findFreeClusterCount(clustersNeeded);
+	struct File file;
+	memset(&file, 0, sizeof(struct File));
+
 	memcpy(file.filename, filename, 8);
 	memcpy(file.extension, extension, 3);
 
@@ -176,6 +225,28 @@ void writeFile(char* filename, char* extension, uint8_t* data, uint32_t size){
 	// the root directory. so 
 	//section,memcpy to buffer and write back to disk
 	addFileRoot(&file);
+
+	//subtract one to account for first cluster above ^^
+	int currentClusterCount = 1;
+	//if we need 3 clusters currentClusterCount = 0, 1
+	//NOTE need to add getNextCluster function so i can actually traverse the chain.
+	while(currentClusterCount <= clustersNeeded){
+		//writes cur cluster with 2048 * currentClusterCount offset into data buffer
+		disk_write_cluster(curClust, data + (currentClusterCount * (SECTORSIZE * SECTORS_PER_CLUSTER)));
+		if(prevClust != 0){
+			updateFatTables(prevClust, curClust); 
+			prevClust = curClust;
+			curClust = findFreeCluster();
+		} else if(currentClusterCount == clustersNeeded){
+			updateFatTables(curClust, 0xFFFF);
+		} else{
+			//have cur , get next
+			nextClust = findFreeCluster();
+			updateFatTables(curClust, nextClust);
+			prevClust = curClust;
+			curClust = nextClust;
+		}
+	}
 }
 
 //helper function that returns a pointer to a File struct with the name and extension passed in
@@ -211,6 +282,8 @@ uint8_t* readFile(const char* filename, const char* ext){
 	}
 }
 
+
+
 void deleteFile(const char* filename, const char* extension){
 	//remove file from root directory
 	struct File file;
@@ -227,6 +300,7 @@ void deleteFile(const char* filename, const char* extension){
 	for(uint32_t e = 0; e < 16; e++){ //e = entry ie file
 		struct File* entry = &rootDir[e];
 		if(!memcmp(file.filename, entry->filename, 8) && !memcmp(file.extension, entry->extension, 3)){
+			//0xE5 means deleted
 			memset(entry->filename, 0xE5, 8);
 			disk_write_sector(ROOTSECTOR + rootSector, (uint8_t*)rootDir);
 			break;

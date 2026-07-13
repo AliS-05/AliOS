@@ -63,7 +63,7 @@ void disk_write_sector(uint32_t lba, uint8_t* buffer){
 
 void disk_write_sector_count(uint32_t lba, uint8_t* buffer, uint32_t count){
 	for(uint32_t i = 0; i < count; i++){
-		disk_write_sector(lba + i, buffer + (i * 512)); //ie size of sector
+		disk_write_sector(lba + i, buffer + (i * SECTORSIZE)); //ie size of sector
 	}
 			
 }

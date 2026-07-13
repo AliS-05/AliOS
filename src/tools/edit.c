@@ -2,7 +2,7 @@
 #include <utilities.h>
 #include <string.h>
 #include <memory.h>
-#include <fs.h>
+#include <fat16.h>
 
 //color reference
 
@@ -22,6 +22,11 @@ extern volatile uint8_t enter_editor_flag;
 extern volatile uint8_t editor_scancode;
 extern volatile uint8_t editor_mode; // normal, insert, command
 
+// The editor keeps its own buffer; on exit it repaints the shell's screen from
+// the terminal's untouched scrollback so command history survives an edit.
+extern void renderWindow(int top);
+extern int terminalScrollPosition;
+
 #define MODE_NORMAL  0
 #define MODE_INSERT  1
 #define MODE_COMMAND 2
@@ -37,19 +42,21 @@ extern volatile uint8_t editor_mode; // normal, insert, command
 #define KEY_I	   0x17
 #define KEY_COLON	0x27
 
-// Editor is only as tall as what we actually draw (no scrolling yet), so
-// keep the buffer, the redraw, the save and the load all on the same height.
-#define EDITOR_ROWS 24
+// The editor holds MAX_ROWS lines but only VISIBLE_ROWS fit on screen; edTop is
+// the buffer row drawn at the top, and the window slides on it to scroll.
+#define MAX_ROWS 500
+#define VISIBLE_ROWS 25
 #define EDITOR_COLS 80
 #define CLUSTER_BYTES 2048
 
 // writeFile always flushes whole clusters from the source buffer, so the save
 // buffer has to be rounded up to a full cluster or the FS reads past its end.
-#define RAW_BYTES (EDITOR_ROWS * (EDITOR_COLS + 1))
+#define RAW_BYTES (MAX_ROWS * (EDITOR_COLS + 1))
 #define SAVE_BUFFER_SIZE (((RAW_BYTES + CLUSTER_BYTES - 1) / CLUSTER_BYTES) * CLUSTER_BYTES)
 
-char lines[EDITOR_ROWS][EDITOR_COLS];
+char lines[MAX_ROWS][EDITOR_COLS];  // editor's own buffer, separate from terminal scrollback
 int cursor_row = 0, cursor_col = 0, num_lines = 1;
+int edTop = 0;  // first buffer row shown on screen; slide this to scroll
 char cmd[80];
 int cmd_len = 0;
 volatile uint8_t editor_char = 0;
@@ -80,8 +87,11 @@ void save_editor_content(const char* filename, const char* extension) {
 		}
 		save_buffer[write_pos++] = '\n';
 	}
-
-	deleteFile(filename, extension);
+	struct File file;
+	memset(&file, 0, sizeof(struct File));
+	if(findFileRoot(filename, extension, &file) != -1){
+		deleteFile(filename, extension);
+	}
 	if (write_pos > 0) {
 		writeFile(filename, extension, save_buffer, write_pos);
 	}
@@ -99,25 +109,39 @@ uint8_t getkey() {
 }
 
 
-void redraw(uint8_t color) {
-    unsigned char* vga = (unsigned char*)0xB8000;
-    for(int i = 0; i < EDITOR_ROWS; i++) {
-        for(int j = 0; j < EDITOR_COLS; j++) {
-            int vga_pos = (i*160) + j*2;
-            vga[vga_pos] = (i < num_lines) ? (lines[i][j] ?: ' ') : ' ';
+// Keep the cursor inside the visible window by sliding edTop.
+void scroll_to_cursor(){
+	if(cursor_row < edTop){
+		edTop = cursor_row;
+	} else if(cursor_row >= edTop + VISIBLE_ROWS){
+		edTop = cursor_row - VISIBLE_ROWS + 1;
+	}
+	if(edTop < 0) edTop = 0;
+}
 
-            // Highlight cursor position in normal mode
-            if(i == cursor_row && j == cursor_col && editor_mode == 0) {
-                vga[vga_pos + 1] = 0xF0;  // Inverted colors (white bg, black text)
-            } else {
-                vga[vga_pos + 1] = color;
-            }
-        }
-    }
-    cursor_pos = cursor_row * 160 + cursor_col * 2;
+void redraw(uint8_t color) {
+	volatile unsigned char* vga = (volatile unsigned char*)0xB8000;
+	for(int i = 0; i < VISIBLE_ROWS; i++){
+		int buf_row = edTop + i;  // buffer line shown on screen row i
+		for(int j = 0; j < EDITOR_COLS; j++){
+			int vga_pos = (i * 160) + j * 2;
+			vga[vga_pos] = (buf_row < num_lines) ? (lines[buf_row][j] ?: ' ') : ' ';
+
+			if(buf_row == cursor_row && j == cursor_col && editor_mode == MODE_NORMAL){
+				vga[vga_pos + 1] = 0xF0;  // inverted cursor block in normal mode
+			} else {
+				vga[vga_pos + 1] = color;
+			}
+		}
+	}
+	cursor_pos = (cursor_row - edTop) * 160 + cursor_col * 2;
 }
 
 extern void edit_loop(const char* filename, const char* extension) {
+	// Save the shell's terminal state so we can hand it back untouched on exit.
+	int oldCursorPos = cursor_pos;
+	uint8_t oldColor = vga_color;
+
 	in_editor = 0;
 	editor_scancode = 0;
 	editor_mode = 0;
@@ -126,6 +150,8 @@ extern void edit_loop(const char* filename, const char* extension) {
 
 	memset(lines, 0, sizeof(lines));
 	num_lines = 1;
+	edTop = 0;
+	int data_read = 0;
 
 	// Load: parse the newline-delimited format save_editor_content writes back
 	// into the 2D grid. getFileSize gives the real length so we never read past
@@ -133,8 +159,9 @@ extern void edit_loop(const char* filename, const char* extension) {
 	uint8_t* load_buffer = readFile(filename, extension);
 	if(load_buffer != NULL) {
 		uint32_t size = getFileSize(filename, extension);
+		if(size > 0) data_read = 1;
 		int row = 0, col = 0;
-		for(uint32_t i = 0; i < size && row < EDITOR_ROWS; i++){
+		for(uint32_t i = 0; i < size && row < MAX_ROWS; i++){
 			char ch = (char)load_buffer[i];
 			if(ch == '\n'){
 				row++;
@@ -147,19 +174,26 @@ extern void edit_loop(const char* filename, const char* extension) {
 		}
 		num_lines = row + ((col > 0) ? 1 : 0);
 		if(num_lines < 1) num_lines = 1;
-		if(num_lines > EDITOR_ROWS) num_lines = EDITOR_ROWS;
+		if(num_lines > MAX_ROWS) num_lines = MAX_ROWS;
 		free(load_buffer);
 	}
 
-	cursor_row = (num_lines > 0) ? num_lines - 1 : 0;
-	cursor_col = line_length(cursor_row);
-	if(cursor_col >= EDITOR_COLS) cursor_col = EDITOR_COLS - 1;
+	// Start at the end of the file if we loaded any, else top-left on a blank file.
+	if(data_read){
+		cursor_row = num_lines - 1;
+		cursor_col = line_length(cursor_row);
+		if(cursor_col >= EDITOR_COLS) cursor_col = EDITOR_COLS - 1;
+	} else {
+		cursor_row = 0;
+		cursor_col = 0;
+	}
 
 
 	in_editor = 1;
 	init_editor_screen(0x0F);
 
 	while(in_editor) {
+	   scroll_to_cursor();
 	   redraw(vga_color);
 	   uint8_t k = getkey();
 	   if(k & 0x80) continue;  // Release
@@ -177,7 +211,7 @@ extern void edit_loop(const char* filename, const char* extension) {
 		  if(k == KEY_ESC) editor_mode = MODE_NORMAL;
 		  else if(k == KEY_ENTER) {
 			  // Split the current line at the cursor and push the rest down.
-			  if(num_lines < EDITOR_ROWS){
+			  if(num_lines < MAX_ROWS){
 				  for(int r = num_lines; r > cursor_row + 1; r--){
 					  memcpy(lines[r], lines[r-1], EDITOR_COLS);
 				  }
@@ -255,6 +289,12 @@ extern void edit_loop(const char* filename, const char* extension) {
 	   }
 	}
 
+	// Hand the terminal back as we found it: restore its color, drop the cursor on
+	// the shell's prompt line, and repaint history from the (untouched) scrollback.
+	// Landing at the line start means the shell's automatic prompt reprint overwrites
+	// the old prompt instead of duplicating it.
 	in_editor = 0;
-	init_editor_screen(vga_color);
+	vga_color = oldColor;
+	cursor_pos = (oldCursorPos / 160) * 160;
+	renderWindow(terminalScrollPosition);
 }

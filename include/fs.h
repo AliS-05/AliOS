@@ -29,6 +29,7 @@ uint8_t* cpy_file_buffer(const char* filename, uint8_t* buffer, size_t bufferSiz
 //fat 16 stuff
 uint16_t findFreeCluster();
 uint16_t addFileRoot(struct File* file);
+int findFileRoot(const char* filename, const char* extension, struct File* file);
 void writeFile(const char* filename, const char* extension, uint8_t* data, uint32_t size);
 uint8_t* readFile(const char* filename, const char* ext);
 uint32_t getFileSize(const char* filename, const char* ext);

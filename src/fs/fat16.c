@@ -274,8 +274,7 @@ uint8_t* readFile(const char* filename, const char* ext){
 		//find clusters needed
 		int clustersNeeded = ceil_div(file.fileSize, SECTORSIZE * SECTORS_PER_CLUSTER);
 		if(clustersNeeded == 0) clustersNeeded++;
-
-		uint8_t* fileData = (uint8_t*)malloc(file.fileSize);
+		uint8_t* fileData = (uint8_t*)malloc(clustersNeeded * SECTORSIZE * SECTORS_PER_CLUSTER);
 		uint16_t curClust = file.cluster;
 		int count = 0;
 		while(curClust < 0xFFF8){

@@ -9,8 +9,8 @@ extern volatile uint8_t enter_editor_flag;
 extern volatile uint8_t editor_scancode;
 extern volatile uint8_t editor_mode; // normal, insert, command
 
-void save_editor_content(const char* filename);
+void save_editor_content(const char* filename, const char* extension);
 uint8_t getkey();
-void edit_loop(const char* filename);
+void edit_loop(const char* filename, const char* extension);
 
 #endif

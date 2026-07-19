@@ -29,17 +29,6 @@ void init_editor_screen(uint8_t colorByte){
 	cursor_pos = 0;
 }
 
-int newLine(int cursor_pos){
-	int next_line = (((cursor_pos / 160) + 1) * 160);
-	return next_line;
-}
-
-
-void updateCursorPos(int newPos){
-	cursor_pos = newPos;
-}
-
-
 void print_char(const char c){
 	if(cursor_pos >= 4000) return;
 	volatile unsigned char* vga = (volatile unsigned char*)0xB8000;
@@ -47,6 +36,33 @@ void print_char(const char c){
 	vga[cursor_pos+1] = vga_color;
 	cursor_pos += 2;
 }
+
+int newLine(int cursor_pos){
+	int next_line = (((cursor_pos / 160) + 1) * 160);
+	return next_line;
+}
+
+//returns cursor_pos to beginning of current line
+int beginningOfLine(int cursor_pos){
+	return (cursor_pos / 160) * 160;
+}
+
+//blanks out current line and returns you to your original position
+void blankLine(){
+	int save = cursor_pos;
+	int border = newLine(save) - 2;
+	while(cursor_pos != border){
+		print_char(' ');
+	}
+	cursor_pos = save;
+}
+
+void updateCursorPos(int newPos){
+	cursor_pos = newPos;
+}
+
+
+
 
 void print_game(const char* s1){
 	while(*s1 != '\0'){

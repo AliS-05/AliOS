@@ -21,7 +21,6 @@ int strncmp(const char* s1, const char* s2, size_t n) {
 
 size_t strlen(const char* str){
 	if(str == NULL){
-		print("STRLEN RECEIVED NULL\n");
 		return 0;
 	}
 	size_t count = 0;

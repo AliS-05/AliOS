@@ -278,36 +278,36 @@ void init_receive_descriptors(){
 	write_reg(RCTRL, rctl);
 }
 
-void receive_packet(){ //shouldnt take any parameters i think just use static variable
-	struct ReceiveDescriptor* descriptor = &RECV_DESC_LIST[receiveDescriptorTracker];
-	while(descriptor->status & (1 << 0)){
-		uint8_t* descriptorData = receivePacketBuffer + receiveDescriptorTracker * 2048;
-
-		print("\nReceived packet, length ");
-		print_num(descriptor->length);
-		print(": ");
-		for(int c = 0; c < 20 && c < descriptor->length; c++){
-			print_hex8(descriptorData[c]);
-		}
-		print("\n");
-		
-
-		uint32_t n = receivedPacketCount % 1000;
-		char filename[8] = {'R','X','P','K','T',
-			(char)('0' + (n / 100) % 10),
-			(char)('0' + (n / 10) % 10),
-			(char)('0' + n % 10)
-		};
-		char extension[3] = {'P','K','T'};
-		writeFile(filename, extension, descriptorData, descriptor->length);
-		receivedPacketCount++;
-		
-		descriptor->status = 0; // this should be fine
-		receiveDescriptorTracker = (receiveDescriptorTracker + 1) % NUM_RECEIVE_DESC;
-		write_reg(RDT, receiveDescriptorTracker);
-		descriptor = &RECV_DESC_LIST[receiveDescriptorTracker];
-	}
-}
+//void receive_packet(){ //shouldnt take any parameters i think just use static variable
+//	struct ReceiveDescriptor* descriptor = &RECV_DESC_LIST[receiveDescriptorTracker];
+//	while(descriptor->status & (1 << 0)){
+//		uint8_t* descriptorData = receivePacketBuffer + receiveDescriptorTracker * 2048;
+//
+//		print("\nReceived packet, length ");
+//		print_num(descriptor->length);
+//		print(": ");
+//		for(int c = 0; c < 20 && c < descriptor->length; c++){
+//			print_hex8(descriptorData[c]);
+//		}
+//		print("\n");
+//		
+//
+//		uint32_t n = receivedPacketCount % 1000;
+//		char filename[8] = {'R','X','P','K','T',
+//			(char)('0' + (n / 100) % 10),
+//			(char)('0' + (n / 10) % 10),
+//			(char)('0' + n % 10)
+//		};
+//		char extension[3] = {'P','K','T'};
+//		writeFile(filename, extension, descriptorData, descriptor->length);
+//		receivedPacketCount++;
+//		
+//		descriptor->status = 0; // this should be fine
+//		receiveDescriptorTracker = (receiveDescriptorTracker + 1) % NUM_RECEIVE_DESC;
+//		write_reg(RDT, receiveDescriptorTracker);
+//		descriptor = &RECV_DESC_LIST[receiveDescriptorTracker];
+//	}
+//}
 
 uint8_t* init_nic(){
 //nic driver initialization

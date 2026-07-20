@@ -37,11 +37,7 @@ void arpVectorFree(ArpVector* arpvec){
 }
 
 
-void start_arp_sequence(){
-	init_nic();
-	print_mac(MAC_ADDRESS);
-	send_initial_arp_request();
-}
+
 
 void send_initial_arp_request(){
 	read_reg(ICR);
@@ -71,8 +67,28 @@ void send_initial_arp_request(){
 	transmit_packet(arp_initial_request, 60);
 }
 
+void start_arp_sequence(){
+	init_nic();
+	arpVectorInit(&arpVector);
+	print_mac(MAC_ADDRESS);
+	send_initial_arp_request();
+}
+
 void parse_packet(uint8_t* packetBuffer){
-	uint8_t* senderSourceMac = 0;
+	uint8_t* arp = packetBuffer + 14; // skip the 14-byte Ethernet header
+
+	uint16_t opCode = (arp[6] << 8) | arp[7];
+	if (opCode == 2){
+		uint8_t senderMac[6];
+		memcpy(senderMac, arp + 8, 6); // SHA field
+
+		uint32_t senderIp;
+		memcpy(&senderIp, arp + 14, 4); // SPA field
+
+		if(arpVectorFind(&arpVector, senderIp) == NULL){
+			arpVectorPush(&arpVector, senderIp, senderMac);
+		}
+	}
 }
 
 void nic_irq_handle(){
@@ -80,13 +96,15 @@ void nic_irq_handle(){
 	//so we need to handle all packets that have been received since the previous interrupt
 	for(int i = 0; i < NUM_RECEIVE_DESC; i++){
 		struct ReceiveDescriptor* rxDesc = &RECV_DESC_LIST[i];
-		if(rxDesc == NULL){
+		if(rxDesc->status == 0){
 			continue; //continue because later descriptors may be none null ?
 		} else {
-			uint8_t* packetData = (uint8_t*)(uint32_t)rxDesc->address;
-			print((char*)packetData);
-
-		}
+		      	uint8_t* packetData = (uint8_t*)(uint32_t)rxDesc->address;
+		      	parse_packet(packetData);
+		      	rxDesc->status = 0;
+		      	rxDesc->status = 0;
+		      	write_reg(RDT, i);
+          	}
 	}
 }
 

@@ -95,3 +95,4 @@ extern struct TransmitDescriptor* TRANS_DESC_LIST;
 extern uint32_t TAIL;
 extern uint32_t NUM_TRANSMIT_DESC;
 extern uint8_t* transmitPacketBuffer;
+void receive_packet();

@@ -16,6 +16,7 @@ extern nextCommandHistory
 extern moveLeft
 extern moveRight
 extern nic_irq_handle
+extern receive_packet
 
 global kernel
 global init_screen
@@ -100,8 +101,9 @@ remap_pic:
 	out 0x21, al
 	out 0xA1, al
 	
-	mov al, 0
+	mov al, 0xF9
 	out 0x21, al
+	mov al, 0xF7
 	out 0xA1, al
 	; Enable Keyboard IRQ only
 	;mov al, 0xFD 
@@ -146,7 +148,7 @@ timer_handler:
 
 nic_slave_irq:
 	pushad
-	call nic_irq_handle
+	call receive_packet
 	popad
 	
 	mov al, 0x20

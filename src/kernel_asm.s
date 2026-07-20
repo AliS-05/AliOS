@@ -11,6 +11,8 @@ extern scrollUp
 extern scrollDown
 extern newLine
 extern putChar
+extern prevCommandHistory
+extern nextCommandHistory
 
 global kernel
 global init_screen
@@ -31,7 +33,7 @@ global editor_scancode
 global editor_mode
 global editor_filename
 global editor_extension
-
+global program_running
 
 kernel:
 	mov ax, 0x10
@@ -141,16 +143,28 @@ keyboard_handler:
 	in al, 0x60 ; reading scancode
 	
 	mov byte [editor_scancode], al
+	
+	cmp al, 0xE0
+	je .extPrefix
 
 	test al, 0x80 
 	jnz .check_release
 
 	cmp al, 0x01 ;escape key
 	jne .normal
+
 	mov byte [esc_pressed] , 1
 	jmp .done
+
+.extPrefix:
+	mov byte [ext_prefix], 1
+	jmp .done
+
 ;editor label
 .normal:
+	mov cl, [ext_prefix]
+	mov byte [ext_prefix], 0
+	cld
 	cmp al, 0x2A ;left shift
 	je .shift_press
 
@@ -178,22 +192,43 @@ keyboard_handler:
 
 	; ctrl + keypress
 	cmp byte [ctrl_pressed], 1
-	je .scroll
+	je .ctrlHandle
+	cmp cl, 1
+	je .done
 
 	jmp .got_char
 
-.scroll:
-	;ctrl + 'u' scroll up
+.ctrlHandle:
+	cmp byte cl, 1
+	je .arrowKeys
+		;ctrl + 'u' scroll up
 	cmp dword ebx, 0x16
 	je .scroll_up
 	;ctrl + 'd' scroll down
 	cmp dword ebx, 0x20
 	je .scroll_down
 	jmp .done
+.arrowKeys:
+	;ctrl + 'upArrow' last command
+	cmp dword ebx, 0x48
+	je .prevCommand
+	;ctrl + 'downArrow' next command
+	cmp dword ebx, 0x50
+	je .nextCommand
+	jmp .done
+
+.prevCommand:
+	call prevCommandHistory
+	jmp .done
+
+.nextCommand:
+	call nextCommandHistory
+	jmp .done
 
 .scroll_up:
 	call scrollUp
 	jmp .done
+
 .scroll_down:
 	call scrollDown
 	jmp .done
@@ -214,6 +249,10 @@ keyboard_handler:
 	jmp .done
 
 .shell_echo:
+	;snake program
+	cmp byte [program_running], 1
+	je .done
+
 	; echo through C so it scrolls + lands in the scroll buffer
 	movzx eax, al
 	push eax
@@ -422,7 +461,9 @@ section .data
 
 	shift_pressed db 0
 	ctrl_pressed db 0
+	ext_prefix db 0
 	in_editor db 0 ;flag specifically for whether or not to print shell_prompt on enter press
+	program_running db 0 ;program not running by default
 	esc_pressed db 0
 	enter_editor_flag db 0
 	editor_scancode db 0

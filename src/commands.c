@@ -7,8 +7,13 @@
 #include <fat16.h>
 #include <edit.h>
 
+char commandHistoryBuffer[50][80] = {0}; //stores last 50 commands;
+int currentCommandAnchor = 0;
+int writeIndexAnchor = 0;
+
 extern volatile uint8_t enter_editor_flag;
 extern char terminalScrollBuffer[1000][80];
+extern program_running;
 char* global_source;
 
 
@@ -211,9 +216,10 @@ void cmd_run(char* input_buffer){
 
 	typedef int (*Program)();
 	Program program = (Program)memory; //cast typedef'd function pointer to malloc memory and then call it
-
+	program_running = 1;
 	int ret = program();
 	free(fileData);
+	program_running = 0;
 	print("Program Finished: ");
 	print_num(ret);
 }
@@ -253,8 +259,39 @@ void getTime(){
 
 }
 
+void drawLine(char* command){
+	//need to redraw line everytime so printing command doesnt add to end of line but replace entirely
+	cursor_pos = beginningOfLine(cursor_pos);
+	blankLine();
+	print(shell_prompt);
+
+	print(commandHistoryBuffer[currentCommandAnchor]);
+	strcpy(input_buffer, commandHistoryBuffer[currentCommandAnchor]);
+	buffer_pos = strlen(commandHistoryBuffer[currentCommandAnchor]);
+
+}
+
+//prints previously entered command
+//0 is first command, 1 is second, 2 is third etc.
+// so decrement to print previous commands
+void prevCommandHistory(){
+	if(currentCommandAnchor == 0) return; // OOB
+	currentCommandAnchor--;
+	drawLine(commandHistoryBuffer[currentCommandAnchor]);
+}
+
+//undoes function above
+void nextCommandHistory(){
+	if(currentCommandAnchor == 50) return; // OOB
+	currentCommandAnchor++;
+	drawLine(commandHistoryBuffer[currentCommandAnchor]);
+}
+
 void parse_command() {
-	
+	strcpy(commandHistoryBuffer[writeIndexAnchor], input_buffer);
+	writeIndexAnchor++;
+	currentCommandAnchor = writeIndexAnchor;
+
 	if (strcmp(input_buffer, "help") == 0) {
 		cmd_help();
 	} else if (strcmp(input_buffer, "clear") == 0) {

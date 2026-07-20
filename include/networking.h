@@ -1,3 +1,5 @@
+#ifndef NETWORKING_H
+#define NETWORKING_H
 #include <structures.h>
 
 struct TransmitDescriptor{
@@ -90,9 +92,16 @@ uint8_t* init_nic();
 #define ICR 0x00C0
 #define IMS 0x00D0
 
+extern uint8_t* MAC_ADDRESS;
+extern uint32_t nic_irq;
 extern uint32_t bar0;
 extern struct TransmitDescriptor* TRANS_DESC_LIST;
 extern uint32_t TAIL;
 extern uint32_t NUM_TRANSMIT_DESC;
 extern uint8_t* transmitPacketBuffer;
+extern struct ReceiveDescriptor* RECV_DESC_LIST;
+extern uint8_t* receivePacketBuffer;
+extern uint32_t NUM_RECEIVE_DESC;
 void receive_packet();
+
+#endif

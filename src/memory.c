@@ -55,7 +55,7 @@ void free(void* memBlock){
 
 void* memcpy(void* dst, void* src, size_t n){ 
 	// copies from src to dst memcpy(arr1, arr2, 10)
-	// copies 10 bytes from arr1 to arr2
+	// copies 10 bytes from arr2 to arr1
 	unsigned char* srcBuf = (unsigned char*)src;
 	unsigned char* dstBuf = (unsigned char*)dst;
 	for(size_t i = 0; i < n; i++){

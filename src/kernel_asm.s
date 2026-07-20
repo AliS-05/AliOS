@@ -148,7 +148,7 @@ timer_handler:
 
 nic_slave_irq:
 	pushad
-	call receive_packet
+	call nic_irq_handle
 	popad
 	
 	mov al, 0x20

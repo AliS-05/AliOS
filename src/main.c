@@ -20,37 +20,44 @@ void print_welcome_banner() {
 	print("  - Text Editor\n");
 	print("  - Snake written in assembly!\n");
 	print("\n");
-	print("  Type 'clear' and then 'help' to see a list of all the commands!\n");
+	print("  Type 'help' to see a list of all the commands!\n");
 	print("\n");
 }
 
 extern void kernel_main(){
 
 
-	//uint8_t* mac_address = init_nic();
-	//print_mac(mac_address);
+	uint8_t* mac_address = init_nic();
+	print_mac(mac_address);
 	
-//	uint8_t test_packet[64] = {
-//		// destination mac (broadcast)
-//		0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-//		// source mac 
-//		0x52, 0x054, 0x00, 0x12, 0x34, 0x56,
-//		// ethertype 	
-//		0x88, 0x88,
-//		// payload (46 bytes to reach 60 minimum frame size)
-//		0x68, 0x65, 0x6C, 0x6C, 0x6F, 0x00, 0x00, 0x00, //hello
-//		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-//		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-//		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-//		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-//		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-//	};
+	uint8_t arp_request[60] = {
+		// destination mac (broadcast)
+		0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+		// source mac (filled in below)
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		// ethertype: ARP
+		0x08, 0x06,
+		// ARP payload
+		0x00, 0x01,             // HTYPE: Ethernet
+		0x08, 0x00,             // PTYPE: IPv4
+		0x06,                   // HLEN
+		0x04,                   // PLEN
+		0x00, 0x01,             // OPER: request
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  // SHA (filled in below)
+		10, 0, 2, 15,           // SPA: 10.0.2.15 (our assumed IP)
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  // THA: unknown, being asked for
+		10, 0, 2, 2             // TPA: 10.0.2.2 (SLIRP gateway)
+		// remaining bytes auto-zero to pad to 60
+	  };
 
-	//for (int i = 0; i < 6; i++) {
-	//    test_packet[6 + i] = mac_address[i];
-	//}
+	  for (int i = 0; i < 6; i++) {
+		arp_request[6 + i] = mac_address[i];   // source MAC
+		arp_request[22 + i] = mac_address[i];  // ARP sender MAC (SHA)
+	  }
 
-	//transmit_packet(test_packet, 60);
+
+	transmit_packet(arp_request, 60);
+	
 	//init_fat16_filesystem();
 	print_welcome_banner();
 	print(shell_prompt);

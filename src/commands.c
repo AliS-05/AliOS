@@ -287,6 +287,8 @@ void nextCommandHistory(){
 	drawLine(commandHistoryBuffer[currentCommandAnchor]);
 }
 
+
+
 void parse_command() {
 	strcpy(commandHistoryBuffer[writeIndexAnchor], input_buffer);
 	writeIndexAnchor++;

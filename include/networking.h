@@ -10,6 +10,15 @@ struct TransmitDescriptor{
 	uint16_t special;
 };
 
+struct ReceiveDescriptor{
+	uint64_t address;
+        uint16_t length;
+        uint16_t packet_checksum;
+        uint8_t status;
+        uint8_t errors;
+        uint16_t special;
+};
+
 void outl(uint16_t port, uint32_t value);
 uint32_t inl(uint16_t port);
 void write_reg(uint32_t offset, uint32_t value);
@@ -61,7 +70,7 @@ uint8_t* init_nic();
 #define MTA 0x05200
 
 //Receive Registers
-#define RCRTL 0x100 //control
+#define RCTRL 0x100 //control
 #define RDBAL 0x2800 //base descriptor low
 #define RDBAH 0x2804 // i dont think this is needed for 32 bit
 #define RDLEN 0x2808 //descriptor length
@@ -76,6 +85,10 @@ uint8_t* init_nic();
 #define TDLEN 0x3808
 #define TDH 0x3810
 #define TDT 0x3818
+
+//Interrupts
+#define ICR 0x00C0
+#define IMS 0x00D0
 
 extern uint32_t bar0;
 extern struct TransmitDescriptor* TRANS_DESC_LIST;

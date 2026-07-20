@@ -141,7 +141,7 @@ void print_hex_n(unsigned int value, int nibbles) {
     const char* hex = "0123456789ABCDEF";
     for (int i = nibbles - 1; i >= 0; i--) {
         unsigned int digit = (value >> (i * 4)) & 0xF;
-        print_char(hex[digit]);
+        putChar(hex[digit]);
     }
 }
 
@@ -302,4 +302,11 @@ char* token(char* str, const char delim){ //basically strtok
 	return token_start;
 }
 
+//NOTE to implement, i cant be bothered to do this atm
+//functions for moving in between characters in a line, (fixing typos)
+//static int lineBufferPos = buffer_pos;
+void moveLeft(){
+}
 
+void moveRight(){
+}

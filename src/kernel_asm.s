@@ -13,6 +13,9 @@ extern newLine
 extern putChar
 extern prevCommandHistory
 extern nextCommandHistory
+extern moveLeft
+extern moveRight
+extern nic_irq_handle
 
 global kernel
 global init_screen
@@ -79,58 +82,77 @@ kernel:
 
 remap_pic:
 	; Remap PIC
-	mov al, 0x11
-	out 0x20, al
-	out 0xA0, al
+	mov al, 0x11 ;initialization
+	out 0x20, al ;pic1_control reg
+	out 0xA0, al ;pic2_control
 
-	mov al, 0x20 
-	out 0x21, al
-	mov al, 0x28 
-	out 0xA1, al
+	mov al, 0x20 ;IRQs 0-7
+	out 0x21, al ;PIC1_data
+	mov al, 0x28 ;IRQs 8-15
+	out 0xA1, al ;pic2_data
 
-	mov al, 0x04
+	mov al, 0x04 ;setting IR line 2 connecting pics
 	out 0x21, al
 	mov al, 0x02
 	out 0xA1, al
 
-	mov al, 0x01
+	mov al, 0x01 ;bit 0  enables 8086 mode
 	out 0x21, al
 	out 0xA1, al
-
-	; Enable Keyboard IRQ only
-	mov al, 0xFD 
-	out 0x21, al 
-	mov al, 0xFF 
+	
+	mov al, 0
+	out 0x21, al
 	out 0xA1, al
+	; Enable Keyboard IRQ only
+	;mov al, 0xFD 
+	;out 0x21, al 
+	;mov al, 0xFF 
+	;out 0xA1, al
 
 	ret
 
 idt_start:
-    times 32 dq 0 ; Exceptions
-    ;int 0x20 timer
-    dw timer_handler
-    dw 0x08
-    db 0, 10001110b
-    dw 0x0000
-     ;int 0x21 keyboard
-    dw keyboard_handler, 0x08
-    db 0, 10001110b
-    dw 0x0000
-    times (256-34) dq 0
+	times 32 dq 0 ; Exceptions
+	;int 0x20 timer
+	dw timer_handler
+	dw 0x08
+	db 0, 10001110b
+	dw 0x0000
+	;int 0x21 keyboard
+	dw keyboard_handler, 0x08
+	db 0, 10001110b
+	dw 0x0000
+	;int 0x2B nic slave irq
+	times 9 dq 0
+	dw nic_slave_irq, 0x08
+	db 0, 10001110b
+	dw 0x0000
 
-    times 256 dq 0
+	times (256-24) dq 0
+
+	times 256 dq 0
 idt_end:
 
 idtr:
-    dw idt_end - idt_start - 1
-    dd idt_start
+	dw idt_end - idt_start - 1
+	dd idt_start
 
 timer_handler:
-    push eax
-    mov al, 0x20
-    out 0x20, al
-    pop eax
-    iretd
+	push eax
+	mov al, 0x20
+	out 0x20, al
+	pop eax
+	iretd
+
+nic_slave_irq:
+	pushad
+	call nic_irq_handle
+	popad
+	
+	mov al, 0x20
+	out 0xA0, al
+	out 0x20, al
+	iretd
 
 keyboard_handler:
 	pushad
@@ -215,6 +237,14 @@ keyboard_handler:
 	;ctrl + 'downArrow' next command
 	cmp dword ebx, 0x50
 	je .nextCommand
+	
+	;ctrl + 'leftArrow' moves cursor left
+	cmp dword ebx, 0x4B
+	call moveLeft
+	;ctrl + 'rightArrow' moves cursor right
+	cmp dword ebx, 0x4D
+	call moveRight
+
 	jmp .done
 
 .prevCommand:

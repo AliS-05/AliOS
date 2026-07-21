@@ -45,5 +45,9 @@ void print_hex32(unsigned int b);
 void print_addr(uintptr_t addr);
 void print_byte(unsigned char b);
 
+uint16_t btol16(uint16_t big);
+uint32_t btol32(uint32_t big);
 
+uint16_t ltol16(uint16_t little);
+uint32_t ltol32(uint32_t little);
 #endif

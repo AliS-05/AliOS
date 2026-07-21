@@ -77,8 +77,8 @@ int memcmp(void* mem1, void* mem2, size_t n){
 	unsigned char* m1 = (unsigned char*)mem1;
 	unsigned char* m2 = (unsigned char*)mem2;
 	for(size_t i = 0; i < n; ++i){
-		if(*m1 == *m2) continue;
-		else{ return (*m1 - *m2); }
+		if(m1[i] == m2[i]) continue;
+		else{ return (m1[i] - m2[i]); }
 	}
 	return 0;
 }

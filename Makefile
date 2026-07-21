@@ -53,10 +53,8 @@ $(BUILD_DIR)/%.o: $(SRC_DIR)/%.c
 
 run: $(BINARY)
 	qemu-system-x86_64 -drive format=raw,file=$(BINARY) -drive format=raw,file=$(DRIVE) \
-		-netdev user,id=net0,hostfwd=tcp::5555-:22 \
-		-device e1000,netdev=net0 \
+		-netdev tap,id=net0,ifname=tap0,script=no,downscript=no -device e1000,netdev=net0 \
 		-object filter-dump,id=dump0,netdev=net0,file=packets.pcap
-
 clean:	
 	rm -rf $(BUILD_DIR)
 	 

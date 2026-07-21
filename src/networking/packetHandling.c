@@ -67,6 +67,38 @@ void send_initial_arp_request(){
 	transmit_packet(arp_initial_request, 60);
 }
 
+void send_arp_reply(uint8_t* senderMac, uint8_t* senderIp){
+	uint8_t arp_reply[60] = {
+		// destination mac (broadcast)
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		// source mac (filled in below)
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		// ethertype: ARP
+		0x08, 0x06,
+		// ARP payload
+		0x00, 0x01,             // Hardware Type: Ethernet
+		0x08, 0x00,             // Protocl: IPv4
+		0x06,                   // Hardware length
+		0x04,                   // Protocol len
+		0x00, 0x01,             // op code
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00,   // Sender Hardware Address (SHA)
+		10, 0, 2, 15,           // SPA: 10.0.2.15 
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  // Target hardware Address: unknown, being asked for
+		10, 0, 2, 2             // Target protocol address: 10.0.2.2 (SLIRP gateway)
+	};
+
+	for (int i = 0; i < 6; i++) {
+		arp_reply[0 + i] = senderMac[i];     //destination mac address
+		arp_reply[6 + i] = MAC_ADDRESS[i];   // source MAC (our mac)
+		arp_reply[22 + i] = MAC_ADDRESS[i];  // sender hardware address (ours)
+		arp_reply[32 + i] = senderMac[i];
+		arp_reply[38 + i] = senderIp[i];
+		//
+	}
+	transmit_packet(arp_reply, 60);
+
+}
+
 void start_arp_sequence(){
 	init_nic();
 	arpVectorInit(&arpVector);
@@ -78,7 +110,25 @@ void parse_packet(uint8_t* packetBuffer){
 	uint8_t* arp = packetBuffer + 14; // skip the 14-byte Ethernet header
 
 	uint16_t opCode = (arp[6] << 8) | arp[7];
+	if(opCode == 1){
+		//arp request
+		//try to fill in sender information
+		uint8_t senderMac[6];
+		memcpy(senderMac, arp + 8, 6); // SHA field
+
+		uint32_t senderIp;
+		memcpy(&senderIp, arp + 14, 4); // SPA field
+
+		if(arpVectorFind(&arpVector, senderIp) == NULL){
+			arpVectorPush(&arpVector, senderIp, senderMac);
+		}
+
+		//send reply packet
+		send_arp_reply(senderMac, senderIp);
+
+	}
 	if (opCode == 2){
+		//arp reply
 		uint8_t senderMac[6];
 		memcpy(senderMac, arp + 8, 6); // SHA field
 

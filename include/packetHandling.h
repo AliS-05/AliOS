@@ -14,6 +14,18 @@ typedef struct ArpVector {
 	ArpEntry* data;
 } ArpVector;
 
+typedef struct arp_header {
+	uint16_t hardwareType;
+	uint16_t protocolType;
+	uint8_t  hardwareLen;
+	uint8_t  protocolLen;
+	uint16_t operation;
+	uint8_t  senderHardwareAddress[6]; //mac
+	uint32_t senderIp;
+	uint8_t  targetHardwareAddress[6];
+	uint32_t targetIp;
+} __attribute__((packed));
+
 typedef struct ethernet_header {
 	uint8_t macDestination[6];
 	uint8_t macSource     [6];
@@ -37,7 +49,8 @@ typedef struct icmp_header {
 	uint8_t type;
 	uint8_t code;
 	uint16_t checksum;
-	uint32_t rest_of_header;
+	uint16_t id;
+	uint16_t sequence;
 } __attribute__ ((packed));
 
 void arpVectorInit(ArpVector* arpvec);
@@ -46,12 +59,13 @@ uint8_t* arpVectorFind(ArpVector* arpvec, uint32_t ip);
 void arpVectorFree(ArpVector* arpvec);
 void send_initial_arp_request();
 void nic_irq_handle();
-void send_arp_reply(uint8_t* senderMac, uint8_t* senderIp);
+void send_arp_reply(uint8_t* senderMac, uint32_t senderIp);
 uint16_t ipv4_checksum(struct ipv4_header* head);
+void ping(uint32_t destIp);
 extern uint8_t* MAC_ADDRESS;
 extern uint32_t bar0;
 
-uint16_t ETHERTYPE_ARP = 0x0806;
-uint16_t ETHERTYPE_IPV4 = 0x0800;
+static const uint16_t ETHERTYPE_ARP = 0x0806;
+static const uint16_t ETHERTYPE_IPV4 = 0x0800;
 
 #endif

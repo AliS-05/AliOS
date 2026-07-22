@@ -6,6 +6,7 @@
 #include <fs.h>
 #include <fat16.h>
 #include <edit.h>
+#include <packetHandling.h>
 
 char commandHistoryBuffer[50][80] = {0}; //stores last 50 commands;
 int currentCommandAnchor = 0;
@@ -247,7 +248,7 @@ void cmd_color(char* input_buffer){
 	if(col > 255){
 		print("Must enter an integer number, try 'color 02' or 'color 30'");
 	}
-	init_editor_screen((uint8_t)col);
+	//init_editor_screen((uint8_t)col);
 }
 
 void getDate(){
@@ -287,7 +288,38 @@ void nextCommandHistory(){
 	drawLine(commandHistoryBuffer[currentCommandAnchor]);
 }
 
+void cmd_ping(char* command){
+	//expecting ping xxx.xxx.xxx.xxx
+	token(command, ' '); // 'ping'
 
+	uint8_t ipEntered[4];
+	boolean error = false;
+	for(int count = 0; count < 3; count++){
+		const char* num = token(NULL, '.');
+		if(num == NULL){
+			print("BAD IP\n");
+			return;
+		} 
+		else {	
+			int tmp = atoi(num);
+			if (tmp > 255){
+				print("BAD IP\n");
+				return;
+			}
+
+			ipEntered[count] = (uint8_t)tmp;
+			count++;
+		}
+	}
+	uint32_t destinationAddress = ipEntered[3] << 24 |
+					ipEntered[2] << 16 |
+					ipEntered[1] << 8 |
+					ipEntered[0];
+	print("PINGING: ");
+	print_hex32(destinationAddress);
+	print("\n");
+	ping(destinationAddress);
+}
 
 void parse_command() {
 	strcpy(commandHistoryBuffer[writeIndexAnchor], input_buffer);
@@ -324,6 +356,8 @@ void parse_command() {
 		cmd_color(input_buffer);
 	} else if (strncmp(input_buffer, "assemble", 8) == 0){
 		cmd_assemble(input_buffer);
+	} else if (strncmp(input_buffer, "ping", 4) == 0){
+		cmd_ping(input_buffer);
 	}
 	else {
 		print(unknown_response);

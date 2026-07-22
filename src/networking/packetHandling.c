@@ -4,6 +4,8 @@
 #include <memory.h>
 
 ArpVector arpVector;
+//10.0.2.15
+uint32_t this_host_ip = 0x0A00020F;
 
 //vector code
 void arpVectorInit(ArpVector* vec){
@@ -66,7 +68,29 @@ void send_initial_arp_request(){
 	transmit_packet(arp_initial_request, 60);
 }
 
-void send_arp_reply(uint8_t* senderMac, uint8_t* senderIp){
+void send_arp_request(uint32_t destIp){
+	struct ethernet_header ethHead = {0};
+	struct arp_header arpHead = {0};
+	uint8_t packet[64] = {0};
+
+	memcpy(ethHead.macSource, MAC_ADDRESS, 6);
+	ethHead.ethertype = ETHERTYPE_ARP;
+	
+	arpHead.hardwareType = 1;
+	arpHead.protocolType = ETHERTYPE_ARP;             
+	arpHead.hardwareLen = 6;  
+	arpHead.protocolLen = 4;
+	arpHead.operation = 2;              
+	memcpy(arpHead.senderHardwareAddress[6], MAC_ADDRESS, 6);
+	arpHead.senderIp = this_host_ip;
+	arpHead.targetIp = destIp;
+
+	memcpy(packet, &ethHead, sizeof(struct ethernet_header));
+	memcpy(packet + sizeof(struct ethernet_header), &arpHead, sizeof(struct arp_header));
+	transmit_packet(packet , 60);
+}
+
+void send_arp_reply(uint8_t* senderMac, uint32_t senderIp){
 	uint8_t arp_reply[60] = {
 		// destination mac (broadcast)
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -91,9 +115,9 @@ void send_arp_reply(uint8_t* senderMac, uint8_t* senderIp){
 		arp_reply[6 + i] = MAC_ADDRESS[i];   // source MAC (our mac)
 		arp_reply[22 + i] = MAC_ADDRESS[i];  // sender hardware address (ours)
 		arp_reply[32 + i] = senderMac[i];
-		arp_reply[38 + i] = senderIp[i];
 		//
 	}
+	memcpy(&arp_reply[38], &senderIp, sizeof(uint32_t));
 	transmit_packet(arp_reply, 60);
 
 }
@@ -109,7 +133,7 @@ void handle_arp(uint8_t* packetBuffer){
 	uint8_t* arp = packetBuffer + 14; // skip the 14-byte Ethernet header
 
 	uint16_t opCode = (arp[6] << 8) | arp[7];
-	if(opCode == 1){
+	if(opCode == 1){ //arp reply (someone asked for our ip)
 		print("ARP OPCODE 1\n");
 		//arp request
 		//try to fill in sender information
@@ -123,10 +147,10 @@ void handle_arp(uint8_t* packetBuffer){
 			arpVectorPush(&arpVector, senderIp, senderMac);
 		}
 		//send reply packet
-		send_arp_reply(senderMac, (uint8_t*)&senderIp);
+		send_arp_reply(senderMac, senderIp);
 	}
-	if (opCode == 2){
-		//reply from the switch i think telling us the mac address of an ip
+	if (opCode == 2){ //arp discovery (were asking for someones ip)
+		//reply from the switch, i think, telling us the mac address of an ip
 		print("ARP OPCODE 2\n");
 		//arp reply
 		uint8_t senderMac[6];
@@ -183,6 +207,43 @@ uint16_t icmp_checksum(struct icmp_header* header, uint32_t length){
 }
 
 void send_ipv4(){
+	
+}
+
+void ping(uint32_t destIp){
+	struct ethernet_header ethHead = {0};
+	struct ipv4_header ipHead      = {0};
+	struct icmp_header icmpHead    = {0};
+	uint8_t packet[64] = {0};
+	
+	uint8_t* destMac = arpVectorFind(&arpVector, destIp);
+	if(destMac == NULL){
+		send_arp_request(destIp);
+	}
+
+	memcpy(ethHead.macDestination, destMac, 6);
+	memcpy(ethHead.macSource, MAC_ADDRESS, 6);
+	ethHead.ethertype = ETHERTYPE_IPV4;
+				
+	ipHead.version_ihl = 0b01000101; //5 32 bit words, ipv4
+	ipHead.typeOfService = 0; //routine packet
+	ipHead.totalLength = btol16(28); //ip + icmp header
+	ipHead.timeToLive = 128;
+	ipHead.protocol = 1;
+	ipHead.sourceAddress = this_host_ip;
+	ipHead.destinationAddress = destIp;
+
+	ipHead.headerChecksum = ipv4_checksum(&ipHead);
+
+	icmpHead.type = 8;
+	icmpHead.code = 0;
+	icmpHead.checksum = icmp_checksum(&icmpHead, sizeof(struct icmp_header));
+
+	memcpy(packet, &ethHead, sizeof(struct ethernet_header));
+	memcpy(packet + sizeof(struct ethernet_header), &ipHead, sizeof(struct ipv4_header));
+	memcpy(packet + sizeof(struct ethernet_header) + sizeof(struct ipv4_header), &icmpHead, sizeof(struct icmp_header));
+
+	transmit_packet(packet, sizeof(packet));
 
 }
 

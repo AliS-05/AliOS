@@ -37,7 +37,7 @@ void clearBuf(void* ptr, size_t size);
 char* token(char* str, const char delim);
 
 void print_char(const char c);
-void print_num(int num);
+char* ntos(uint32_t value, char* buf, uint32_t base);
 void print_hex_n(unsigned int hex, int nibbles);
 void print_hex8(unsigned char b);
 void print_hex16(unsigned short b);

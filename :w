@@ -58,7 +58,7 @@ void send_initial_arp_request(){
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00,   // Our mac address
 		10, 0, 2, 15,           // SPA: 10.0.2.15 
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  // Target hardware Address: unknown, being asked for
-		10, 0, 2, 1             // Target protocol address
+		10, 0, 2, 2             // Target protocol address: 10.0.2.2 (SLIRP gateway)
 	};
 
 	for (int i = 0; i < 6; i++) {
@@ -73,9 +73,8 @@ void send_arp_request(uint32_t destIp){
 	struct arp_header arpHead = {0};
 	uint8_t packet[64] = {0};
 
-	memset(ethHead.macDestination, 0xFF, 6);
 	memcpy(ethHead.macSource, MAC_ADDRESS, 6);
-	ethHead.ethertype = btol16(0x0806);
+	ethHead.ethertype = btol(0x0806);;
 
 	arpHead.hardwareType = btol16(1);
         arpHead.protocolType = btol16(0x0800);
@@ -108,7 +107,7 @@ void send_arp_reply(uint8_t* senderMac, uint32_t senderIp){
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00,   // Sender Hardware Address (SHA)
 		10, 0, 2, 15,           // SPA: 10.0.2.15 
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  // Target hardware Address: unknown, being asked for
-		10, 0, 2, 1            // Target protocol address: 10.0.2.2 (SLIRP gateway)
+		10, 0, 2, 2             // Target protocol address: 10.0.2.2 (SLIRP gateway)
 	};
 
 	for (int i = 0; i < 6; i++) {
@@ -218,22 +217,17 @@ void ping(uint32_t destIp){
 	uint8_t packet[64] = {0};
 	
 	uint8_t* destMac = arpVectorFind(&arpVector, destIp);
-        for(int tries = 0; destMac == NULL && tries < 5; tries++){
-        	send_arp_request(destIp);
-                for(int waits = 0; destMac == NULL && waits < 100; waits++){
-                	__asm__ volatile("hlt"); //wait for interrupt
-                        destMac = arpVectorFind(&arpVector, destIp);
-                }
-        }
-        if(destMac == NULL){
-                print("ARP TIMEOUT\n");
-                return;
-        }
+	if(destMac == NULL){
+		while(destMac == NULL){
+			send_arp_request(destIp);
+			destMac = arpVectorFind(&arpVector, destIp);
+		}
+	}
 
-	print("ARP FOUND IN PING\n");
+
 	memcpy(ethHead.macDestination, destMac, 6);
 	memcpy(ethHead.macSource, MAC_ADDRESS, 6);
-	ethHead.ethertype = btol16(0x0800);
+	ethHead.ethertype = ETHERTYPE_IPV4;
 				
 	ipHead.version_ihl = 0b01000101; //5 32 bit words, ipv4
 	ipHead.typeOfService = 0; //routine packet

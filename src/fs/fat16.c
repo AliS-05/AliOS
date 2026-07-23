@@ -19,7 +19,8 @@ uint16_t fat1[(SECTORSIZE * FAT_TABLE_SIZE) / sizeof(uint16_t)];
 uint16_t fat2[(SECTORSIZE * FAT_TABLE_SIZE) / sizeof(uint16_t)];
 
 void initBPB(struct BootSector* b){
-	print_num(sizeof(struct BootSector));
+	char buf[32];
+	ntos(sizeof(struct BootSector), buf, 10);
 	print("\n");
 
 	memset(b, 0, sizeof(struct BootSector));

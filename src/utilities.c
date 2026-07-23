@@ -128,12 +128,45 @@ void scrollDown(){
 	renderWindow(terminalScrollPosition - scrollView);
 }
 
+//num to s
+//to use pass a buffer of max digits of new base
+// uint32_t ipAddress -> base 10 number
+//ntos(ipAddress, buf (len 4), 10);
+char* ntos(uint32_t value, char* buf, uint32_t base)
+{
+	if (base < 2 || base > 16) {
+		buf[0] = '\0';
+		return;
+	}
 
-void print_num(int num){
-	static char buf[32];
-	buf[0] = '\0';
-	itoa(num, buf);
-	print(buf);
+	static const char digits[] = "0123456789ABCDEF";
+
+	int i = 0;
+
+	if (value == 0) {
+		buf[i++] = '0';
+		buf[i] = '\0';
+		return;
+	}
+
+	while (value > 0) {
+		buf[i++] = digits[value % base];
+		value /= base;
+	}
+
+	buf[i] = '\0';
+
+	int left = 0;
+	int right = i - 1;
+
+	while (left < right) {
+		char temp = buf[left];
+		buf[left] = buf[right];
+		buf[right] = temp;
+		left++;
+		right--;
+	}
+	return buf;
 }
 
 
@@ -236,7 +269,7 @@ int atoi(const char* str){ //converts a string to an integer
 
 void itoa(int num, char* buf) { //converts an integer to a string
 	int i = 0;
-	unsigned int n; // Use unsigned to handle INT_MIN safely
+	unsigned int n; 
 
 	if (num == 0) {
 		buf[i++] = '0';

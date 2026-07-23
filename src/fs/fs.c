@@ -94,7 +94,8 @@ size_t read_file(const char* filename){
 		if(strncmp(files[i].name,filename, 32) == 0){
 			print("Found file!");
 			print(" Start Sector: ");
-			print_num(files[i].startSector);
+			char buf[32];
+			ntos(files[i].startSector, buf, 10);
 			print("\n");
 
 			uint32_t start = files[i].startSector;

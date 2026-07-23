@@ -53,7 +53,8 @@ void printSymbolTable(SymbolTable* table){
 		print("Symbol ");
 		print(table->data[i].name);
 		print("at address ");
-		print_num(table->data[i].address);
+		char buf[32];
+		print(ntos(table->data[i].address, buf , 10));
 	}
 }
 

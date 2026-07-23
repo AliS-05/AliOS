@@ -14,7 +14,7 @@ typedef struct ArpVector {
 	ArpEntry* data;
 } ArpVector;
 
-typedef struct arp_header {
+struct arp_header {
 	uint16_t hardwareType;
 	uint16_t protocolType;
 	uint8_t  hardwareLen;
@@ -24,15 +24,15 @@ typedef struct arp_header {
 	uint32_t senderIp;
 	uint8_t  targetHardwareAddress[6];
 	uint32_t targetIp;
-} __attribute__((packed));
+}__attribute__((packed));
 
-typedef struct ethernet_header {
+struct ethernet_header {
 	uint8_t macDestination[6];
 	uint8_t macSource     [6];
 	uint16_t ethertype;
 } __attribute__ ((packed));
 
-typedef struct ipv4_header {
+struct ipv4_header {
 	uint8_t version_ihl;
 	uint8_t typeOfService;
 	uint16_t totalLength;
@@ -45,7 +45,7 @@ typedef struct ipv4_header {
 	uint32_t destinationAddress;
 } __attribute__((packed));
 
-typedef struct icmp_header {
+struct icmp_header {
 	uint8_t type;
 	uint8_t code;
 	uint16_t checksum;

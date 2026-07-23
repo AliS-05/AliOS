@@ -213,7 +213,7 @@ void cmd_run(char* input_buffer){
 	uint8_t* memory = (uint8_t*)0x200000;
 	memcpy(memory, fileData, getFileSize(filename, extension));
 
-	//print_num((uint32_t)memory);
+	//ntos((uint32_t)memory);
 
 	typedef int (*Program)();
 	Program program = (Program)memory; //cast typedef'd function pointer to malloc memory and then call it
@@ -222,7 +222,8 @@ void cmd_run(char* input_buffer){
 	free(fileData);
 	program_running = 0;
 	print("Program Finished: ");
-	print_num(ret);
+	char buf[32];
+	ntos(ret,buf,10);
 }
 
 void cmd_edit(char* input_buffer){
@@ -289,35 +290,47 @@ void nextCommandHistory(){
 }
 
 void cmd_ping(char* command){
-	//expecting ping xxx.xxx.xxx.xxx
-	token(command, ' '); // 'ping'
+	// Skip "ping" and following spaces
+	char* p = command;
+	while(*p && *p != ' ') p++;
+	while(*p == ' ') p++;
 
 	uint8_t ipEntered[4];
-	boolean error = false;
-	for(int count = 0; count < 3; count++){
-		const char* num = token(NULL, '.');
-		if(num == NULL){
+
+	for(int i = 0; i < 4; i++){
+		if(*p < '0' || *p > '9'){
 			print("BAD IP\n");
 			return;
-		} 
-		else {	
-			int tmp = atoi(num);
-			if (tmp > 255){
+		}
+
+		int tmp = 0;
+		while(*p >= '0' && *p <= '9'){
+			tmp = tmp * 10 + (*p - '0');
+			p++;
+		}
+
+		if(tmp > 255){
+			print("BAD IP\n");
+			return;
+		}
+
+		if(i < 3){
+			if(*p != '.'){
 				print("BAD IP\n");
 				return;
 			}
-
-			ipEntered[count] = (uint8_t)tmp;
-			count++;
+			p++;
 		}
+
+		ipEntered[i] = (uint8_t)tmp;
 	}
-	uint32_t destinationAddress = ipEntered[3] << 24 |
-					ipEntered[2] << 16 |
-					ipEntered[1] << 8 |
-					ipEntered[0];
-	print("PINGING: ");
-	print_hex32(destinationAddress);
-	print("\n");
+
+	uint32_t destinationAddress =
+		((uint32_t)ipEntered[3] << 24) |
+		((uint32_t)ipEntered[2] << 16) |
+		((uint32_t)ipEntered[1] << 8) |
+		((uint32_t)ipEntered[0]);
+
 	ping(destinationAddress);
 }
 

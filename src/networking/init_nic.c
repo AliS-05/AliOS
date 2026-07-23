@@ -196,7 +196,8 @@ void init_transmit_descriptors(){
 	write_reg(TDT, 0);
 	uint32_t packets_sent = read_reg(TPT);
 	print("Packets Transmitted: ");
-	print_num(packets_sent);
+	char buf[32];
+	print(ntos(packets_sent, buf, 10));
 	print("\n");
 	write_reg(TCTL, (0 << 1) | //enable bit always 1 but do later?
 			(1 << 3) | //Pad Short Packets
@@ -232,9 +233,10 @@ uint16_t transmit_packet(uint8_t* packet_data, uint16_t length){
 
 	write_reg(TDT, TAIL);
 	print("Wrote TDT = ");
-	print_num(TAIL);
+	char buf[32];
+	print(ntos(TAIL, buf, 10));
 	print(", Read back TDT = ");
-	print_num(read_reg(TDT));
+	print(ntos(read_reg(TDT), buf, 10));
 	print("\n");
 	return length;
 }
@@ -284,7 +286,7 @@ void init_receive_descriptors(){
 //		uint8_t* descriptorData = receivePacketBuffer + receiveDescriptorTracker * 2048;
 //
 //		print("\nReceived packet, length ");
-//		print_num(descriptor->length);
+//		ntos(descriptor->length);
 //		print(": ");
 //		for(int c = 0; c < 20 && c < descriptor->length; c++){
 //			print_hex8(descriptorData[c]);

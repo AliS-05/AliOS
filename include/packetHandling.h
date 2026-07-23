@@ -53,6 +53,21 @@ struct icmp_header {
 	uint16_t sequence;
 } __attribute__ ((packed));
 
+struct udp_pseudo_header {
+	uint32_t sourceAddr;
+	uint32_t destAddr;
+	uint8_t zeroes;
+	uint8_t protocol;
+	uint16_t udpLen;
+} __attribute__ ((packed));
+
+struct udp_header {
+	uint16_t sourcePort;
+	uint16_t destPort;
+	uint16_t length;
+	uint16_t checksum;
+} __attribute__ ((packed));
+
 void arpVectorInit(ArpVector* arpvec);
 void arpVectorPush(ArpVector* arpvec, uint32_t ip, uint8_t* mac);
 uint8_t* arpVectorFind(ArpVector* arpvec, uint32_t ip);
@@ -60,7 +75,11 @@ void arpVectorFree(ArpVector* arpvec);
 void send_initial_arp_request();
 void nic_irq_handle();
 void send_arp_reply(uint8_t* senderMac, uint32_t senderIp);
+
+uint16_t checksum(const void* data, uint32_t length);
 uint16_t ipv4_checksum(struct ipv4_header* head);
+uint16_t icmp_checksum(struct icmp_header* header, uint32_t length);
+uint16_t udp_checksum(struct ipv4_header* ip, struct udp_header* udp, uint32_t udpLength);
 void ping(uint32_t destIp);
 extern uint8_t* MAC_ADDRESS;
 extern uint32_t bar0;

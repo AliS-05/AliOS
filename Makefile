@@ -21,17 +21,27 @@ KERNEL_ASM_OBJ = $(BUILD_DIR)/kernel_asm.o
 KERNEL_ELF = $(BUILD_DIR)/kernel.elf
 KERNEL_BIN = $(BUILD_DIR)/kernel.bin
 
+# must match KERNEL_SECTORS in superboot.s
+KERNEL_SECTORS = 384
+IMAGE_BYTES = 197120
+
 CXXFLAGS = -m32 -ffreestanding \
-           -nostdlib -fno-builtin -fno-pic -fno-stack-protector \
-           -Wall -Wextra -O0 -I$(HEADER_DIR)
+     -nostdlib -fno-builtin -fno-pic -fno-stack-protector \
+     -Wall -Wextra -O0 -I$(HEADER_DIR)
 
 LDFLAGS = -m elf_i386 -T linker.ld
 
 all: $(BINARY)
 
-# cat binaries to single .bin file (needed because different origin points)
+  # cat binaries to single .bin file (needed because different origin points)
 $(BINARY): $(BOOT_BIN) $(KERNEL_BIN)
+	@if [ $$(stat -c%s $(KERNEL_BIN)) -gt $$(( $(KERNEL_SECTORS) * 512 )) ]; then \
+                echo "kernel.bin is $$(stat -c%s $(KERNEL_BIN)) bytes, bootloader only reads $$(( $(KERNEL_SECTORS) * 512 ))"; \
+                exit 1; \
+        fi
 	cat $^ > $@
+	truncate -s $(IMAGE_BYTES) $@
+	@echo "os.bin padded to $$(stat -c%s $@) bytes"
 
 $(KERNEL_ELF): $(KERNEL_ASM_OBJ) $(C_OBJECTS)
 	$(LD) $(LDFLAGS) -o $@ $^
@@ -55,7 +65,6 @@ run: $(BINARY)
 	qemu-system-x86_64 -drive format=raw,file=$(BINARY) -drive format=raw,file=$(DRIVE) \
 		-netdev tap,id=net0,ifname=tap0,script=no,downscript=no -device e1000,netdev=net0 \
 		-object filter-dump,id=dump0,netdev=net0,file=packets.pcap
-clean:	
+
+clean:
 	rm -rf $(BUILD_DIR)
-	 
-.PHONY: all run clean

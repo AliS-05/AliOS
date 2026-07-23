@@ -380,7 +380,61 @@ void handle_udp(uint8_t* fullPacket){
 	uint8_t* payload = (uint8_t*)udpHead + sizeof(struct udp_header);
 	uint32_t payloadLength = udpLength - sizeof(struct udp_header);
 
+	udpHead->checksum = 0;//udp_checksum(ipHead, udpHead, udpLength);
+void handle_udp(uint8_t* fullPacket){
+	struct ipv4_header* ipHead = (struct ipv4_header*)((uint8_t*)fullPacket + sizeof(struct ethernet_header));
+
+	if(ipHead->destinationAddress != this_host_ip){
+		return;
+	}
+
+	struct udp_header* udpHead = (struct udp_header*)((uint8_t*)ipHead + sizeof(struct ipv4_header));
+
+	uint32_t udpLength = btol16(udpHead->length);
+	uint32_t ipTotalLength = btol16(ipHead->totalLength);
+
+	//validate before any of these numbers size a buffer or a copy
+	if(udpLength < sizeof(struct udp_header) || ipTotalLength < sizeof(struct ipv4_header) + udpLength){
+		print("BAD UDP LENGTH\n");
+		return;
+	}
+
+	uint32_t totalPacketLength = ipTotalLength + sizeof(struct ethernet_header);
+	if(totalPacketLength > ETH_FRAME_MAX){
+		print("UDP FRAME TOO LARGE\n");
+		return;
+	}
+
+	struct ethernet_header* ethHead = (struct ethernet_header*)fullPacket;
+	uint8_t tempMac[6];
+	memcpy(tempMac, ethHead->macDestination, 6);
+	memcpy(ethHead->macDestination, ethHead->macSource, 6);
+	memcpy(ethHead->macSource, tempMac, 6);
+
+	uint32_t tempAddr = ipHead->sourceAddress;
+	ipHead->sourceAddress = ipHead->destinationAddress;
+	ipHead->destinationAddress = tempAddr;
+
+	uint16_t tempPort = udpHead->sourcePort;
+	udpHead->sourcePort = udpHead->destPort;
+	udpHead->destPort = tempPort;
+
+	uint8_t* payload = (uint8_t*)udpHead + sizeof(struct udp_header);
+	uint32_t payloadLength = udpLength - sizeof(struct udp_header);
+
 	udpHead->checksum = udp_checksum(ipHead, udpHead, udpLength);
+	ipHead->headerChecksum = ipv4_checksum(ipHead);
+
+	memset(txScratch, 0, ETH_FRAME_MIN);
+	memcpy(txScratch, ethHead, sizeof(struct ethernet_header));
+	memcpy(txScratch + sizeof(struct ethernet_header), ipHead, sizeof(struct ipv4_header));
+	memcpy(txScratch + sizeof(struct ethernet_header) + sizeof(struct ipv4_header), udpHead, sizeof(struct udp_header));
+	memcpy(txScratch + sizeof(struct ethernet_header) + sizeof(struct ipv4_header) + sizeof(struct udp_header), payload, payloadLength);
+
+	//ethernet minimum frame is 60 bytes, pad short echoes
+	uint32_t txLength = totalPacketLength < ETH_FRAME_MIN ? ETH_FRAME_MIN : totalPacketLength;
+	transmit_packet(txScratch, txLength);
+}
 	ipHead->headerChecksum = ipv4_checksum(ipHead);
 
 	memset(txScratch, 0, ETH_FRAME_MIN);

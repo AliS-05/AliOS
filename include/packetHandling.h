@@ -92,4 +92,6 @@ static const uint16_t ETHERTYPE_IPV4 = 0x0800;
 static const uint32_t this_host_ip = 0x0F02000A;
 //10.0.2.1
 static const uint32_t bridge_ip = 0x0102000A;
+//255.255.255.0
+static const uint32_t subnet_mask = 0x00FFFFFF;
 #endif

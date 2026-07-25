@@ -58,9 +58,9 @@ void send_initial_arp_request(){
 		0x04,                   // Protocol len
 		0x00, 0x01,             // op code
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00,   // Our mac address
-		10, 0, 2, 15,           // SPA: 10.0.2.15 
+		10, 0, 2, 15,           // SPA: 10.0.2.15 (our ip)
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  // Target hardware Address: unknown, being asked for
-		10, 0, 2, 1             // Target protocol address
+		10, 0, 2, 1             // Target protocol address (Bridge Gateway / router)
 	};
 
 	for (int i = 0; i < 6; i++) {
@@ -91,6 +91,15 @@ void send_arp_request(uint32_t destIp){
 	memcpy(packet, &ethHead, sizeof(struct ethernet_header));
 	memcpy(packet + sizeof(struct ethernet_header), &arpHead, sizeof(struct arp_header));
 	transmit_packet(packet , 60);
+}
+
+//compares subnet masks and returns gateway ip if you need routing else just returns the destIp
+uint32_t next_hop(uint32_t destIp){
+	if((destIp & subnet_mask) == (this_host_ip & subnet_mask)){
+		return destIp;
+	} else {
+		return bridge_ip;
+	}
 }
 
 void send_arp_reply(uint8_t* senderMac, uint32_t senderIp){
@@ -186,7 +195,7 @@ uint16_t checksum(const void* data, uint32_t length) {
 		sum = (sum & 0xFFFF) + (sum >> 16);
 	}
 
-	return ltol16(~sum);
+	return ltob16(~sum);
 }
 
 uint16_t ipv4_checksum(struct ipv4_header* header) {
@@ -209,7 +218,7 @@ uint16_t udp_checksum(struct ipv4_header* ip, struct udp_header* udp, uint32_t u
 		.destAddr = ip->destinationAddress,
 		.zeroes = 0,
 		.protocol = ip->protocol,
-		.udpLen = ltol16(udpLength)
+		.udpLen = ltob16(udpLength)
 	};
 
 	uint32_t totalLength = sizeof(struct udp_pseudo_header) + udpLength;
@@ -239,14 +248,15 @@ void ping(uint32_t destIp){
 	struct icmp_header icmpHead    = {0};
 	uint8_t packet[64] = {0};
 	
-	uint8_t* destMac = arpVectorFind(&arpVector, destIp);
-        for(int tries = 0; destMac == NULL && tries < 5; tries++){
-        	send_arp_request(destIp);
-                for(int waits = 0; destMac == NULL && waits < 100; waits++){
-                	__asm__ volatile("hlt"); //wait for interrupt
-                        destMac = arpVectorFind(&arpVector, destIp);
-                }
-        }
+	uint32_t nextHop = next_hop(destIp);
+	uint8_t* destMac = arpVectorFind(&arpVector, nextHop);
+	for(int tries = 0; destMac == NULL && tries < 5; tries++){
+		send_arp_request(nextHop);
+		for(int waits = 0; destMac == NULL && waits < 100; waits++){
+			__asm__ volatile("hlt");
+			destMac = arpVectorFind(&arpVector, nextHop);
+		}
+	}
         if(destMac == NULL){
                 print("ARP TIMEOUT\n");
                 return;
@@ -403,15 +413,15 @@ void send_udp(uint32_t destIp, uint16_t sourcePort, uint16_t destPort, uint8_t* 
 	struct ipv4_header     ipHead  = {0};
 	struct udp_header      udpHead = {0};
 
-	//finding mac from arp
-	uint8_t* destMac = arpVectorFind(&arpVector, destIp);
-        for(int tries = 0; destMac == NULL && tries < 5; tries++){
-        	send_arp_request(destIp);
-                for(int waits = 0; destMac == NULL && waits < 100; waits++){
-                	__asm__ volatile("hlt"); //wait for interrupt
-                        destMac = arpVectorFind(&arpVector, destIp);
-                }
-        }
+	uint32_t nextHop = next_hop(destIp);
+	uint8_t* destMac = arpVectorFind(&arpVector, nextHop);
+	for(int tries = 0; destMac == NULL && tries < 5; tries++){
+		send_arp_request(nextHop);
+		for(int waits = 0; destMac == NULL && waits < 100; waits++){
+			__asm__ volatile("hlt");
+			destMac = arpVectorFind(&arpVector, nextHop);
+		}
+	}
         if(destMac == NULL){
                 print("ARP TIMEOUT\n");
                 return;

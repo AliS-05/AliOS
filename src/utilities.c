@@ -355,11 +355,11 @@ return  ((big & 0x000000FFU) << 24) |
 	((big & 0xFF000000U) >> 24);
 }
 
-uint16_t ltol16(uint16_t little){
+uint16_t ltob16(uint16_t little){
 	return (little >> 8) | (little << 8);
 }
 
-uint32_t ltol32(uint32_t little){
+uint32_t ltob32(uint32_t little){
 	return ((little & 0x000000FFU) << 24) |
 	       ((little & 0x0000FF00U) << 8)  |
 	       ((little & 0x00FF0000U) >> 8)  |

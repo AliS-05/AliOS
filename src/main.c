@@ -32,5 +32,5 @@ extern void kernel_main(){
 	print(shell_prompt);
 
 	uint8_t msg[] = "hello from alios";
-        send_udp(bridge_ip, 40000, 9999, msg, sizeof(msg) - 1);
+        //send_udp(bridge_ip, 40000, 9999, msg, sizeof(msg) - 1);
 }

@@ -80,6 +80,7 @@ uint16_t checksum(const void* data, uint32_t length);
 uint16_t ipv4_checksum(struct ipv4_header* head);
 uint16_t icmp_checksum(struct icmp_header* header, uint32_t length);
 uint16_t udp_checksum(struct ipv4_header* ip, struct udp_header* udp, uint32_t udpLength);
+void send_udp(uint32_t destIp, uint16_t sourcePort, uint16_t destPort, uint8_t* payload, uint16_t payloadLength);
 void ping(uint32_t destIp);
 extern uint8_t* MAC_ADDRESS;
 extern uint32_t bar0;
@@ -87,4 +88,8 @@ extern uint32_t bar0;
 static const uint16_t ETHERTYPE_ARP = 0x0806;
 static const uint16_t ETHERTYPE_IPV4 = 0x0800;
 
+//10.0.2.15
+static const uint32_t this_host_ip = 0x0F02000A;
+//10.0.2.1
+static const uint32_t bridge_ip = 0x0102000A;
 #endif

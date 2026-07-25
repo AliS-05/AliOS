@@ -6,12 +6,9 @@
 #define ETH_FRAME_MAX 1518
 #define ETH_FRAME_MIN 60
 
-static uint8_t udpScratch[ETH_FRAME_MAX];
-static uint8_t txScratch[ETH_FRAME_MAX];
+static uint8_t udpBuffer[ETH_FRAME_MAX];
+static uint8_t transBuffer[ETH_FRAME_MAX];
 ArpVector arpVector;
-//10.0.2.15
-uint32_t this_host_ip = 0x0F02000A;
-
 //vector code
 void arpVectorInit(ArpVector* vec){
 	vec->size = 0;
@@ -220,10 +217,10 @@ uint16_t udp_checksum(struct ipv4_header* ip, struct udp_header* udp, uint32_t u
 		return 0; //checksum optional in ipv4, 0 means not computed
 	}
 
-	memcpy(udpScratch, &pseudo, sizeof(struct udp_pseudo_header));
-	memcpy(udpScratch + sizeof(struct udp_pseudo_header), udp, udpLength);
+	memcpy(udpBuffer, &pseudo, sizeof(struct udp_pseudo_header));
+	memcpy(udpBuffer + sizeof(struct udp_pseudo_header), udp, udpLength);
 
-	uint16_t csum = checksum(udpScratch, totalLength);
+	uint16_t csum = checksum(udpBuffer, totalLength);
 
 	//checksum of 0 is transmitted as 0xFFFF
 	if(csum == 0)
@@ -339,7 +336,8 @@ void handle_icmp(uint8_t* fullPacket){
 	}
 }
 
-void handle_udp(uint8_t* fullPacket){
+
+void echo_udp(uint8_t* fullPacket){
 	struct ipv4_header* ipHead = (struct ipv4_header*)((uint8_t*)fullPacket + sizeof(struct ethernet_header));
 
 	if(ipHead->destinationAddress != this_host_ip){
@@ -381,7 +379,81 @@ void handle_udp(uint8_t* fullPacket){
 	uint32_t payloadLength = udpLength - sizeof(struct udp_header);
 
 	udpHead->checksum = 0;//udp_checksum(ipHead, udpHead, udpLength);
-void handle_udp(uint8_t* fullPacket){
+
+
+	ipHead->headerChecksum = ipv4_checksum(ipHead);
+
+	memset(transBuffer, 0, ETH_FRAME_MIN);
+	memcpy(transBuffer, ethHead, sizeof(struct ethernet_header));
+	memcpy(transBuffer + sizeof(struct ethernet_header), ipHead, sizeof(struct ipv4_header));
+	memcpy(transBuffer + sizeof(struct ethernet_header) + sizeof(struct ipv4_header), udpHead, sizeof(struct udp_header));
+	memcpy(transBuffer + sizeof(struct ethernet_header) + sizeof(struct ipv4_header) + sizeof(struct udp_header), payload, payloadLength);
+
+	//ethernet minimum frame is 60 bytes, pad short echoes
+	uint32_t txLength = totalPacketLength < ETH_FRAME_MIN ? ETH_FRAME_MIN : totalPacketLength;
+	transmit_packet(transBuffer, txLength);
+}
+
+void send_udp(uint32_t destIp, uint16_t sourcePort, uint16_t destPort, uint8_t* payload, uint16_t payloadLength){
+	if(payloadLength > 508){
+		print("UDP Payload exceeds maximum safe payload size\n");
+		return;
+	}
+	struct ethernet_header ethHead = {0};
+	struct ipv4_header     ipHead  = {0};
+	struct udp_header      udpHead = {0};
+
+	//finding mac from arp
+	uint8_t* destMac = arpVectorFind(&arpVector, destIp);
+        for(int tries = 0; destMac == NULL && tries < 5; tries++){
+        	send_arp_request(destIp);
+                for(int waits = 0; destMac == NULL && waits < 100; waits++){
+                	__asm__ volatile("hlt"); //wait for interrupt
+                        destMac = arpVectorFind(&arpVector, destIp);
+                }
+        }
+        if(destMac == NULL){
+                print("ARP TIMEOUT\n");
+                return;
+        }
+	
+
+
+	//build ethernet header 
+	memcpy(ethHead.macDestination, destMac, 6);
+	memcpy(ethHead.macSource, MAC_ADDRESS, 6);
+	ethHead.ethertype = btol16(0x0800);
+
+	//build ip header
+	//
+	ipHead.version_ihl = 0b01000101; //5 32 bit words, ipv4
+	ipHead.typeOfService = 0; //routine packet
+	ipHead.totalLength = btol16(28 + payloadLength); //ip + icmp header + payload
+	ipHead.timeToLive = 128;
+	ipHead.protocol = 17;
+	ipHead.sourceAddress = this_host_ip;
+	ipHead.destinationAddress = destIp;
+
+	ipHead.headerChecksum = ipv4_checksum(&ipHead);
+	
+	//build udp header
+	udpHead.sourcePort = btol16(sourcePort);
+	udpHead.destPort = btol16(destPort);
+	udpHead.length = btol16(payloadLength + sizeof(struct udp_header));
+	udpHead.checksum = 0;
+	
+	uint16_t headerLengths = sizeof(struct ethernet_header) + sizeof(struct ipv4_header) + sizeof(struct udp_header);
+
+	memset(transBuffer, 0, ETH_FRAME_MIN);
+	memcpy(transBuffer, &ethHead, sizeof(struct ethernet_header));
+	memcpy(transBuffer + sizeof(struct ethernet_header), &ipHead, sizeof(struct ipv4_header));
+	memcpy(transBuffer + sizeof(struct ethernet_header) + sizeof(struct ipv4_header), &udpHead, sizeof(struct udp_header));
+	memcpy(transBuffer + sizeof(struct ethernet_header) + sizeof(struct ipv4_header) + sizeof(struct udp_header), payload, payloadLength);
+	//ethernet minimum frame is 60 bytes, pad short echoes
+	transmit_packet(transBuffer, payloadLength + headerLengths);
+}
+
+void demultiplex_udp(uint8_t* fullPacket){
 	struct ipv4_header* ipHead = (struct ipv4_header*)((uint8_t*)fullPacket + sizeof(struct ethernet_header));
 
 	if(ipHead->destinationAddress != this_host_ip){
@@ -389,77 +461,29 @@ void handle_udp(uint8_t* fullPacket){
 	}
 
 	struct udp_header* udpHead = (struct udp_header*)((uint8_t*)ipHead + sizeof(struct ipv4_header));
-
+	uint16_t sourcePort = btol16(udpHead->sourcePort);
+	uint16_t destPort = btol16(udpHead->destPort);
 	uint32_t udpLength = btol16(udpHead->length);
 	uint32_t ipTotalLength = btol16(ipHead->totalLength);
-
-	//validate before any of these numbers size a buffer or a copy
-	if(udpLength < sizeof(struct udp_header) || ipTotalLength < sizeof(struct ipv4_header) + udpLength){
-		print("BAD UDP LENGTH\n");
-		return;
+	
+	if(destPort == 7){
+		print("ECHO\n");
+		echo_udp(fullPacket);
 	}
 
-	uint32_t totalPacketLength = ipTotalLength + sizeof(struct ethernet_header);
-	if(totalPacketLength > ETH_FRAME_MAX){
-		print("UDP FRAME TOO LARGE\n");
-		return;
-	}
-
-	struct ethernet_header* ethHead = (struct ethernet_header*)fullPacket;
-	uint8_t tempMac[6];
-	memcpy(tempMac, ethHead->macDestination, 6);
-	memcpy(ethHead->macDestination, ethHead->macSource, 6);
-	memcpy(ethHead->macSource, tempMac, 6);
-
-	uint32_t tempAddr = ipHead->sourceAddress;
-	ipHead->sourceAddress = ipHead->destinationAddress;
-	ipHead->destinationAddress = tempAddr;
-
-	uint16_t tempPort = udpHead->sourcePort;
-	udpHead->sourcePort = udpHead->destPort;
-	udpHead->destPort = tempPort;
-
-	uint8_t* payload = (uint8_t*)udpHead + sizeof(struct udp_header);
-	uint32_t payloadLength = udpLength - sizeof(struct udp_header);
-
-	udpHead->checksum = udp_checksum(ipHead, udpHead, udpLength);
-	ipHead->headerChecksum = ipv4_checksum(ipHead);
-
-	memset(txScratch, 0, ETH_FRAME_MIN);
-	memcpy(txScratch, ethHead, sizeof(struct ethernet_header));
-	memcpy(txScratch + sizeof(struct ethernet_header), ipHead, sizeof(struct ipv4_header));
-	memcpy(txScratch + sizeof(struct ethernet_header) + sizeof(struct ipv4_header), udpHead, sizeof(struct udp_header));
-	memcpy(txScratch + sizeof(struct ethernet_header) + sizeof(struct ipv4_header) + sizeof(struct udp_header), payload, payloadLength);
-
-	//ethernet minimum frame is 60 bytes, pad short echoes
-	uint32_t txLength = totalPacketLength < ETH_FRAME_MIN ? ETH_FRAME_MIN : totalPacketLength;
-	transmit_packet(txScratch, txLength);
-}
-	ipHead->headerChecksum = ipv4_checksum(ipHead);
-
-	memset(txScratch, 0, ETH_FRAME_MIN);
-	memcpy(txScratch, ethHead, sizeof(struct ethernet_header));
-	memcpy(txScratch + sizeof(struct ethernet_header), ipHead, sizeof(struct ipv4_header));
-	memcpy(txScratch + sizeof(struct ethernet_header) + sizeof(struct ipv4_header), udpHead, sizeof(struct udp_header));
-	memcpy(txScratch + sizeof(struct ethernet_header) + sizeof(struct ipv4_header) + sizeof(struct udp_header), payload, payloadLength);
-
-	//ethernet minimum frame is 60 bytes, pad short echoes
-	uint32_t txLength = totalPacketLength < ETH_FRAME_MIN ? ETH_FRAME_MIN : totalPacketLength;
-	transmit_packet(txScratch, txLength);
 }
 
 void handle_ipv4(uint8_t* packetBuffer){
 	print("IPV4 PACKET\n");
 	uint8_t* ipv4Packet = packetBuffer + 14; //skipping ethernet frame header
-	struct ipv4_header* packet_ipv4_header = (struct ipv4_header*)ipv4Packet;
+	struct ipv4_header* packet_ipv4_header = (struct ipv5_header*)ipv4Packet;
 	if(packet_ipv4_header->protocol == 0x01){
 		print("ICMP PACKET\n");
 		handle_icmp(packetBuffer);
 	} else if(packet_ipv4_header->protocol == 0x06){
 		print("TCP PACKET\n");
 	} else if(packet_ipv4_header->protocol == 0x11){
-		print("UDP PACKET\n");
-		handle_udp(packetBuffer);
+		demultiplex_udp(packetBuffer);
 	} else {
 		print("IPV4 PROTOCOL NOT RECOGNIZED\n");
 	}

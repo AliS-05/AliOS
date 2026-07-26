@@ -8,7 +8,8 @@
 
 static uint8_t udpBuffer[ETH_FRAME_MAX];
 static uint8_t transBuffer[ETH_FRAME_MAX];
-ArpVector arpVector;
+struct ArpVector arpVector;
+struct DnsVector dnsVector;
 //vector code
 void arpVectorInit(ArpVector* vec){
 	vec->size = 0;
@@ -40,6 +41,37 @@ void arpVectorFree(ArpVector* arpvec){
 	free(arpvec->data);
 }
 
+
+
+void dnsVectorInit(struct DnsVector* vec){
+	vec->size = 0;
+	vec->capacity = 16;
+	vec->data = malloc(sizeof(ArpEntry) * vec->capacity);
+}
+
+void dnsVectorPush(struct DnsVector* vec, char* name, size_t nameLen, uint32_t ip){
+	struct DnsEntry newEntry;
+	newEntry.ip = ip;
+	memcpy(newEntry.name, name, nameLen);
+	if(vec->size >= vec->capacity){
+		vec->capacity *= 2;
+		vec->data = realloc(vec->data, sizeof(struct DnsEntry) * vec->capacity);
+	}
+	vec->data[vec->size++] = newEntry;
+}
+
+uint32_t dnsVectorFind(struct DnsVector* vec, char* name, size_t nameLen){
+	for(int i = 0; i < vec->size; i++){
+		if(memcmp(vec->data[i].name, name, nameLen) == 0){
+			return vec->data[i].ip;
+		}
+	}
+	return 0; //error
+}	
+
+void dnsVectorFree(struct DnsVector* vec){
+	free(vec->data);
+}
 
 
 
@@ -240,6 +272,27 @@ uint16_t udp_checksum(struct ipv4_header* ip, struct udp_header* udp, uint32_t u
 
 void send_ipv4(){
 	
+}
+
+void ping_dns(uint8_t* question, size_t qLen){
+	uint32_t destIp = dnsVectorFind(&dnsVector, question, qLen);
+	
+	if(destIp == 0){
+		for(int tries = 0; destIp == 0 && tries < 5; tries++){
+			dns_lookup(question, qLen);
+			for(int waits = 0; destIp == 0 && waits < 100; waits++){
+				__asm__ volatile("hlt");
+				destIp = dnsVectorFind(&dnsVector, question, qLen);
+			}
+		}
+	}
+
+	if(destIp == 0){
+		print("Error resolving DNS\n");
+		return;
+	}
+
+	ping(destIp);
 }
 
 void ping(uint32_t destIp){
@@ -451,15 +504,40 @@ void dns_lookup(uint8_t* question, size_t qLen) {
 
 void receive_dns(uint8_t* fullPacket){
 	uint8_t* answers = fullPacket;
-	answers += sizeof(struct ethernet_header) + sizeof(struct ipv4_header) + sizeof(struct udp_header) + sizeof(struct dns_message);
+	uint8_t dnsStart = sizeof(struct ethernet_header) + sizeof(struct ipv4_header) + sizeof(struct udp_header);
+
+	answers += dnsStart + sizeof(struct dns_message);
 	while(*answers != 0){ //skip to null terminator of question
 		answers++;
 	}
 	answers++; //skip null terminator itself
 	answers += 4; //skip type and class
 	
-	uint8_t first = *answers;
-	char firstBuf[first];
+	//ok so answers is now at the answers section of the dns response (checked with gdb)
+	// 0xC0 denotes a pointer back to the question
+	if(*answers == 0xC0){
+		uint8_t offset = *(answers + 1);
+		uint8_t* name = fullPacket + dnsStart + offset;
+		//expected to have 0x06 google 0x03 com
+		uint8_t firstLen = *name; //0x06
+		char firstBuf[firstLen]; // 6 bytes
+		memcpy(firstBuf, name + 1, firstLen); //google
+
+		uint8_t secondLen = *(name + firstLen + 1); //0x03
+		char secondBuf[secondLen]; //3 bytes
+		memcpy(secondBuf, name + firstLen + 2, secondLen); //com
+
+		char final[firstLen + secondLen + 2];
+		memcpy(final, firstBuf, firstLen);
+		memcpy(final + firstLen + 1, ".", 1);
+		memcpy(final + firstLen + 2, secondBuf, secondLen);
+
+		uint32_t ipAddr = btol32(*(uint32_t*)(answers + 12)); //casting to uint32_t pointer and dereference for ip address
+
+		dnsVectorPush(&dnsVector, final, firstLen + secondLen + 1, ipAddr); 
+	} else {	
+		print("dns response\n");
+	}
 }
 
 void send_udp(uint32_t destIp, uint16_t sourcePort, uint16_t destPort, uint8_t* payload, uint16_t payloadLength){

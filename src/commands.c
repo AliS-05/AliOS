@@ -290,49 +290,50 @@ void nextCommandHistory(){
 }
 
 void cmd_ping(char* command){
-	// Skip "ping" and following spaces
-	char* p = command;
-	while(*p && *p != ' ') p++;
-	while(*p == ' ') p++;
+	token(input_buffer, ' '); //skipping 'ping'
+	const char* first = token(NULL, '.');
+	//first is either 'google' or '123'
+	if((first[0] > 0x41 && first[0] < 0x5A) || (first[0] > 61 && first[0] < 0x7A)){ //checking for letters
+		const char* second = token(NULL, '.'); //com
+		size_t len1 = strlen(first);
+		size_t len2 = strlen(second);
 
-	uint8_t ipEntered[4];
+		size_t len = len1+ len2 + 3;//3 bytes for lengths + null terminator
+		uint8_t buf[len]; 
+		//0x06
+		buf[0] = len1;
+		//google
+		memcpy(buf + 1, first, len1);
+		//0x03
+		buf[len1 + 1] = len2;
+		//com
+		memcpy(buf + len1 + 2, second, len2);
+		//0x00
+		buf[len1 + 2 + len2] = 0x00;
+		ping_dns(buf, len);
+	} else {
+		//else we have a number between 0-255
+		//123.456.789.000
+		const char* second = token(NULL, '.');
+		const char* third  = token(NULL, '.');
+		const char* fourth = token(NULL, ' ');
+		
+		uint8_t ipEntered[4];
+		ipEntered[0] = (uint8_t)atoi(first);
+		ipEntered[1] = (uint8_t)atoi(second);
+		ipEntered[2] = (uint8_t)atoi(third);
+		ipEntered[3] = (uint8_t)atoi(fourth);
 
-	for(int i = 0; i < 4; i++){
-		if(*p < '0' || *p > '9'){
-			print("BAD IP\n");
-			return;
-		}
-
-		int tmp = 0;
-		while(*p >= '0' && *p <= '9'){
-			tmp = tmp * 10 + (*p - '0');
-			p++;
-		}
-
-		if(tmp > 255){
-			print("BAD IP\n");
-			return;
-		}
-
-		if(i < 3){
-			if(*p != '.'){
-				print("BAD IP\n");
-				return;
-			}
-			p++;
-		}
-
-		ipEntered[i] = (uint8_t)tmp;
+		uint32_t destIp = 
+			((uint32_t)ipEntered[3] << 24) |
+			((uint32_t)ipEntered[2] << 16) |
+			((uint32_t)ipEntered[1] << 8) |
+			((uint32_t)ipEntered[0]);
+		ping(destIp);
 	}
-
-	uint32_t destinationAddress =
-		((uint32_t)ipEntered[3] << 24) |
-		((uint32_t)ipEntered[2] << 16) |
-		((uint32_t)ipEntered[1] << 8) |
-		((uint32_t)ipEntered[0]);
-
-	ping(destinationAddress);
 }
+
+
 
 void parse_command() {
 	strcpy(commandHistoryBuffer[writeIndexAnchor], input_buffer);

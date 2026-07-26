@@ -25,9 +25,13 @@ KERNEL_BIN = $(BUILD_DIR)/kernel.bin
 KERNEL_SECTORS = 384
 IMAGE_BYTES = 197120
 
-CXXFLAGS = -m32 -ffreestanding \
-     -nostdlib -fno-builtin -fno-pic -fno-stack-protector \
-     -Wall -Wextra -O0 -I$(HEADER_DIR)
+# CXXFLAGS = -m32 -ffreestanding \
+#      -nostdlib -fno-builtin -fno-pic -fno-stack-protector \
+#      -Wall -Wextra -O0 -I$(HEADER_DIR)
+# 
+CXXFLAGS = -m32 -ffreestanding -ggdb3 \
+	   -nostdlib -fno-builtin -fno-pic -fno-stack-protector \
+	   -Wall -Wextra -O0 -I$(HEADER_DIR)
 
 LDFLAGS = -m elf_i386 -T linker.ld
 
@@ -65,6 +69,26 @@ run: $(BINARY)
 	qemu-system-x86_64 -drive format=raw,file=$(BINARY) -drive format=raw,file=$(DRIVE) \
 		-netdev tap,id=net0,ifname=tap0,script=no,downscript=no -device e1000,netdev=net0 \
 		-object filter-dump,id=dump0,netdev=net0,file=packets.pcap
+
+# gdb debug session: qemu halts at reset with the gdbstub on :1234, gdb attaches with symbols
+# override the initial breakpoint:  make debug BRK=handle_udp
+BRK ?= parse_packet
+
+debug: $(BINARY)
+	qemu-system-i386 -s -S -drive format=raw,file=$(BINARY) -drive format=raw,file=$(DRIVE) \
+		-netdev tap,id=net0,ifname=tap0,script=no,downscript=no -device e1000,netdev=net0 \
+		-object filter-dump,id=dump0,netdev=net0,file=packets.pcap & \
+		QEMU_PID=$$!; \
+		gdb -q \
+		-ex "set confirm off" \
+		-ex "set pagination off" \
+		-ex "set disassembly-flavor intel" \
+		-ex "set architecture i386" \
+		-ex "symbol-file $(KERNEL_ELF)" \
+		-ex "target remote :1234" \
+		-ex "break $(BRK)" \
+		-ex "continue"; \
+		kill $$QEMU_PID 2>/dev/null
 
 clean:
 	rm -rf $(BUILD_DIR)

@@ -14,6 +14,17 @@ typedef struct ArpVector {
 	ArpEntry* data;
 } ArpVector;
 
+typedef struct DnsEntry {
+	char* name;
+	uint32_t ip;
+}; 
+
+typedef struct DnsVector {
+	int size;
+	int capacity;
+	struct DnsEntry* data;
+};
+
 struct arp_header {
 	uint16_t hardwareType;
 	uint16_t protocolType;
@@ -81,17 +92,25 @@ void arpVectorInit(ArpVector* arpvec);
 void arpVectorPush(ArpVector* arpvec, uint32_t ip, uint8_t* mac);
 uint8_t* arpVectorFind(ArpVector* arpvec, uint32_t ip);
 void arpVectorFree(ArpVector* arpvec);
-void send_initial_arp_request();
+
+void dnsVectorInit(struct DnsVector* vec);
+void dnsVectorPush(struct DnsVector* vec, char* name, size_t nameLen, uint32_t ip);
+uint32_t dnsVectorFind(struct DnsVector* vec, char* name, size_t nameLen);
+void dnsVectorFree(struct DnsVector* vec);
+
 void nic_irq_handle();
+void send_initial_arp_request();
 void send_arp_reply(uint8_t* senderMac, uint32_t senderIp);
 
 uint16_t checksum(const void* data, uint32_t length);
 uint16_t ipv4_checksum(struct ipv4_header* head);
 uint16_t icmp_checksum(struct icmp_header* header, uint32_t length);
 uint16_t udp_checksum(struct ipv4_header* ip, struct udp_header* udp, uint32_t udpLength);
+
 void send_udp(uint32_t destIp, uint16_t sourcePort, uint16_t destPort, uint8_t* payload, uint16_t payloadLength);
 void ping(uint32_t destIp);
 void dns_lookup();
+
 extern uint8_t* MAC_ADDRESS;
 extern uint32_t bar0;
 

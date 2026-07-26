@@ -157,16 +157,21 @@ nic_slave_irq:
 	iretd
 
 keyboard_handler:
-	pushad
-	;cld
-	mov ax, 0x10
-	mov ds, ax
-	mov es, ax
-	mov edi, [cursor_pos] ;saving cursor pos in register
+pushad
+        ;cld
+        mov ax, 0x10
+        mov ds, ax
+        mov es, ax
 
-	in al, 0x60 ; reading scancode
-	
+        cmp byte [program_running], 1   ;program owns the keyboard — don't drain port 0x60
+        je .done
+
+        mov edi, [cursor_pos] ;saving cursor pos in register
+
+        in al, 0x60 ; reading scancode
+
 	mov byte [editor_scancode], al
+
 	
 	cmp al, 0xE0
 	je .extPrefix
@@ -380,9 +385,11 @@ keyboard_handler:
 	jmp .done
 
 .handle_enter:
+	cmp byte [command_running], 1 
+	je .done
 	cmp byte [in_editor], 1
 	je .editor_enter
-
+	
 	;buffer = echo hello[enter]
 	;goal = echo hello0
 	;current = buffer not resetting
@@ -396,10 +403,18 @@ keyboard_handler:
 
 	push dword 10           ; '\n'
         call putChar
-        add esp, 4
+	add esp, 4
+
+	mov byte [command_running], 1
+
+	mov al, 0x20            ;EOI to master PIC now, not at .done
+	out 0x20, al
+	sti                     ;let IRQ11 (NIC) and IRQ0 through while we block
 
 	call parse_command
 
+	cli
+	mov byte [command_running], 0
 
 	cmp byte [skip_newline], 1 ;need this to avoid printing 2 new lterminalScrollPosition < 26 || ines
 	je .skip_nl
@@ -496,6 +511,7 @@ section .data
 	ext_prefix db 0
 	in_editor db 0 ;flag specifically for whether or not to print shell_prompt on enter press
 	program_running db 0 ;program not running by default
+	command_running db 0 ;
 	esc_pressed db 0
 	enter_editor_flag db 0
 	editor_scancode db 0

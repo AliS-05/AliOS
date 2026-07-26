@@ -169,6 +169,7 @@ void send_arp_reply(uint8_t* senderMac, uint32_t senderIp){
 void start_arp_sequence(){
 	init_nic();
 	arpVectorInit(&arpVector);
+	dnsVectorInit(&dnsVector);
 	print_mac(MAC_ADDRESS);
 	send_initial_arp_request();
 }
@@ -276,16 +277,18 @@ void send_ipv4(){
 
 void ping_dns(uint8_t* question, size_t qLen){
 	uint32_t destIp = dnsVectorFind(&dnsVector, question, qLen);
-	
+	print("Entering DNS LOOP\n");
 	if(destIp == 0){
 		for(int tries = 0; destIp == 0 && tries < 5; tries++){
 			dns_lookup(question, qLen);
-			for(int waits = 0; destIp == 0 && waits < 100; waits++){
+			for(int waits = 0; destIp == 0 && waits < 1; waits++){
 				__asm__ volatile("hlt");
 				destIp = dnsVectorFind(&dnsVector, question, qLen);
 			}
 		}
 	}
+	
+	print("FOUND DNS IP\n");
 
 	if(destIp == 0){
 		print("Error resolving DNS\n");
@@ -518,23 +521,17 @@ void receive_dns(uint8_t* fullPacket){
 	if(*answers == 0xC0){
 		uint8_t offset = *(answers + 1);
 		uint8_t* name = fullPacket + dnsStart + offset;
-		//expected to have 0x06 google 0x03 com
-		uint8_t firstLen = *name; //0x06
-		char firstBuf[firstLen]; // 6 bytes
-		memcpy(firstBuf, name + 1, firstLen); //google
 
-		uint8_t secondLen = *(name + firstLen + 1); //0x03
-		char secondBuf[secondLen]; //3 bytes
-		memcpy(secondBuf, name + firstLen + 2, secondLen); //com
+		size_t nameLen = 0;                     //walk the labels to and including the null
+		while(name[nameLen] != 0){
+			nameLen++;
+		}
+		nameLen++;
 
-		char final[firstLen + secondLen + 2];
-		memcpy(final, firstBuf, firstLen);
-		memcpy(final + firstLen + 1, ".", 1);
-		memcpy(final + firstLen + 2, secondBuf, secondLen);
+		uint32_t ipAddr = *(uint32_t*)(answers + 12);
 
-		uint32_t ipAddr = btol32(*(uint32_t*)(answers + 12)); //casting to uint32_t pointer and dereference for ip address
-
-		dnsVectorPush(&dnsVector, final, firstLen + secondLen + 1, ipAddr); 
+		dnsVectorPush(&dnsVector, (char*)name, nameLen, ipAddr);
+		print_ip(btol32(ipAddr));
 	} else {	
 		print("dns response\n");
 	}

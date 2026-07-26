@@ -201,7 +201,43 @@ void print_byte(unsigned char b){
 	print(" ");
 }
 
+void print_num(uint32_t num)
+{
+	char buf[11];
+	int i = 0;
 
+	if (num == 0) {
+		putChar('0');
+		return;
+	}
+
+	while (num > 0) {
+		buf[i++] = '0' + (num % 10);
+		num /= 10;
+	}
+
+	while (i > 0) {
+		putChar(buf[--i]);
+	}
+}
+
+void print_ip(uint32_t ip)
+{
+	uint8_t bytes[4];
+
+	bytes[0] = (ip >> 24) & 0xff;
+	bytes[1] = (ip >> 16) & 0xff;
+	bytes[2] = (ip >> 8) & 0xff;
+	bytes[3] = ip & 0xff;
+
+	print_num(bytes[0]);
+	print_char('.');
+	print_num(bytes[1]);
+	print_char('.');
+	print_num(bytes[2]);
+	print_char('.');
+	print_num(bytes[3]);
+}
 
 boolean isDigit(char digit){
 	if(digit >= '0'&& digit <= '9'){

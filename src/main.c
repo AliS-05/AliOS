@@ -33,4 +33,7 @@ extern void kernel_main(){
 
 	uint8_t msg[] = "hello from alios";
         //send_udp(bridge_ip, 40000, 9999, msg, sizeof(msg) - 1);
+
+	uint8_t question[] = {0x06, 'g','o','o','g','l','e', 0x03, 'c','o','m', 0x00 };
+	dns_lookup(question, sizeof(question));
 }

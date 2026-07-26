@@ -68,6 +68,15 @@ struct udp_header {
 	uint16_t checksum;
 } __attribute__ ((packed));
 
+struct dns_message {
+	uint16_t transactionId;
+	uint16_t flags;
+	uint16_t numQuestions;
+	uint16_t numAnswers;
+	uint16_t numAuthRR;
+	uint16_t numAddRR;
+} __attribute__ ((packed));
+
 void arpVectorInit(ArpVector* arpvec);
 void arpVectorPush(ArpVector* arpvec, uint32_t ip, uint8_t* mac);
 uint8_t* arpVectorFind(ArpVector* arpvec, uint32_t ip);
@@ -82,6 +91,7 @@ uint16_t icmp_checksum(struct icmp_header* header, uint32_t length);
 uint16_t udp_checksum(struct ipv4_header* ip, struct udp_header* udp, uint32_t udpLength);
 void send_udp(uint32_t destIp, uint16_t sourcePort, uint16_t destPort, uint8_t* payload, uint16_t payloadLength);
 void ping(uint32_t destIp);
+void dns_lookup();
 extern uint8_t* MAC_ADDRESS;
 extern uint32_t bar0;
 
@@ -94,4 +104,6 @@ static const uint32_t this_host_ip = 0x0F02000A;
 static const uint32_t bridge_ip = 0x0102000A;
 //255.255.255.0
 static const uint32_t subnet_mask = 0x00FFFFFF;
+//8.8.8.8
+static const uint32_t dns_server = 0x08080808;
 #endif

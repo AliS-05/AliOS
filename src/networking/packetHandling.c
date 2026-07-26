@@ -404,6 +404,64 @@ void echo_udp(uint8_t* fullPacket){
 	transmit_packet(transBuffer, txLength);
 }
 
+
+void dns_lookup(uint8_t* question, size_t qLen) {
+	struct dns_message dns = {0};
+
+	dns.transactionId = btol16(0xFFAA);
+
+	uint16_t flags =
+		(0 << 15) |	// QR
+		(0 << 11) |	// Opcode
+		(0 << 10) |	// AA
+		(0 << 9)  |	// TC
+		(1 << 8)  |	// RD
+		(0 << 7)  |	// RA
+		(0 << 6)  |	// Z
+		(0 << 5)  |	// AD
+		(0 << 4)  |	// CD
+		(0);		// RCODE
+
+	dns.flags = btol16(flags);
+
+	dns.numQuestions = btol16(1);
+	dns.numAnswers = 0;
+
+
+	uint16_t qtype  = btol16(1);	// A
+	uint16_t qclass = btol16(1);	// IN
+
+	uint8_t payload[sizeof(struct dns_message) + qLen + sizeof(qtype) + sizeof(qclass)];
+
+	uint8_t* p = payload;
+
+	memcpy(p, &dns, sizeof(struct dns_message));
+	p += sizeof(struct dns_message);
+
+	memcpy(p, question, qLen);
+	p += qLen;
+
+	memcpy(p, &qtype, sizeof(qtype));
+	p += sizeof(qtype);
+
+	memcpy(p, &qclass, sizeof(qclass));
+
+	send_udp(dns_server, 8080, 53, payload, sizeof(payload) );
+}
+
+void receive_dns(uint8_t* fullPacket){
+	uint8_t* answers = fullPacket;
+	answers += sizeof(struct ethernet_header) + sizeof(struct ipv4_header) + sizeof(struct udp_header) + sizeof(struct dns_message);
+	while(*answers != 0){ //skip to null terminator of question
+		answers++;
+	}
+	answers++; //skip null terminator itself
+	answers += 4; //skip type and class
+	
+	uint8_t first = *answers;
+	char firstBuf[first];
+}
+
 void send_udp(uint32_t destIp, uint16_t sourcePort, uint16_t destPort, uint8_t* payload, uint16_t payloadLength){
 	if(payloadLength > 508){
 		print("UDP Payload exceeds maximum safe payload size\n");
@@ -415,19 +473,19 @@ void send_udp(uint32_t destIp, uint16_t sourcePort, uint16_t destPort, uint8_t* 
 
 	uint32_t nextHop = next_hop(destIp);
 	uint8_t* destMac = arpVectorFind(&arpVector, nextHop);
+
 	for(int tries = 0; destMac == NULL && tries < 5; tries++){
 		send_arp_request(nextHop);
-		for(int waits = 0; destMac == NULL && waits < 100; waits++){
+		for(int waits = 0; destMac == NULL && waits < 5; waits++){
 			__asm__ volatile("hlt");
 			destMac = arpVectorFind(&arpVector, nextHop);
 		}
 	}
+
         if(destMac == NULL){
                 print("ARP TIMEOUT\n");
                 return;
         }
-	
-
 
 	//build ethernet header 
 	memcpy(ethHead.macDestination, destMac, 6);
@@ -435,7 +493,6 @@ void send_udp(uint32_t destIp, uint16_t sourcePort, uint16_t destPort, uint8_t* 
 	ethHead.ethertype = btol16(0x0800);
 
 	//build ip header
-	//
 	ipHead.version_ihl = 0b01000101; //5 32 bit words, ipv4
 	ipHead.typeOfService = 0; //routine packet
 	ipHead.totalLength = btol16(28 + payloadLength); //ip + icmp header + payload
@@ -479,8 +536,9 @@ void demultiplex_udp(uint8_t* fullPacket){
 	if(destPort == 7){
 		print("ECHO\n");
 		echo_udp(fullPacket);
+	} else if(sourcePort == 53){
+		receive_dns(fullPacket);
 	}
-
 }
 
 void handle_ipv4(uint8_t* packetBuffer){

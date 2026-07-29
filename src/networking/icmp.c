@@ -1,6 +1,11 @@
+#include <core/utilities.h>
+#include <networking/ethernet.h>
+#include <networking/arp.h>
+#include <networking/ipv4.h>
 #include <networking/icmp.h>
+#include <networking/networking.h>
 
-uint16_t icmp_checksum(struct icmp_header* header, uint32_t length) {
+extern struct ArpVector arpVector; uint16_t icmp_checksum(struct icmp_header* header, uint32_t length) {
 	header->checksum = 0;
 	return checksum(header, length);
 }

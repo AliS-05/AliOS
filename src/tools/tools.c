@@ -1,5 +1,5 @@
-#include <utilities.h>
-#include <string.h>
+#include <core/utilities.h>
+#include <core/string.h>
 
 void calc(char* buf){ 
 	token(buf, ' ');

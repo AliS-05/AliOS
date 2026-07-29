@@ -1,12 +1,12 @@
 #ifndef DNS_H
 #define DNS_H
 
-typedef struct DnsEntry {
+struct DnsEntry {
 	char* name;
 	uint32_t ip;
 }; 
 
-typedef struct DnsVector {
+struct DnsVector {
 	int size;
 	int capacity;
 	struct DnsEntry* data;
@@ -30,8 +30,8 @@ void dnsVectorFree(struct DnsVector* vec);
 
 void dns_lookup();
 
-void ping_dns(uint8_t* question, size_t qLen){
-void receive_dns(uint8_t* fullPacket){
+void ping_dns(uint8_t* question, size_t qLen);
+void receive_dns(uint8_t* fullPacket);
 
 
 //8.8.8.8

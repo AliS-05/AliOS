@@ -1,10 +1,10 @@
-#include <structures.h>
-#include <math.h>
-#include <ata.h>
-#include <utilities.h>
-#include <memory.h>
-#include <string.h>
-#include <fat16.h>
+#include <core/structures.h>
+#include <core/math.h>
+#include <fs/ata.h>
+#include <core/utilities.h>
+#include <core/memory.h>
+#include <core/string.h>
+#include <fs/fat16.h>
 
 #define SUCCESS true
 #define FAILURE false

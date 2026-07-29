@@ -1,9 +1,9 @@
-#include "structures.h"
-#include "utilities.h"
-#include "memory.h"
-#include "asm_token.h"
-#include "asm_parser.h"
-#include "vector.h"
+#include <core/structures.h>
+#include <core/utilities.h>
+#include <core/memory.h>
+#include <assembler/asm_token.h>
+#include <assembler/asm_parser.h>
+#include <assembler/vector.h>
 
 extern long line;
 extern long currentAddress;

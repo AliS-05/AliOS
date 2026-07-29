@@ -1,6 +1,6 @@
-#include <utilities.h>
-#include <string.h>
-#include <memory.h>
+#include <core/utilities.h>
+#include <core/string.h>
+#include <core/memory.h>
 extern int cursor_pos;
 extern int buffer_pos;
 extern unsigned char skip_newline; //1 byte
@@ -136,7 +136,7 @@ char* ntos(uint32_t value, char* buf, uint32_t base)
 {
 	if (base < 2 || base > 16) {
 		buf[0] = '\0';
-		return;
+		return NULL;
 	}
 
 	static const char digits[] = "0123456789ABCDEF";
@@ -146,7 +146,7 @@ char* ntos(uint32_t value, char* buf, uint32_t base)
 	if (value == 0) {
 		buf[i++] = '0';
 		buf[i] = '\0';
-		return;
+		return NULL;
 	}
 
 	while (value > 0) {
@@ -221,8 +221,7 @@ void print_num(uint32_t num)
 	}
 }
 
-void print_ip(uint32_t ip)
-{
+void print_ip(uint32_t ip) {
 	uint8_t bytes[4];
 
 	bytes[0] = (ip >> 24) & 0xff;

@@ -1,6 +1,8 @@
 #ifndef UDP_H
 #define UDP_H
 
+#include <core/structures.h>
+
 struct udp_pseudo_header {
 	uint32_t sourceAddr;
 	uint32_t destAddr;

@@ -1,5 +1,5 @@
-#include <utilities.h>
-#include <memory.h>
+#include <core/utilities.h>
+#include <core/memory.h>
 int strcmp(const char* s1, const char* s2){
 	while (*s1 && *s2 && (*s1 == *s2)){
 		s1++;

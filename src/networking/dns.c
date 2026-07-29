@@ -1,10 +1,19 @@
+#include <core/utilities.h>
+#include <core/memory.h>
+
+#include <networking/ethernet.h>
+#include <networking/arp.h>
+#include <networking/ipv4.h>
+#include <networking/icmp.h>
+#include <networking/udp.h>
 #include <networking/dns.h>
 
+extern struct DnsVector dnsVector;
 
 void dnsVectorInit(struct DnsVector* vec){
 	vec->size = 0;
 	vec->capacity = 16;
-	vec->data = malloc(sizeof(ArpEntry) * vec->capacity);
+	vec->data = malloc(sizeof(struct DnsEntry) * vec->capacity);
 }
 
 void dnsVectorPush(struct DnsVector* vec, char* name, size_t nameLen, uint32_t ip){
@@ -99,7 +108,7 @@ void dns_lookup(uint8_t* question, size_t qLen) {
 
 	memcpy(p, &qclass, sizeof(qclass));
 
-	send_udp(dns_server, 8080, 53, payload, sizeof(payload) );
+	send_udp(dns_server, 8080, 53, payload, sizeof(payload));
 }
 
 void receive_dns(uint8_t* fullPacket){
@@ -133,5 +142,3 @@ void receive_dns(uint8_t* fullPacket){
 		print("dns response\n");
 	}
 }
-
-

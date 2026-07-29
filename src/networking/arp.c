@@ -1,6 +1,8 @@
 #include <networking/arp.h>
 #include <networking/networking.h>
 
+struct ArpVector arpVector;
+
 void send_initial_arp_request(){
 	uint8_t arp_initial_request[60] = {
 		// destination mac (broadcast)
@@ -52,24 +54,24 @@ void send_arp_request(uint32_t destIp){
 }
 
 
-void arpVectorInit(ArpVector* vec){
+void arpVectorInit(struct ArpVector* vec){
 	vec->size = 0;
 	vec->capacity = 16;
-	vec->data = malloc(sizeof(ArpEntry) * vec->capacity);
+	vec->data = malloc(sizeof(struct ArpEntry) * vec->capacity);
 }
 
-void arpVectorPush(ArpVector* arpvec, uint32_t ip, uint8_t* mac){
+void arpVectorPush(struct ArpVector* arpvec, uint32_t ip, uint8_t* mac){
 	struct ArpEntry newEntry;
 	newEntry.ip = ip;
 	memcpy(newEntry.mac, mac, 6);
 	if(arpvec->size >= arpvec->capacity){
 		arpvec->capacity *= 2;
-		arpvec->data = realloc(arpvec->data, sizeof(ArpEntry) * arpvec->capacity);
+		arpvec->data = realloc(arpvec->data, sizeof(struct ArpEntry) * arpvec->capacity);
 	}
 	arpvec->data[arpvec->size++] = newEntry;
 }
 
-uint8_t* arpVectorFind(ArpVector* arpvec, uint32_t ip){
+uint8_t* arpVectorFind(struct ArpVector* arpvec, uint32_t ip){
 	for(int i = 0; i < arpvec->size; i++){
 		if(arpvec->data[i].ip == ip){
 			return arpvec->data[i].mac;
@@ -78,7 +80,7 @@ uint8_t* arpVectorFind(ArpVector* arpvec, uint32_t ip){
 	return NULL;
 }	
 
-void arpVectorFree(ArpVector* arpvec){
+void arpVectorFree(struct ArpVector* arpvec){
 	free(arpvec->data);
 }
 
@@ -115,20 +117,13 @@ void send_arp_reply(uint8_t* senderMac, uint32_t senderIp){
 
 }
 
-void start_arp_sequence(){
-	init_nic();
-	arpVectorInit(&arpVector);
-	dnsVectorInit(&dnsVector);
-	print_mac(MAC_ADDRESS);
-	send_initial_arp_request();
-}
+
 
 void handle_arp(uint8_t* packetBuffer){
 	uint8_t* arp = packetBuffer + 14; // skip the 14-byte Ethernet header
 
 	uint16_t opCode = (arp[6] << 8) | arp[7];
 	if(opCode == 1){ //arp reply (someone asked for our ip)
-		print("ARP OPCODE 1\n");
 		//arp request
 		//try to fill in sender information
 		uint8_t senderMac[6];
@@ -145,7 +140,6 @@ void handle_arp(uint8_t* packetBuffer){
 	}
 	if (opCode == 2){ //arp discovery (were asking for someones ip)
 		//reply from the switch, i think, telling us the mac address of an ip
-		print("ARP OPCODE 2\n");
 		//arp reply
 		uint8_t senderMac[6];
 		memcpy(senderMac, arp + 8, 6); // SHA field
@@ -156,7 +150,6 @@ void handle_arp(uint8_t* packetBuffer){
 		if(arpVectorFind(&arpVector, senderIp) == NULL){
 			arpVectorPush(&arpVector, senderIp, senderMac);
 		}
-		print("ARP ENTRY ADDED: \n");
 	}
 }
 

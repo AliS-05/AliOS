@@ -1,6 +1,7 @@
 #ifndef NETWORKING_H
 #define NETWORKING_H
-#include <structures.h>
+
+#include <core/structures.h>
 
 struct TransmitDescriptor{
 	uint64_t address;

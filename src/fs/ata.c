@@ -1,5 +1,5 @@
-#include <io.h>
-#include <structures.h>
+#include <fs/io.h>
+#include <core/structures.h>
 
 #define ATA_DATA       0x1F0
 #define ATA_SECCOUNT   0x1F2

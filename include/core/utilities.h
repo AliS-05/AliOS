@@ -1,7 +1,7 @@
 #ifndef UTILITIES_H
 #define UTILITIES_H
 
-#include <structures.h>
+#include <core/structures.h>
 
 void print(const char *s1);
 int strcmp(const char* s1, const char* s2);
@@ -31,6 +31,8 @@ int atoi(const char* str);
 void itoa(int num, char* buf);
 uintptr_t stoh(const char* str);
 int newLine(int cursor_pos);
+int beginningOfLine(int cursor_pos);
+void blankLine();
 
 void clearBuf(void* ptr, size_t size);
 
@@ -44,10 +46,11 @@ void print_hex16(unsigned short b);
 void print_hex32(unsigned int b);
 void print_addr(uintptr_t addr);
 void print_byte(unsigned char b);
+void print_ip(uint32_t ip);
 
 uint16_t btol16(uint16_t big);
 uint32_t btol32(uint32_t big);
 
-uint16_t ltol16(uint16_t little);
-uint32_t ltol32(uint32_t little);
+uint16_t ltob16(uint16_t little);
+uint32_t ltob32(uint32_t little);
 #endif

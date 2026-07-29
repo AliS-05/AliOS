@@ -1,6 +1,8 @@
 #ifndef ETHER_H
 #define ETHER_H
 
+#include <core/utilities.h>
+
 #define ETH_FRAME_MAX 1518
 #define ETH_FRAME_MIN 60
 

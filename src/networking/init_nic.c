@@ -1,10 +1,10 @@
-#include <structures.h>
-#include <utilities.h>
-#include <memory.h>
-#include <networking.h>
-#include <commands.h>
-#include <string.h>
-#include <fat16.h>
+#include <core/structures.h>
+#include <core/utilities.h>
+#include <core/memory.h>
+#include <networking/networking.h>
+#include <core/commands.h>
+#include <core/string.h>
+#include <fs/fat16.h>
 
 uint8_t* MAC_ADDRESS = NULL;
 uint32_t nic_irq = NULL;

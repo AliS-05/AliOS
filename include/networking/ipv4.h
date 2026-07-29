@@ -1,6 +1,8 @@
 #ifndef IP4_H
 #define IP4_H
 
+#include <core/structures.h>
+
 struct ipv4_header {
 	uint8_t version_ihl;
 	uint8_t typeOfService;
@@ -15,6 +17,5 @@ struct ipv4_header {
 } __attribute__((packed));
 
 uint16_t ipv4_checksum(struct ipv4_header* head);
-void handle_ipv4(uint8_t* packetBuffer);
 
 #endif

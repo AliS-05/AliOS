@@ -1,14 +1,14 @@
-#include <structures.h>
-#include <commands.h>
-#include <utilities.h>
-#include <string.h>
-#include <memory.h>
-#include <io.h>
-#include <ata.h>
-#include <fs.h>
-#include <networking.h>
-#include <packetHandling.h>
-#include <fat16.h>
+#include <core/structures.h>
+#include <core/commands.h>
+#include <core/utilities.h>
+#include <core/string.h>
+#include <core/memory.h>
+#include <fs/io.h>
+#include <fs/ata.h>
+#include <fs/fs.h>
+#include <networking/networking.h>
+#include <networking/packetHandling.h>
+#include <fs/fat16.h>
 
 void print_welcome_banner() {
 	print("\n");
@@ -26,7 +26,7 @@ void print_welcome_banner() {
 }
 
 extern void kernel_main(){
-	start_arp_sequence();
+	init_networking();
 	//init_fat16_filesystem();
 	print_welcome_banner();
 	print(shell_prompt);

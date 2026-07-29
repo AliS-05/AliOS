@@ -1,8 +1,9 @@
-#include <structures.h>
-#include <utilities.h>
-#include <string.h>
-#include <memory.h>
-#include <fat16.h>
+#include <core/structures.h>
+#include <core/utilities.h>
+#include <core/string.h>
+#include <core/memory.h>
+#include <fs/fat16.h>
+#include <fs/fs.h>
 
 //color reference
 

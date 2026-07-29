@@ -1,12 +1,14 @@
-#include <structures.h>
-#include <memory.h>
-#include <utilities.h>
-#include <string.h>
-#include <tools.h>
-#include <fs.h>
-#include <fat16.h>
-#include <edit.h>
-#include <packetHandling.h>
+#include <core/structures.h>
+#include <core/memory.h>
+#include <core/utilities.h>
+#include <core/string.h>
+#include <core/tools.h>
+#include <fs/fs.h>
+#include <fs/fat16.h>
+#include <core/edit.h>
+#include <networking/packetHandling.h>
+#include <networking/icmp.h>
+#include <networking/dns.h>
 
 char commandHistoryBuffer[50][80] = {0}; //stores last 50 commands;
 int currentCommandAnchor = 0;

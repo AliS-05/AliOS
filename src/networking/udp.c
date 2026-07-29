@@ -1,4 +1,16 @@
+#include <core/utilities.h>
+#include <networking/ethernet.h>
+#include <networking/arp.h>
+#include <networking/ipv4.h>
 #include <networking/udp.h>
+#include <networking/dns.h>
+#include <networking/networking.h>
+
+static uint8_t udpBuffer[ETH_FRAME_MAX];
+static uint8_t transBuffer[ETH_FRAME_MAX];
+
+extern struct ArpVector arpVector;
+
 
 uint16_t udp_checksum(struct ipv4_header* ip, struct udp_header* udp, uint32_t udpLength) {
 	udp->checksum = 0;

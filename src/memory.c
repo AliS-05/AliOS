@@ -1,5 +1,5 @@
-#include <structures.h>
-#include <memory.h>
+#include <core/structures.h>
+#include <core/memory.h>
 
 static short first_call = 1;
 void* malloc(uint32_t size) {

@@ -1,5 +1,5 @@
-#include <utilities.h>
-#include <string.h>
+#include <core/utilities.h>
+#include <core/string.h>
 
 void calc(char* buf){ 
 	token(buf, ' ');
@@ -11,15 +11,15 @@ void calc(char* buf){
 
 	char *stry = token(NULL, ' ');
 	int y = atoi(stry);
-
+	char prbuf[32];
 	if(strcmp(op, "+") == 0){
-		print_num(x + y);
+		print(ntos(x + y, prbuf, 10));
 	} else if (strcmp(op, "-") == 0){
-		print_num(x - y);
+		print(ntos(x - y, prbuf, 10));
 	} else if (strcmp(op, "*") == 0){
-		print_num(x * y);
+		print(ntos(x * y, prbuf, 10));
 	} else if (strcmp(op, "/") == 0){
-		print_num(x / y);
+		print(ntos(x / y, prbuf, 10));
 	} else{
 		print("Usage: calc x + y");
 	}

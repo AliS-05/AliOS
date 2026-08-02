@@ -1,9 +1,9 @@
-#include "structures.h"
-#include "utilities.h"
-#include "memory.h"
-#include "codegen.h"
-#include "asm_parser.h"
-#include "symbol_table.h"
+#include <core/structures.h>
+#include <core/utilities.h>
+#include <core/memory.h>
+#include <assembler/codegen.h>
+#include <assembler/asm_parser.h>
+#include <assembler/symbol_table.h>
 
 
 void ByteVectorInit(ByteVector* vec){

@@ -58,20 +58,7 @@ int main(){
 	}
 
 
-	binfile = fopen("./assembler/a.bin","rb");
-	if(binfile){
-		// file size
-		fseek(binfile, 0, SEEK_END);
-		long bin_size = ftell(binfile);
-		fseek(binfile, 0, SEEK_SET);
-		
-		strcpy(files[4].name, "a.bin");
-		files[4].start_sector = 6;
-		files[4].size_bytes = bin_size;
-		fclose(binfile);
-	} else{
-		printf("Error: a.bin not found");
-	}
+	
 
 	binfile = fopen("./games/snake.bin", "rb");
 	if(binfile){
@@ -80,9 +67,9 @@ int main(){
 		long bin_size = ftell(binfile);
 		fseek(binfile, 0, SEEK_SET);
 		
-		strcpy(files[5].name, "snake");
-		files[5].start_sector = 7;
-		files[5].size_bytes = bin_size;
+		strcpy(files[4].name, "snake");
+		files[4].start_sector = 7;
+		files[4].size_bytes = bin_size;
 		fclose(binfile);
 	} else{
 		printf("Error: snake.bin not found");

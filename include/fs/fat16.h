@@ -1,4 +1,4 @@
-#include <structures.h>
+#include <core/structures.h>
 
 struct BootSector{
 	uint8_t jump[3];

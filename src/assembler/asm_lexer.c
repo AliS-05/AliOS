@@ -1,8 +1,8 @@
-#include "structures.h"
-#include "utilities.h"
-#include "string.h"
-#include "memory.h"
-#include "asm_token.h"
+#include <core/structures.h>
+#include <core/utilities.h>
+#include <core/string.h>
+#include <core/memory.h>
+#include <assembler/asm_token.h>
 
 extern int line;
 extern char* source;

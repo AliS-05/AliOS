@@ -1,14 +1,14 @@
-#include "asm_token.h"
-#include "asm_lexer.h"
-#include "asm_parser.h"
-#include "symbol_table.h"
-#include "codegen.h"
-#include "vector.h"
-#include "structures.h"
-#include "memory.h"
-#include "fs.h"
-#include "fat16.h"
-#include "utilities.h"
+#include <assembler/asm_token.h>
+#include <assembler/asm_lexer.h>
+#include <assembler/asm_parser.h>
+#include <assembler/symbol_table.h>
+#include <assembler/codegen.h>
+#include <assembler/vector.h>
+#include <core/structures.h>
+#include <core/memory.h>
+#include <fs/fs.h>
+#include <fs/fat16.h>
+#include <core/utilities.h>
 
 char* source = NULL; 	
 int currentTokenIndex = 0;

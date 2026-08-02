@@ -1,5 +1,5 @@
 # *AliOS* 
-A minimal x86 operating system built from scratch in C and assembly, featuring an x86 assembler, FAT16 filesystem, and text editor for writing and running programs entirely within the OS.
+A minimal x86 operating system built from scratch in C and assembly, featuring an x86 assembler, FAT16 filesystem, text editor, and network stack for writing, running programs, and interacting with other machines on your network entirely within the OS.
 ## Features
 ### Core System
 
@@ -8,6 +8,9 @@ A minimal x86 operating system built from scratch in C and assembly, featuring a
 - Keyboard Driver - PS/2 keyboard scancodes to ascii 
 - Memory Management - Custom malloc, realloc, and free implementation
 - ATA Disk Driver - Reads and writes sectors
+- Fat16 Filesystem
+- 32-bit x86 Assembler
+- E1000 Network Adapter Driver + Network Stack
 
 ### Filesystem
 
@@ -29,11 +32,17 @@ A minimal x86 operating system built from scratch in C and assembly, featuring a
 ### x86 Assembler:
 - Two-pass assembler built into the shell 
 - Write assembly code in the editor 
+- Support eax,ebx,ecx, and edx registers
+- Supports memory dereferencing but **NOT** offsets (\[eax\] is fine but not \[eax+4\])
 - Assemble into machine code
 - Run generated binaries
 
-*E1000 Driver* - Only able to transmit packets at the moment, receive packets planned in next version
-
+### E1000 Driver + Network Stack: 
+**Requires Setup Script**
+- Sends ARP requests and handles ARP replies, storing IP + MAC address combinations in a vector
+- ICMP Protocol, ping machines on the subnet and outside of the subnetkj. Also replies to ping requests
+- UDP Protocol, send and receive UDP packets. Demultiplexes based on incoming port.
+- DNS Protocol, allows you to ping domains such as google.com, storing resolved IP addresses in a resolution table.
 ### Game
 
 *Snake* - It's Snake but written in x86 assembly
@@ -69,6 +78,9 @@ A minimal x86 operating system built from scratch in C and assembly, featuring a
 - `reboot` - Restart system
 - `help` - Show all commands
 
+*Networking*:
+- `ping <ip|domain name>` - Ping an IP or Domain Name
+
 ## *Prerequisites*
 
 - nasm - Assembler
@@ -77,8 +89,10 @@ A minimal x86 operating system built from scratch in C and assembly, featuring a
 - qemu-system-x86_64 - Emulator
 
 ### *Build & Run*
-```
-./mkfat           # Create disk image
+```bash
+gcc mkFAT16.c -o mkfat
+./mkfat           # Create disk image 
+sudo bash slirp_tap_setup.sh # Set up tap0 bridge for networking (uses nft and adds a network rule. Make sure this doesnt mess up anything you need)
 make run          # Boot in QEMU
 ```
 
@@ -94,22 +108,23 @@ Sector 73+    : Data area (clusters)
 
 *Technical Details*
 
-- Language: C (kernel), x86 Assembly (bootloader, drivers, games)
 - Architecture: x86 32-bit protected mode
 - Filesystem: FAT16
 - Execution Model: Single tasking (DOS-Like)
-- Lines of Code: ~4000
+- Lines of Code: ~5500
 
 ## Known Limitations
 
-- Single cluster files only (2048 bytes max per file)
-- No subdirectories
+- No directories still (on the way soon.)
+- Assembler only supports 4 registers and no offsets in dereferencing
 - No virtual memory
+- No multithreading / concurrency
 
 ## Planned
-- Currently the Networking Stack only transmits packets, so receiving packets is an obvious next step.
-- Switching from flat memory to virtual memory, along with adding processes and a user space.
-- Improving the assembler to be able to assemble more complex programs.
+- RPC protocol
+- DHCP
+- Includes for the assembler
+- Improving the assembler to be able to support more registers and offsetting.
 
 ## What I Learned
 What started as a simple project to learn x86 assembly 
@@ -127,4 +142,8 @@ didn't. If you're interested in doing something similar to
 this project, the best advice I could give is to just get 
 started. I literally didn't know a single bit of assembly
 syntax other than mov and rax. And I ended up writing my own
-bootloader, keyboard driver, and snake game all in assembly
+bootloader, keyboard driver, and snake game all in assembly. 
+
+After taking a few months break, I've come back and added many new features.
+Including upgrading the filesystem, assembler, keyboard driver, allowing for scrolling in the terminal,
+command history, improving the text editor, and even introducing a featureful network stack.

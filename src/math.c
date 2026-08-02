@@ -1,4 +1,4 @@
-#include <structures.h>
+#include <core/structures.h>
 
 
 int max_int(int x, int y) {

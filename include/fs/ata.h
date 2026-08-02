@@ -1,6 +1,6 @@
 #ifndef ATA_H
 #define ATA_H
-#include <structures.h>
+#include <core/structures.h>
 
 void disk_read_sector(uint32_t lba, uint8_t* buffer);
 void disk_read_sector_count(uint32_t lba, uint8_t* buffer, uint32_t count);

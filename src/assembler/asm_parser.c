@@ -1,9 +1,9 @@
-#include "structures.h"
-#include "utilities.h"
-#include "memory.h"
-#include "asm_token.h"
-#include "asm_parser.h"
-#include "vector.h"
+#include <core/structures.h>
+#include <core/utilities.h>
+#include <core/memory.h>
+#include <assembler/asm_token.h>
+#include <assembler/asm_parser.h>
+#include <assembler/vector.h>
 
 extern long line;
 extern long currentAddress;
@@ -170,14 +170,15 @@ const char* mnemonicTypeToStr(MnemonicType type){
 
 void printInstruction(Instruction* i){
 	if(!i) return;
-
+	char buf[32];
 	print("Instruction{ ");
 	print(mnemonicTypeToStr(i->mnemonic));
 	print(" }\n");
 	if(i->operandCount >= 1){
 		if(i->operand1.type == NUMBER){
 			print(" Operand 1 { ");
-			print_num(i->operand1.intValue);
+			print(ntos(i->operand1.intValue, buf, 10));
+			print(buf);
 			print(" }\n");
 		} else{
 			print(" Operand 1 { ");
@@ -189,7 +190,8 @@ void printInstruction(Instruction* i){
 	if(i->operandCount >= 2){
 		if(i->operand2.type == NUMBER){
 			print(" Operand 2 { ");
-			print_num(i->operand2.intValue);
+			print(ntos(i->operand2.intValue, buf, 10));
+			
 			print(" }\n");
 		} else{
 			print(" Operand 2 { ");
@@ -198,10 +200,10 @@ void printInstruction(Instruction* i){
 		}
 	}
 	print("Size of Instruction: ");
-	print_num(i->size);
+	print(ntos(i->size, buf , 10));
 	print("\n");
 	print("Address of Instruction: ");
-	print_num(i->address);
+	print(ntos(i->address, buf , 10));
 	print("\n");
 }
 
@@ -223,7 +225,8 @@ Token peek(Token* t, int index){
 void expect(Token* tokenArray, int* index, TokenType expectedType){
 	if(tokenArray[*index].type != expectedType){
 		print("Error on line: ");
-		print_num(line);
+		char buf[32];
+		print(ntos(line, buf, 10));
 		print("Expected: ");
 		print((tokenTypeToString(expectedType)));
 		print("Got: ");	
@@ -256,6 +259,7 @@ Operand parseOperand(TokVector* vec, int* pos){
 }
 
 Instruction parseInstruction(TokVector* vec){
+	char buf[32];
 	// basically only looking for important stuff
 	// mnemonics, register, immediates
 	int instructionPos = 0;
@@ -276,7 +280,7 @@ Instruction parseInstruction(TokVector* vec){
 		print("LABEL: ");
 		print(vec->data[0].strValue); 
 		print("Address: ");
-		print_num(currentAddress);
+		print(ntos(currentAddress, buf, 10));
 
 		return instruction; // skip adding to instruction vector
 	}
@@ -287,7 +291,7 @@ Instruction parseInstruction(TokVector* vec){
 	
 	if(vec->data[0].type != IDENTIFIER){ //error not a label directive or mnemonic
 		print("Error on line: ");
-		print_num(vec->data[0].line);
+		print(ntos(vec->data[0].line, buf, 10));
 		print("Expected mnemonic, got: ");
 		print(tokenTypeToString(vec->data[0].type));
 		return instruction;

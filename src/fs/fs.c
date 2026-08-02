@@ -1,10 +1,10 @@
-#include <structures.h>
-#include <math.h>
-#include <ata.h>
-#include <utilities.h>
-#include <memory.h>
-#include <string.h>
-#include <fat16.h>
+#include <core/structures.h>
+#include <core/math.h>
+#include <fs/ata.h>
+#include <core/utilities.h>
+#include <core/memory.h>
+#include <core/string.h>
+#include <fs/fat16.h>
 
 #define SUCCESS true
 #define FAILURE false
@@ -94,7 +94,8 @@ size_t read_file(const char* filename){
 		if(strncmp(files[i].name,filename, 32) == 0){
 			print("Found file!");
 			print(" Start Sector: ");
-			print_num(files[i].startSector);
+			char buf[32];
+			ntos(files[i].startSector, buf, 10);
 			print("\n");
 
 			uint32_t start = files[i].startSector;

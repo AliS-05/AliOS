@@ -1,14 +1,24 @@
-#include <structures.h>
-#include <utilities.h>
-#include <memory.h>
-#include <networking.h>
+#include <core/structures.h>
+#include <core/utilities.h>
+#include <core/memory.h>
+#include <networking/networking.h>
+#include <core/commands.h>
+#include <core/string.h>
+#include <fs/fat16.h>
 
+uint8_t* MAC_ADDRESS = NULL;
+uint32_t nic_irq = NULL;
 uint32_t bar0;
 uint32_t NUM_TRANSMIT_DESC = 8;
 uint32_t TAIL = 0;
 uint8_t* transmitPacketBuffer = NULL;
 struct TransmitDescriptor* TRANS_DESC_LIST = NULL;
 
+struct ReceiveDescriptor* RECV_DESC_LIST = NULL;
+uint8_t* receivePacketBuffer = NULL;
+uint32_t NUM_RECEIVE_DESC = 8;
+static uint8_t receiveDescriptorTracker = 0;
+static uint32_t receivedPacketCount = 0;
 
 void outl(uint16_t port, uint32_t value){
 	__asm__ volatile ("outl %0, %1" : : "a"(value), "Nd"(port));
@@ -47,24 +57,20 @@ boolean find_nic(){
 
 			if (vendor == 0x8086 && deviceID == 0x100E){
 				bar0 = pci_read(bus, device, 0, 0x10) & 0xFFFFFFF0;
-    
+
 			        // Enable Bus Mastering
 			        uint32_t command = pci_read(bus, device, 0, 0x04);
-			        print("PCI Command before: ");
-			        print_hex32(command);
-			        print("\n");
-			        
 			        command |= 0x04;  // Set bit 2 (Bus Master Enable)
-			        
+
+				nic_irq = pci_read(bus, device, 0, 0x3C) & 0xFF;
+				if(nic_irq != 11){
+					print("WARNING: NIC_IRQ NOT EXPECTED VALUE\n");
+				}
+
 			        // Write back (need to use outl/inl for PCI config writes)
 			        uint32_t address = (1 << 31) | (bus << 16) | (device << 11) | (0 << 8) | 0x04;
 			        outl(0xCF8, address);
 			        outl(0xCFC, command);
-			        
-			        print("PCI Command after: ");
-			        print_hex32(pci_read(bus, device, 0, 0x04));
-			        print("\n");
-			        
 			        return true;
 			}
 		}
@@ -77,16 +83,14 @@ void reset_nic(){
 	while(read_reg(CONTROL_REG) & 0x04000000);
 }
 
-
-
 void enable_ASDE(){ //write bit 5 to the CTRL register
 	//setting this bit makes the controller automatically detect some settings
 	//software must set the SLU bit for this operation, might look at 'ASD' feature
 
-	//SLU bit - Set Link Up, 
+	//SLU bit - Set Link Up,
 
 	uint32_t value = read_reg(CONTROL_REG);
-	
+
 	value |= (0 << 3) | //LRST set to 0 enabling Auto Negotiation
 		(1 << 6) | //setting SLU bit for auto negotiation
 		(1 << 5) | // auto negotiation
@@ -122,26 +126,22 @@ void write_mac_address(uint32_t mac_dword, uint16_t mac_word){
 }
 
 void read_mac_address(uint8_t* mac_address){ //mac should be a 6 byte array i think ?
-//	uint16_t mac_word1 = eeprom_read(0x0); //bytes 1-2
-//	uint16_t mac_word2 = eeprom_read(0x1); //bytes 2-3
-//	uint16_t mac_word3 = eeprom_read(0x2); //bytes 4-5
-	
 	uint32_t mac_dword1 = read_reg(RAL); //first 4 bytes
 	uint16_t mac_word2 = read_reg(RAH); //last 2 bytes
-	
+
 	write_mac_address(mac_dword1, mac_word2);
 
 	//example AA:BB:CC:DD:EE:FF
 	//read returns us say AA:BB
 	//little endian BB:AA = 1011 1011 1010 1010
-	
+
 	//even bytes = >> 8
 	//odd bytes = & 0x00FF (use python CLI !!)
-	
+
 	//low address 4 bytes math changes a bit
 	mac_address[0] = (mac_dword1 & 0xFF);
 	mac_address[1] = ((mac_dword1 >> 8) & 0xff);
-	mac_address[2] = ((mac_dword1 >> 16) & 0xff);	
+	mac_address[2] = ((mac_dword1 >> 16) & 0xff);
 	mac_address[3] = (mac_dword1 >> 24);
 	//high address stays the same
 	mac_address[4] = (mac_word2 & 0xFF);
@@ -162,6 +162,7 @@ void disable_multicast(){ //will need to actually set this up in the future
 	}
 }
 
+//TRANSMIT SECTION
 
 //maximum packet & transmit descriptor size = 16288 bytes
 void init_transmit_descriptors(){
@@ -170,7 +171,7 @@ void init_transmit_descriptors(){
 	transmitPacketBuffer = (uint8_t*)malloc(2048 * NUM_TRANSMIT_DESC);
 	TRANS_DESC_LIST = (struct TransmitDescriptor*)aligned_malloc(sizeof(struct TransmitDescriptor) * NUM_TRANSMIT_DESC, 16);
 
-	for(int desc = 0; desc < NUM_TRANSMIT_DESC; desc++){
+	for(uint32_t desc = 0; desc < NUM_TRANSMIT_DESC; desc++){
 		TRANS_DESC_LIST[desc].address = (uint64_t)transmitPacketBuffer + (desc * 2048);
 		TRANS_DESC_LIST[desc].length = 0;
 		TRANS_DESC_LIST[desc].checksum_offset = 0;
@@ -191,11 +192,12 @@ void init_transmit_descriptors(){
 	write_reg(TDBAH, 0); //zero out upper address, (32 bit addresses)
 	write_reg(TDLEN, NUM_TRANSMIT_DESC * sizeof(struct TransmitDescriptor)); //16 bytes * 8 descriptors = 128 bytes
 	//software should write 0b to both head and tail
-	write_reg(TDH, 0); 
+	write_reg(TDH, 0);
 	write_reg(TDT, 0);
 	uint32_t packets_sent = read_reg(TPT);
 	print("Packets Transmitted: ");
-	print_num(packets_sent);
+	char buf[32];
+	print(ntos(packets_sent, buf, 10));
 	print("\n");
 	write_reg(TCTL, (0 << 1) | //enable bit always 1 but do later?
 			(1 << 3) | //Pad Short Packets
@@ -207,8 +209,7 @@ void init_transmit_descriptors(){
 	uint32_t tctl = read_reg(TCTL);
 	tctl |= (1 << 1);
 	write_reg(TCTL, tctl);
-	print("Transmit enabled");
-
+	print("Transmit enabled\n");
 }
 
 // returns packets transmitted ?
@@ -221,118 +222,119 @@ uint16_t transmit_packet(uint8_t* packet_data, uint16_t length){
 	uint8_t* dest = transmitPacketBuffer + TAIL * 2048;
 	memcpy(dest ,packet_data , length);
 
-	print("\n Packet Data: ");
-	for(int c = 0; c < 20; c++){
-		print_hex8(dest[c]);
-	}
 	uint32_t old_tail = TAIL;
 
-	print("Setting descriptor at TAIL=");
-
-	print_num(old_tail);
-	print("\n");
-
 	TRANS_DESC_LIST[TAIL].address = (uint64_t)dest;
-	print("Set address to: ");
-	print_hex32((uint32_t)TRANS_DESC_LIST[TAIL].address);
-	print("\n");
-
 	TRANS_DESC_LIST[TAIL].length = length;
-	print("Set length to: ");
-	print_num(TRANS_DESC_LIST[TAIL].length);
-	print(" (input was ");
-	print_num(length);
-	print(")\n");
-
 	TRANS_DESC_LIST[TAIL].command = 0x0B;
-	print("Set command to: ");
-	print_hex8(TRANS_DESC_LIST[TAIL].command);
-	print("\n");
-
 	TRANS_DESC_LIST[TAIL].status = 0;
-
 
 	TAIL = (TAIL + 1) % NUM_TRANSMIT_DESC;
 
-	print("Descriptor[");
-	print_num(old_tail);
-	print("]:\n");
-	print("  addr: ");
-	print_hex32((uint32_t)TRANS_DESC_LIST[old_tail].address);
-	print("\n  len: ");
-	print_num(TRANS_DESC_LIST[old_tail].length);
-	print("\n  cmd: ");
-	print_hex8(TRANS_DESC_LIST[old_tail].command);
-	print("\n");
-
 	write_reg(TDT, TAIL);
 	print("Wrote TDT = ");
-	print_num(TAIL);
+	char buf[32];
+	print(ntos(TAIL, buf, 10));
 	print(", Read back TDT = ");
-	print_num(read_reg(TDT));
+	print(ntos(read_reg(TDT), buf, 10));
 	print("\n");
 	return length;
 }
 
+//RECEIVE SECTION
+
+void init_receive_descriptors(){
+	receivePacketBuffer = (uint8_t*)malloc(2048 * NUM_RECEIVE_DESC);
+	RECV_DESC_LIST = (struct ReceiveDescriptor*)aligned_malloc(sizeof(struct ReceiveDescriptor) * NUM_RECEIVE_DESC, 16);
+
+	for(uint32_t desc = 0; desc < NUM_RECEIVE_DESC; desc++){
+		RECV_DESC_LIST[desc].address = (uint64_t)receivePacketBuffer + (desc * 2048);
+		RECV_DESC_LIST[desc].length = 0;
+		RECV_DESC_LIST[desc].packet_checksum = 0;
+		RECV_DESC_LIST[desc].status = 0;
+		RECV_DESC_LIST[desc].errors = 0;
+		RECV_DESC_LIST[desc].special = 0;
+	}
+
+	write_reg(RDBAL, (uint32_t)RECV_DESC_LIST);
+	write_reg(RDBAH, 0); //32 bit address
+	write_reg(RDLEN, NUM_RECEIVE_DESC * sizeof(struct ReceiveDescriptor)); //128 bytes
+
+	write_reg(RDH, 0);
+	write_reg(RDT, NUM_RECEIVE_DESC - 1); // all descriptors available to hardware — NOT NUM_RECEIVE_DESC, that's one past the ring
+
+	write_reg(RCTRL, (1 << 5) | //long packet mode
+			(0 << 6) | //loop back mode
+			(0 << 7) | //loop back mode
+			(0 << 8) | //RDMTS
+			(0 << 9) | //RDMTS
+			(0 << 12) |
+			(0 << 13) |
+			(1 << 15) | // Broadcast Accept Mode
+			(0 << 16) | // Receive Buffer Size = 2048 bytes
+			(0 << 17) | // ^^^
+			(0 << 26) | //strip Ethernet CRC
+			(0 << 1));
+	uint32_t rctl = read_reg(RCTRL);
+	rctl |= (1 << 1);  // Enable RX
+	write_reg(RCTRL, rctl);
+}
+
+//void receive_packet(){ //shouldnt take any parameters i think just use static variable
+//	struct ReceiveDescriptor* descriptor = &RECV_DESC_LIST[receiveDescriptorTracker];
+//	while(descriptor->status & (1 << 0)){
+//		uint8_t* descriptorData = receivePacketBuffer + receiveDescriptorTracker * 2048;
+//
+//		print("\nReceived packet, length ");
+//		ntos(descriptor->length);
+//		print(": ");
+//		for(int c = 0; c < 20 && c < descriptor->length; c++){
+//			print_hex8(descriptorData[c]);
+//		}
+//		print("\n");
+//		
+//
+//		uint32_t n = receivedPacketCount % 1000;
+//		char filename[8] = {'R','X','P','K','T',
+//			(char)('0' + (n / 100) % 10),
+//			(char)('0' + (n / 10) % 10),
+//			(char)('0' + n % 10)
+//		};
+//		char extension[3] = {'P','K','T'};
+//		writeFile(filename, extension, descriptorData, descriptor->length);
+//		receivedPacketCount++;
+//		
+//		descriptor->status = 0; // this should be fine
+//		receiveDescriptorTracker = (receiveDescriptorTracker + 1) % NUM_RECEIVE_DESC;
+//		write_reg(RDT, receiveDescriptorTracker);
+//		descriptor = &RECV_DESC_LIST[receiveDescriptorTracker];
+//	}
+//}
+
 uint8_t* init_nic(){
 //nic driver initialization
-	print("SIZE OF UINT64");
-	print_num(sizeof(uint64_t));
-	print_num(sizeof(unsigned long long));
-	print(" ");
 	boolean found_nic = find_nic();
-	if(found_nic == true){
-		print("FOUND NIC !!\n");
-	} else{
-		print("Error finding NIC\n");
-	}
-	
-	print("Size of TXDESC\n");
-	print_num(sizeof(struct TransmitDescriptor));
-
 	reset_nic();
 	enable_ASDE();
-	print("Enabled ASDE\n");
 	for (volatile int i = 0; i < 10000000; i++); // wait for link
 	uint32_t status = read_reg(STATUS_REG);
-	print("STATUS: ");
-	print_hex32(status);
-	if (status & (1 << 1)) {
-		print(" - Link UP\n");
-	} else {
-		print(" - Link DOWN!\n");
-	}
 
 	disable_FCTRL(); //im assuming this works
-	print("Disabled Flow Control Registers\n");
 	//and we already disabled VLAN in enable_ASDE()
-
-	//start receive initialization
 
 	uint8_t* mac_address = (uint8_t*)malloc(sizeof(uint8_t) * 6);
 	read_mac_address(mac_address); //modifies in place
 	print_mac(mac_address);
 
 	disable_multicast();
-	print("\nDisabled MultiCast\n");
 
-	//start receive init
 	init_transmit_descriptors();
+	init_receive_descriptors();
+	write_reg(IMS, 1 << 7);
 
-
-	print("Waiting for transmission...\n");
-	for (volatile int i = 0; i < 10000000; i++);
-
-	uint32_t packets_sent = read_reg(TPT);
-	print("TPT after wait: ");
-	print_num(packets_sent);
+	print("IRQ LINE: ");
+	print_hex32(nic_irq);
 	print("\n");
-
-	// Also check if descriptor status DD bit is set
-	print("Descriptor status: ");
-	print_hex8(TRANS_DESC_LIST[0].status);
-	print("\n");
-
-
+	MAC_ADDRESS = mac_address;
 	return mac_address;
 }

@@ -1,8 +1,8 @@
-#include "structures.h"
-#include "utilities.h"
-#include "string.h"
-#include "memory.h"
-#include "symbol_table.h"
+#include <core/structures.h>
+#include <core/utilities.h>
+#include <core/string.h>
+#include <core/memory.h>
+#include <assembler/symbol_table.h>
 
 
 //vector stuff copied from vector.c, it needed to be in this file and NOT vector.c for some reason that i forgot. i think.
@@ -53,7 +53,8 @@ void printSymbolTable(SymbolTable* table){
 		print("Symbol ");
 		print(table->data[i].name);
 		print("at address ");
-		print_num(table->data[i].address);
+		char buf[32];
+		print(ntos(table->data[i].address, buf , 10));
 	}
 }
 

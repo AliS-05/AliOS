@@ -1,6 +1,6 @@
-#include <utilities.h>
-#include <string.h>
-#include <memory.h>
+#include <core/utilities.h>
+#include <core/string.h>
+#include <core/memory.h>
 extern int cursor_pos;
 extern int buffer_pos;
 extern unsigned char skip_newline; //1 byte
@@ -128,12 +128,45 @@ void scrollDown(){
 	renderWindow(terminalScrollPosition - scrollView);
 }
 
+//num to s
+//to use pass a buffer of max digits of new base
+// uint32_t ipAddress -> base 10 number
+//ntos(ipAddress, buf (len 4), 10);
+char* ntos(uint32_t value, char* buf, uint32_t base)
+{
+	if (base < 2 || base > 16) {
+		buf[0] = '\0';
+		return NULL;
+	}
 
-void print_num(int num){
-	static char buf[32];
-	buf[0] = '\0';
-	itoa(num, buf);
-	print(buf);
+	static const char digits[] = "0123456789ABCDEF";
+
+	int i = 0;
+
+	if (value == 0) {
+		buf[i++] = '0';
+		buf[i] = '\0';
+		return NULL;
+	}
+
+	while (value > 0) {
+		buf[i++] = digits[value % base];
+		value /= base;
+	}
+
+	buf[i] = '\0';
+
+	int left = 0;
+	int right = i - 1;
+
+	while (left < right) {
+		char temp = buf[left];
+		buf[left] = buf[right];
+		buf[right] = temp;
+		left++;
+		right--;
+	}
+	return buf;
 }
 
 
@@ -141,7 +174,7 @@ void print_hex_n(unsigned int value, int nibbles) {
     const char* hex = "0123456789ABCDEF";
     for (int i = nibbles - 1; i >= 0; i--) {
         unsigned int digit = (value >> (i * 4)) & 0xF;
-        print_char(hex[digit]);
+        putChar(hex[digit]);
     }
 }
 
@@ -168,7 +201,42 @@ void print_byte(unsigned char b){
 	print(" ");
 }
 
+void print_num(uint32_t num)
+{
+	char buf[11];
+	int i = 0;
 
+	if (num == 0) {
+		putChar('0');
+		return;
+	}
+
+	while (num > 0) {
+		buf[i++] = '0' + (num % 10);
+		num /= 10;
+	}
+
+	while (i > 0) {
+		putChar(buf[--i]);
+	}
+}
+
+void print_ip(uint32_t ip) {
+	uint8_t bytes[4];
+
+	bytes[0] = (ip >> 24) & 0xff;
+	bytes[1] = (ip >> 16) & 0xff;
+	bytes[2] = (ip >> 8) & 0xff;
+	bytes[3] = ip & 0xff;
+
+	print_num(bytes[0]);
+	print_char('.');
+	print_num(bytes[1]);
+	print_char('.');
+	print_num(bytes[2]);
+	print_char('.');
+	print_num(bytes[3]);
+}
 
 boolean isDigit(char digit){
 	if(digit >= '0'&& digit <= '9'){
@@ -236,7 +304,7 @@ int atoi(const char* str){ //converts a string to an integer
 
 void itoa(int num, char* buf) { //converts an integer to a string
 	int i = 0;
-	unsigned int n; // Use unsigned to handle INT_MIN safely
+	unsigned int n; 
 
 	if (num == 0) {
 		buf[i++] = '0';
@@ -302,4 +370,33 @@ char* token(char* str, const char delim){ //basically strtok
 	return token_start;
 }
 
+//NOTE to implement, i cant be bothered to do this atm
+//functions for moving in between characters in a line, (fixing typos)
+//static int lineBufferPos = buffer_pos;
+void moveLeft(){
+}
 
+void moveRight(){
+}
+
+uint16_t btol16(uint16_t big){
+	return (big >> 8) | (big << 8);
+}
+
+uint32_t btol32(uint32_t big){
+return  ((big & 0x000000FFU) << 24) |
+	((big & 0x0000FF00U) << 8)  |
+	((big & 0x00FF0000U) >> 8)  |
+	((big & 0xFF000000U) >> 24);
+}
+
+uint16_t ltob16(uint16_t little){
+	return (little >> 8) | (little << 8);
+}
+
+uint32_t ltob32(uint32_t little){
+	return ((little & 0x000000FFU) << 24) |
+	       ((little & 0x0000FF00U) << 8)  |
+	       ((little & 0x00FF0000U) >> 8)  |
+	       ((little & 0xFF000000U) >> 24);
+}

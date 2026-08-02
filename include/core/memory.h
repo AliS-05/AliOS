@@ -1,7 +1,7 @@
 #ifndef MEMORY_H
 #define MEMORY_H
 
-#include <structures.h>
+#include <core/structures.h>
 
 
 void* malloc(uint32_t size);

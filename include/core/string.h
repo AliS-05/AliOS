@@ -1,7 +1,7 @@
 #ifndef STRING_H
 #define STRING_H
 
-#include <structures.h>
+#include <core/structures.h>
 
 
 // string info functions

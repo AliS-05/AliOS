@@ -1,11 +1,14 @@
-#include <structures.h>
-#include <memory.h>
-#include <utilities.h>
-#include <string.h>
-#include <tools.h>
-#include <fs.h>
-#include <fat16.h>
-#include <edit.h>
+#include <core/structures.h>
+#include <core/memory.h>
+#include <core/utilities.h>
+#include <core/string.h>
+#include <core/tools.h>
+#include <fs/fs.h>
+#include <fs/fat16.h>
+#include <core/edit.h>
+#include <networking/packetHandling.h>
+#include <networking/icmp.h>
+#include <networking/dns.h>
 
 char commandHistoryBuffer[50][80] = {0}; //stores last 50 commands;
 int currentCommandAnchor = 0;
@@ -212,7 +215,7 @@ void cmd_run(char* input_buffer){
 	uint8_t* memory = (uint8_t*)0x200000;
 	memcpy(memory, fileData, getFileSize(filename, extension));
 
-	//print_num((uint32_t)memory);
+	//ntos((uint32_t)memory);
 
 	typedef int (*Program)();
 	Program program = (Program)memory; //cast typedef'd function pointer to malloc memory and then call it
@@ -221,7 +224,8 @@ void cmd_run(char* input_buffer){
 	free(fileData);
 	program_running = 0;
 	print("Program Finished: ");
-	print_num(ret);
+	char buf[32];
+	ntos(ret,buf,10);
 }
 
 void cmd_edit(char* input_buffer){
@@ -247,7 +251,7 @@ void cmd_color(char* input_buffer){
 	if(col > 255){
 		print("Must enter an integer number, try 'color 02' or 'color 30'");
 	}
-	init_editor_screen((uint8_t)col);
+	//init_editor_screen((uint8_t)col);
 }
 
 void getDate(){
@@ -287,6 +291,52 @@ void nextCommandHistory(){
 	drawLine(commandHistoryBuffer[currentCommandAnchor]);
 }
 
+void cmd_ping(char* command){
+	token(input_buffer, ' '); //skipping 'ping'
+	const char* first = token(NULL, '.');
+	//first is either 'google' or '123'
+	if((first[0] > 0x41 && first[0] < 0x5A) || (first[0] > 61 && first[0] < 0x7A)){ //checking for letters
+		const char* second = token(NULL, '.'); //com
+		size_t len1 = strlen(first);
+		size_t len2 = strlen(second);
+
+		size_t len = len1+ len2 + 3;//3 bytes for lengths + null terminator
+		uint8_t buf[len]; 
+		//0x06
+		buf[0] = len1;
+		//google
+		memcpy(buf + 1, first, len1);
+		//0x03
+		buf[len1 + 1] = len2;
+		//com
+		memcpy(buf + len1 + 2, second, len2);
+		//0x00
+		buf[len1 + 2 + len2] = 0x00;
+		ping_dns(buf, len);
+	} else {
+		//else we have a number between 0-255
+		//123.456.789.000
+		const char* second = token(NULL, '.');
+		const char* third  = token(NULL, '.');
+		const char* fourth = token(NULL, ' ');
+		
+		uint8_t ipEntered[4];
+		ipEntered[0] = (uint8_t)atoi(first);
+		ipEntered[1] = (uint8_t)atoi(second);
+		ipEntered[2] = (uint8_t)atoi(third);
+		ipEntered[3] = (uint8_t)atoi(fourth);
+
+		uint32_t destIp = 
+			((uint32_t)ipEntered[3] << 24) |
+			((uint32_t)ipEntered[2] << 16) |
+			((uint32_t)ipEntered[1] << 8) |
+			((uint32_t)ipEntered[0]);
+		ping(destIp);
+	}
+}
+
+
+
 void parse_command() {
 	strcpy(commandHistoryBuffer[writeIndexAnchor], input_buffer);
 	writeIndexAnchor++;
@@ -322,6 +372,8 @@ void parse_command() {
 		cmd_color(input_buffer);
 	} else if (strncmp(input_buffer, "assemble", 8) == 0){
 		cmd_assemble(input_buffer);
+	} else if (strncmp(input_buffer, "ping", 4) == 0){
+		cmd_ping(input_buffer);
 	}
 	else {
 		print(unknown_response);

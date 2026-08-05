@@ -103,7 +103,7 @@ void cmd_hexdump(char* input_buffer){
 }
 
 void cmd_ls(){
-	listfiles_fat16();
+	listfiles_dir();
 }
 
 void cmd_makefile(char* input_buffer){
@@ -362,6 +362,19 @@ void cmd_tftp(char* command){
 
 }
 
+void cmd_mkdir(char* command){
+	// mkdir games
+	token(command, ' ');
+	const char* dirname = token(NULL, ' ');
+	makeDirectory(dirname);
+}
+
+void cmd_cd(char* command){
+	token(command, ' ');
+	const char* dirname = token(NULL, ' ');
+	changeDirectory(dirname);
+}
+
 void parse_command() {
 	strcpy(commandHistoryBuffer[writeIndexAnchor], input_buffer);
 	writeIndexAnchor++;
@@ -401,6 +414,10 @@ void parse_command() {
 		cmd_ping(input_buffer);
 	} else if (strncmp(input_buffer, "tftp", 4) == 0){
 		cmd_tftp(input_buffer);
+	} else if (strncmp(input_buffer, "mkdir", 5) == 0){
+		cmd_mkdir(input_buffer);
+	} else if (strncmp(input_buffer, "cd", 2) == 0){
+		cmd_cd(input_buffer);
 	}
 	else {
 		print(unknown_response);

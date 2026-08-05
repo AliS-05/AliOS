@@ -43,6 +43,7 @@ A minimal x86 operating system built from scratch in C and assembly, featuring a
 - ICMP Protocol, ping machines on the subnet and outside of the subnetkj. Also replies to ping requests
 - UDP Protocol, send and receive UDP packets. Demultiplexes based on incoming port.
 - DNS Protocol, allows you to ping domains such as google.com, storing resolved IP addresses in a resolution table.
+- TFTP Protocol, allows you to transfer files from a TFTP server to the OS.
 ### Game
 
 *Snake* - It's Snake but written in x86 assembly

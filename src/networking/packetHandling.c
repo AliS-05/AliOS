@@ -21,7 +21,6 @@ void init_networking(){
 }
 
 void handle_ipv4(uint8_t* packetBuffer){
-	print("IPV4 PACKET\n");
 	uint8_t* ipv4Packet = packetBuffer + 14; //skipping ethernet frame header
 	struct ipv4_header* packet_ipv4_header = (struct ipv4_header*)ipv4Packet;
 	if(packet_ipv4_header->protocol == 0x01){

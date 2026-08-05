@@ -1,5 +1,7 @@
 #include <core/structures.h>
 
+extern int currentCluster;
+
 struct BootSector{
 	uint8_t jump[3];
 	char oem[8];
@@ -28,6 +30,7 @@ struct BootSector{
 struct File{
 	char filename[8];
 	char extension[3];
+	//READ_ONLY=0x01 HIDDEN=0x02 SYSTEM=0x04 VOLUME_ID=0x08 DIRECTORY=0x10 ARCHIVE=0x20
 	uint8_t attributes;
 	uint8_t reserved; // leave 0
 	uint8_t creationTimeHundredths;

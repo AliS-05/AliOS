@@ -95,7 +95,6 @@ void tftp_handle_data(struct udp_header* udpHead){
 	packetsRead = 0;
 	prevBlock = 0;
 
-	print("Sending ACK\n");
 	tftp_send_ack(blockNum);
 }
 

@@ -41,6 +41,8 @@ uint32_t calcSectorsUsed(size_t size){
 	return (size + SECTORSIZE - 1) / SECTORSIZE;
 }
 
+
+
 void listfiles_fat16(){
 	struct File rootSector[16]; //16 files per sector in root directory
 	for(uint16_t s = 0; s < 32; s++){
@@ -49,7 +51,7 @@ void listfiles_fat16(){
 		for(uint32_t e = 0; e < 16; e++){
 			struct File* entry = &rootSector[e];
 			if(entry->filename[0] == 0){
-				return;
+				continue;
 			} else{
 				if((uint8_t)entry->filename[0] != (uint8_t)0xE5){
 					print(" ");
@@ -60,11 +62,49 @@ void listfiles_fat16(){
 
 					filename[8] = '\0';
 					ext[3] = '\0';
+					print("[");
 					print(filename);
+					print("]");
 					print(".");
 					print(ext);
 					print(" ");
 				}
+			}
+		}
+	}
+}
+
+void listfiles_dir(){
+	struct File directory[64];
+	if(currentCluster == 0){
+		print("CUR CLUST ZERO\n");
+		listfiles_fat16();
+		return;
+	} else {
+		disk_read_cluster(currentCluster, (uint8_t*)directory);
+	}
+	print("CUR CLUST NOT ZERO\n");
+	for(uint32_t e = 0; e < 64; e++){
+		struct File* entry = &directory[e];
+		if(entry->filename[0] == 0){
+			return; //NOTE im not sure if this should be return or continue
+		} else{
+			if((uint8_t)entry->filename[0] != (uint8_t)0xE5){
+				if(entry->attributes == 0x10){
+					//NOTE change color of directories
+				}
+				print(" ");
+				char filename[9];
+				char ext[4];
+				memcpy(filename, entry->filename, 8);
+				memcpy(ext, entry->extension, 3);
+
+				filename[8] = '\0';
+				ext[3] = '\0';
+				print(filename);
+				print(".");
+				print(ext);
+				print(" ");
 			}
 		}
 	}

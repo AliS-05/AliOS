@@ -3,6 +3,7 @@
 #include <fs/fat16.h>
 #include <core/memory.h>
 #include <core/math.h>
+#include <core/string.h>
 
 #define SECTORSIZE 512 //sector size
 #define NUM_TABLES 2 // 2 fat tables
@@ -17,6 +18,10 @@
 
 uint16_t fat1[(SECTORSIZE * FAT_TABLE_SIZE) / sizeof(uint16_t)];
 uint16_t fat2[(SECTORSIZE * FAT_TABLE_SIZE) / sizeof(uint16_t)];
+
+
+char currentDirectoryString[64];
+int currentCluster = 0;
 
 void initBPB(struct BootSector* b){
 	char buf[32];
@@ -145,6 +150,8 @@ int findFileRoot(const char* filename, const char* ext, struct File* file){
 	return -1;
 }
 
+
+
 uint16_t findFreeCluster(){
 	//fat table sector = 1-21
 	//fat start entry = 2, (media and metadata and stuff)
@@ -163,7 +170,7 @@ uint16_t findFreeCluster(){
 		}
 	}
 	print("NO FREE CLUSTERS FOUND\n");
-	return 0; //0 is reserved so make sure not to use this !
+	return 0; //0 is reserved so make sure not to use this ! 
 }
 
 //returns the head to a chain of clusters
@@ -334,6 +341,156 @@ uint32_t getFileSize(const char* filename, const char* ext){
 	}
 	return file.fileSize;
 }
+
+//expects a buffer of struct File rootDir[512];
+void readRoot(uint8_t* buffer){
+	struct File rootSector[16]; 
+	for(uint16_t s = 0; s < 32; s++){ //reading each sector of root
+		disk_read_sector(ROOTSECTOR + s, (uint8_t*)rootSector);
+		memcpy(buffer + (s * SECTORSIZE), (uint8_t*)rootSector, SECTORSIZE);
+	}
+}
+
+void writeRoot(uint8_t* buffer){
+	struct File rootSector[16]; 
+	for(uint16_t s = 0; s < 32; s++){ //reading each sector of root
+		disk_write_sector(ROOTSECTOR + s, buffer + (s * SECTORSIZE));
+	}
+}
+
+void makeDirectory(char* dirName){
+	//ok idea, if we treat each cluster as a directory, including root
+	//then to make a directory we just find an empty 'slot' and create a new file in that slot. 
+	//if there are no slots then the directory / cluster is full.
+	// add new clusters once i get there
+	print("Making Directory: ");
+	print(dirName);
+	print("\n");
+
+	Directory newDir = {0};
+	if(currentCluster == 0){
+		int numFiles = 0;
+		struct File rootDir[512];
+		readRoot((uint8_t*)rootDir);
+		for(uint32_t e = 0; e < 512; e++){
+			struct File* entry = &rootDir[e];
+			numFiles = e;
+			if(entry->filename[0] == 0){
+				//empty slot found lets insert our directory
+				memcpy(newDir.filename, dirName, strlen(dirName));
+				newDir.attributes = 0x10; //directory
+				newDir.cluster = findFreeCluster();
+				memcpy((uint8_t*)&rootDir[e], (uint8_t*)&newDir, sizeof(Directory));
+				writeRoot((uint8_t*)rootDir);
+				print("Found free cluster and wrote dir\n");
+				break;
+			} 
+		}
+		uint16_t parentCluster = currentCluster;
+		currentCluster = newDir.cluster;
+		print("\nParent Cluster");
+		print_hex16(currentCluster);
+		struct File newDirectory[64];
+		disk_read_cluster(currentCluster, newDirectory);
+
+		struct File here = {0};
+		here.filename[0] = '.';
+		here.cluster = currentCluster;
+
+		struct File parent = {0};
+		memcpy(parent.filename, "..", 2);
+		parent.cluster = parentCluster;
+
+		memcpy((uint8_t*)&newDirectory[0], (uint8_t*)&here, sizeof(struct File));
+		memcpy((uint8_t*)&newDirectory[1], (uint8_t*)&parent, sizeof(struct File));
+		
+		disk_write_cluster(currentCluster, (uint8_t*)newDirectory);
+		print("Wrote final cluster\n");
+		currentCluster = parentCluster; //dont leave us in the newly created dir
+
+	} else {
+		struct File currentDirectory[64];
+		disk_read_cluster(currentCluster, (uint8_t*)currentDirectory);
+		for(uint32_t e = 0; e < 64; e++){
+			struct File* entry = &currentDirectory[e];
+			if(entry->filename[0] == 0){
+				//empty slot found lets insert our directory
+				memcpy(newDir.filename, dirName, 8);
+				newDir.attributes = 0x10; //directory
+				newDir.cluster = findFreeCluster();
+				memcpy((uint8_t*)&currentDirectory[e], (uint8_t*)&newDir, sizeof(Directory));
+				disk_write_cluster(currentCluster, (uint8_t*)currentDirectory);
+				break;
+			} 
+		}
+		//without error handling we have now successfully created a new directory with its own cluster. lets add '.' and '..'
+		print("Current Cluster: ");
+		print_hex16(currentCluster);
+		uint16_t parentCluster = currentCluster;
+		currentCluster = newDir.cluster;
+		print("\nParent Cluster");
+		print_hex16(currentCluster);
+		struct File newDirectory[64];
+		disk_read_cluster(currentCluster, (uint8_t*)newDirectory);
+
+		struct File here = {0};
+		here.filename[0] = '.';
+		here.cluster = currentCluster;
+
+		struct File parent = {0};
+		memcpy(parent.filename, "..", 2);
+		parent.cluster = parentCluster;
+
+		memcpy((uint8_t*)&newDirectory[0], (uint8_t*)&here, sizeof(struct File));
+		memcpy((uint8_t*)&newDirectory[1], (uint8_t*)&parent, sizeof(struct File));
+
+		disk_write_cluster(currentCluster, (uint8_t*)newDirectory);
+		print("Wrote final cluster\n");
+		currentCluster = parentCluster; //dont leave us in the newly created dir
+
+	}
+
+
+}
+
+
+
+void changeDirectory(const char* filename){
+	//cd games
+	//for files in dir, if file.filename == filename curCluster = file.cluster
+	print("Changing into: ");
+	print(filename);
+	print("\n");
+
+	if(currentCluster == 0){
+		struct File rootDir[512];
+		readRoot((uint8_t*)rootDir);
+		for(uint32_t e = 0; e < 512; e++){
+			struct File* entry = &rootDir[e];
+			if(memcmp(entry->filename, filename, strlen(filename)) == 0){
+				print("CurClust was: ");
+				print_hex16(currentCluster);
+				currentCluster = entry->cluster;
+				print("CurClust is: ");
+				print_hex16(currentCluster);
+			} 
+		}
+	} else {
+
+		struct File curDir[64];
+		disk_read_cluster(currentCluster, (uint8_t*)curDir);
+		for(uint32_t e = 0; e < 64; e++){
+			struct File* entry = &curDir[e];
+			if(memcmp(entry->filename, filename, strlen(filename)) == 0){
+				//dir found
+				//i think we just need to update the current cluster and thats it
+				currentCluster = entry->cluster;
+				//NOTE this is the funciton that should update pwd
+			}
+		}
+	}
+}
+
 
 
 

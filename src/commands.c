@@ -9,6 +9,7 @@
 #include <networking/packetHandling.h>
 #include <networking/icmp.h>
 #include <networking/dns.h>
+#include <networking/tftp.h>
 
 char commandHistoryBuffer[50][80] = {0}; //stores last 50 commands;
 int currentCommandAnchor = 0;
@@ -292,7 +293,7 @@ void nextCommandHistory(){
 }
 
 void cmd_ping(char* command){
-	token(input_buffer, ' '); //skipping 'ping'
+	token(command, ' '); //skipping 'ping'
 	const char* first = token(NULL, '.');
 	//first is either 'google' or '123'
 	if((first[0] > 0x41 && first[0] < 0x5A) || (first[0] > 61 && first[0] < 0x7A)){ //checking for letters
@@ -335,7 +336,31 @@ void cmd_ping(char* command){
 	}
 }
 
+void cmd_tftp(char* command){
+	token(command, ' '); //skipping 'tftp'
+	const char* first = token(NULL, '.');
+	const char* second = token(NULL, '.');
+	const char* third  = token(NULL, '.');
+	const char* fourth = token(NULL, ' ');
 
+	uint8_t ipEntered[4];
+	ipEntered[0] = (uint8_t)atoi(first);
+	ipEntered[1] = (uint8_t)atoi(second);
+	ipEntered[2] = (uint8_t)atoi(third);
+	ipEntered[3] = (uint8_t)atoi(fourth);
+
+	uint32_t destIp = 
+		((uint32_t)ipEntered[3] << 24) |
+		((uint32_t)ipEntered[2] << 16) |
+		((uint32_t)ipEntered[1] << 8) |
+		((uint32_t)ipEntered[0]);
+	//input is something like
+	// tftp 10.0.2.1 hello.txt
+	const char* fileName = token(NULL, ' ');
+
+	tftp_request(destIp, fileName, "octet");
+
+}
 
 void parse_command() {
 	strcpy(commandHistoryBuffer[writeIndexAnchor], input_buffer);
@@ -374,6 +399,8 @@ void parse_command() {
 		cmd_assemble(input_buffer);
 	} else if (strncmp(input_buffer, "ping", 4) == 0){
 		cmd_ping(input_buffer);
+	} else if (strncmp(input_buffer, "tftp", 4) == 0){
+		cmd_tftp(input_buffer);
 	}
 	else {
 		print(unknown_response);

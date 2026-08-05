@@ -175,9 +175,10 @@ void demultiplex_udp(uint8_t* fullPacket){
 		echo_udp(fullPacket);
 	} else if(sourcePort == 53){
 		receive_dns(fullPacket);
-	} else if (destPort == local_tid){
+	} else if (destPort == 6900){
 		// tftp port
-		handle_tftp(fullPacket);
+		print("TFTP PACKET\n");
+		handle_tftp(udpHead);
 	}
 	
 }

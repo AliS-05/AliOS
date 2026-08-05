@@ -23,19 +23,36 @@ char ext[3];
 
 //function to begin the tfpt ack sequence. 
 void tftp_request(uint32_t destination, char* filename, char* mode){
-	struct tftp_header tHead = {0};
-	size_t fileLen = strlen(filename) + 1;
-	
-	const char* extension = token(filename, '.');
-	memcpy(file, filename, strlen(filename));
-	memcpy(ext, extension, 3); // i think extension have to be 3 characters
-	
+	size_t nameLen = strlen(filename);
+	size_t modeLen = strlen(mode);
+
+	memset(FILENAME, 0, sizeof(FILENAME));
+	memcpy(FILENAME, filename, nameLen < sizeof(FILENAME) - 1 ? nameLen : sizeof(FILENAME) - 1);
+
+	memset(file, ' ', sizeof(file));
+	memset(ext,  ' ', sizeof(ext));
+
+	size_t i = 0;
+	while(FILENAME[i] != '.' && FILENAME[i] != 0){
+		if(i < sizeof(file)){
+			file[i] = FILENAME[i];
+		}
+		i++;
+	}
+
+	if(FILENAME[i] == '.'){
+		i++;
+		for(size_t j = 0; j < sizeof(ext) && FILENAME[i] != 0; j++, i++){
+			ext[j] = FILENAME[i];
+		}
+	}
+
 	destinationIp = destination;
 
 	uint8_t payload[2 + strlen(filename) + 1 + strlen(mode) + 1];
 	uint8_t* p = payload;
 
-	*(uint16_t*)p = btol16(1);                    
+	*(uint16_t*)p = btol16(1);                   
 	p += 2;
 
 	memcpy(p, filename, strlen(filename) + 1);    	
@@ -44,32 +61,26 @@ void tftp_request(uint32_t destination, char* filename, char* mode){
 	memcpy(p, mode, strlen(mode) + 1); //we want octet
 	p += strlen(mode) + 1;
 
-	send_udp(destination, local_tid, 69, payload, p - payload);
+	send_udp(destination, local_tid, tftp_port, payload, p - payload);
 }
 
 void tftp_send_ack(uint16_t blockNumber){
 	uint8_t payload[4];
 	struct tftp_ack_header ack;
-	ack.opcode = 4;
-	ack.blockNum = blockNumber;
+	ack.opcode = btol16(4);
+	ack.blockNum = btol16(blockNumber);
 	memcpy(payload, (uint8_t*)&ack, 4);
 
 	send_udp(destinationIp, local_tid, server_tid, payload, 4);
 }
 
-//if we receive an ack we are acking a data packet
-void tftp_handle_ack(struct udp_header* udpHead){
-	server_tid = udpHead->sourcePort;
+void tftp_handle_data(struct udp_header* udpHead){
+	server_tid = btol16(udpHead->sourcePort);
 	uint8_t* p = udpHead;
 	p += sizeof(struct udp_header);
 	p += 2;
-	uint16_t blockNum = (uint16_t)*p;
+	uint16_t blockNum = btol16(*(uint16_t*)p);
 	p += 2;
-
-	if(memcmp(file, 0, 16) == 0){
-		print("Error with filename and tftp\n");
-		return;
-	}
 
 	if(packetsRead == 4){
 		writeFile(file, ext, packetDataBuffer, 2048); 
@@ -77,25 +88,30 @@ void tftp_handle_ack(struct udp_header* udpHead){
 		packetsRead = 0;
 	}
 
-	if(udpHead->length - sizeof(struct udp_header) == 512){
-		//ie a full length data packet
-		memcpy(packetDataBuffer + (packetsRead * 512), p, 512);
-		tftp_send_ack(blockNum);
-		prevBlock = blockNum;
-	} else { //other wise we have our final packet lets write it to disk
-		memcpy(packetDataBuffer + (packetsRead * 512), p, 512);
-		writeFile(file, ext, packetDataBuffer, 2048); 
-		memset(packetDataBuffer, 0, 2048);
-		packetsRead = 0;
-		prevBlock = 0;
-	}
+	uint16_t dataLen = btol16(udpHead->length) - sizeof(struct udp_header) - 4; //4 for the data header
+	memcpy(packetDataBuffer + (packetsRead * 512), p, dataLen);
+	writeFile(file, ext, packetDataBuffer, packetsRead * 512 + dataLen);
+	memset(packetDataBuffer, 0, sizeof(packetDataBuffer));
+	packetsRead = 0;
+	prevBlock = 0;
+
+	print("Sending ACK\n");
+	tftp_send_ack(blockNum);
 }
 
 
 //so tftp functions should only really be concerned with the payload data,
 //not really the packet headers or anything
 void handle_tftp(struct udp_header* udpHead){
-	if(server_tid == 0){
-		tftp_handle_ack(udpHead); //however if the server tid has not been set yet i will need to know the *source* port of the incoming packet
+	uint8_t* p = udpHead;
+	p += sizeof(struct udp_header);
+	uint16_t opcode = btol16(*(uint16_t*)p);
+	
+	if(server_tid == 0 || opcode == 3){
+		tftp_handle_data(udpHead); //however if the server tid has not been set yet i will need to know the *source* port of the incoming packet
+	} else if(opcode == 4){
+		print("TFTP ACK Received\n");
+	} else if(opcode == 5){
+		print("TFTP ERROR\n");
 	}
 }

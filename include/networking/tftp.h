@@ -18,5 +18,5 @@ struct tftp_ack_header {
 } __attribute__ ((packed)) ;
 
 void tftp_request(uint32_t destination, char* filename, char* mode);
-void tftp_handle_ack(struct udp_header* u);
+void tftp_handle_data(struct udp_header* u);
 void handle_tftp(struct udp_header* u);

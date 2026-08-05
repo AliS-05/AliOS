@@ -5,6 +5,7 @@
 #include <networking/udp.h>
 #include <networking/dns.h>
 #include <networking/networking.h>
+#include <networking/tftp.h>
 
 static uint8_t udpBuffer[ETH_FRAME_MAX];
 static uint8_t transBuffer[ETH_FRAME_MAX];
@@ -174,5 +175,9 @@ void demultiplex_udp(uint8_t* fullPacket){
 		echo_udp(fullPacket);
 	} else if(sourcePort == 53){
 		receive_dns(fullPacket);
+	} else if (destPort == local_tid){
+		// tftp port
+		handle_tftp(fullPacket);
 	}
+	
 }

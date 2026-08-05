@@ -30,7 +30,6 @@ void ping(uint32_t destIp){
                 return;
         }
 
-	print("ARP FOUND IN PING\n");
 	memcpy(ethHead.macDestination, destMac, 6);
 	memcpy(ethHead.macSource, MAC_ADDRESS, 6);
 	ethHead.ethertype = btol16(0x0800);

@@ -40,12 +40,9 @@ void parse_packet(uint8_t* packetBuffer){
 	//ethertypes
 	uint8_t ipv4Ethertype[2] = {0x08, 0x00};
 	uint8_t arpEthertype[2] = {0x08, 0x06};
-	print("PARSING PACKET\n");
 	if(!(memcmp(packetBuffer + 12, arpEthertype, 2))){
-		print("ARP PACKET PARSED\n");
 		handle_arp(packetBuffer);
 	} else if(!(memcmp(packetBuffer + 12, ipv4Ethertype, 2))){
-		print("IPV4 PACKET PARSED\n");
 		handle_ipv4(packetBuffer);
 	}
 }

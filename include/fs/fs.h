@@ -5,6 +5,8 @@
 
 #define MAXFILES 12
 #define SECTORSIZE 512
+#define SECTORS_PER_CLUSTER 4
+
 
 struct FileObject{
 	char name[32];

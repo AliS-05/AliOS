@@ -175,18 +175,18 @@ uint16_t findFreeCluster(){
 
 //returns the head to a chain of clusters
 uint16_t findFreeClusterCount(int count){
-        uint16_t head = findFreeCluster();
-        if(head == 0) return 0;
-        uint16_t prev = head;
-        for(int i = 1; i < count; i++){
-                uint16_t cur = findFreeCluster();
-                if(cur == 0){
-                        print("ERROR: out of clusters\n");
-                        return 0;
-                }
-                updateFatTables(prev, cur);      
-                prev = cur;                      
-        }
+	uint16_t head = findFreeCluster();
+	if(head == 0) return 0;
+	uint16_t prev = head;
+	for(int i = 1; i < count; i++){
+		uint16_t cur = findFreeCluster();
+		if(cur == 0){
+			print("ERROR: out of clusters\n");
+			return 0;
+		}
+		updateFatTables(prev, cur);      
+		prev = cur;                      
+	}
 	return head;
 }
 
@@ -211,6 +211,19 @@ uint16_t addFileRoot(struct File* file){
 		}
 	}
 	return 0;
+}
+
+void addFileDirectory(struct File* file){
+	struct File dir[64];
+	disk_read_cluster(currentCluster, (uint8_t*)dir);
+	for(uint16_t e = 0; e < 64; e++){
+		struct File* entry = &dir[e];
+		if(entry->filename[0] == 0){
+			memcpy((uint8_t*)&dir[e], (uint8_t*)file, sizeof(struct File));
+			disk_write_cluster(currentCluster, (uint8_t*)dir);
+			return;
+		}
+	}
 }
 
 
@@ -257,7 +270,11 @@ void writeFile(char* filename, char* extension, uint8_t* data, uint32_t size){
 	//now that file struct has been created i need to add the struct to
 	// the root directory. so 
 	//section,memcpy to buffer and write back to disk
-	addFileRoot(&file);
+	if(currentCluster == 0){
+		addFileRoot(&file);
+	} else {
+		addFileDirectory(&file);
+	}
 	int currentClusterCount = 0;
 	while(curClust < 0xFFF8){
 		//writes cur cluster with 2048 * currentClusterCount offset into data buffer

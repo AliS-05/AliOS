@@ -386,19 +386,23 @@ void makeDirectory(char* dirName){
 				break;
 			} 
 		}
+		print("Current Cluster: ");
+		print_hex16(currentCluster);
 		uint16_t parentCluster = currentCluster;
 		currentCluster = newDir.cluster;
 		print("\nParent Cluster");
 		print_hex16(currentCluster);
 		struct File newDirectory[64];
-		disk_read_cluster(currentCluster, newDirectory);
+		disk_read_cluster(currentCluster, (uint8_t*)newDirectory);
 
 		struct File here = {0};
 		here.filename[0] = '.';
+		here.attributes = 0x04;
 		here.cluster = currentCluster;
 
 		struct File parent = {0};
 		memcpy(parent.filename, "..", 2);
+		parent.attributes = 0x04;
 		parent.cluster = parentCluster;
 
 		memcpy((uint8_t*)&newDirectory[0], (uint8_t*)&here, sizeof(struct File));
@@ -435,10 +439,12 @@ void makeDirectory(char* dirName){
 
 		struct File here = {0};
 		here.filename[0] = '.';
+		here.attributes = 0x04;
 		here.cluster = currentCluster;
 
 		struct File parent = {0};
 		memcpy(parent.filename, "..", 2);
+		parent.attributes = 0x04;
 		parent.cluster = parentCluster;
 
 		memcpy((uint8_t*)&newDirectory[0], (uint8_t*)&here, sizeof(struct File));

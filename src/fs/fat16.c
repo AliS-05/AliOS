@@ -183,7 +183,7 @@ char* parsePath(char* path){
 	return comp;
 }
 
-//helper function that returns a pointer to a File struct with the name and extension passed in
+//helper function that returns the sector in which the desired file is stored on disk
 int findFileRoot(const char* filename, const char* ext, struct File* file){
 	struct File rootSector[16]; 
 	for(uint16_t s = 0; s < 32; s++){ //reading each sector of root
@@ -261,6 +261,25 @@ uint16_t addFileRoot(struct File* file){
 	return 0;
 }
 
+//pass in your file struct and it will be filled in if the file is found
+//new function so other functions may not use this, if it aint broke dont fix it
+//void findFileRoot(const char* filename, const char* extension, struct File* file){
+//	struct File rootDir[16];
+//	struct File file;
+//	uint32_t rootSector = findFileRoot(filename, extension, &file);
+//	disk_read_sector(ROOTSECTOR + rootSector, (uint8_t*)rootDir);
+//	for(uint32_t e = 0; e < 16; e++){ //e = entry ie file
+//		struct File* entry = &rootDir[e];
+//		if(!memcmp(file.filename, entry->filename, 8) && !memcmp(file.extension, entry->extension, 3)){
+//			memcpy((uint8_t*)file, (uint8_t*)entry, sizeof(struct File));
+//			return;
+//		}
+//	}
+//	print("File Not Found\n");
+//	return 0;
+//}
+
+
 void addFileDirectory(struct File* file){
 	struct File dir[64];
 	disk_read_cluster(currentCluster, (uint8_t*)dir);
@@ -275,26 +294,19 @@ void addFileDirectory(struct File* file){
 }
 
 
-
-
-//returns the File struct that matches filename and extension from the root table
-//new function so other functions may not use this, if it aint broke dont fix it
-struct File* getFileEntry(const char* filename, const char* extension){
-	struct File rootDir[16];
-	struct File file;
-	uint32_t rootSector = findFileRoot(filename, extension, &file);
-	disk_read_sector(ROOTSECTOR + rootSector, (uint8_t*)rootDir);
-	for(uint32_t e = 0; e < 16; e++){ //e = entry ie file
-		struct File* entry = &rootDir[e];
-		if(!memcmp(file.filename, entry->filename, 8) && !memcmp(file.extension, entry->extension, 3)){
-			return entry;
-			break;
+//memcpy's directory entry into your passed struct and returns true if found otherwise does nothing and returns false
+boolean findFileDirectory(const char* filename, const char* extension, struct File* file){
+	struct File dir[64];
+	disk_read_cluster(currentCluster, (uint8_t*)dir);
+	for(uint16_t e = 0; e < 64; e++){
+		struct File* entry = &dir[e];
+		if(!memcmp(file->filename, entry->filename, 8) && !memcmp(file->extension, entry->extension, 3)){
+			memcpy((uint8_t*)file, (uint8_t*)entry, sizeof(struct File));
+			return true;
 		}
 	}
-	print("File Not Found\n");
-	return 0;
+	return false;
 }
-
 
 
 
@@ -536,6 +548,7 @@ void makeDirectory(char* dirName){
 	} else {
 		struct File currentDirectory[64];
 		memset((uint8_t*)currentDirectory, 0, sizeof(currentDirectory));
+		disk_read_cluster(currentCluster, (uint8_t*)currentDirectory);
 		for(uint32_t e = 0; e < 64; e++){
 			struct File* entry = &currentDirectory[e];
 			if(entry->filename[0] == 0){
@@ -643,10 +656,25 @@ void changeDirectory(const char* filename){
 
 
 
-void printWorkingDirectory(void){
+void printWorkingDirectory(){
 		if(currentDirectoryString[0] == '\0'){
 			print("/");
 		} else {
 			print(currentDirectoryString);
 		}
 }
+
+
+//void deleteDirectory(const char* dirname){
+//	struct File dir;
+//	if(findFileDirectory(
+//}
+
+
+
+
+
+
+
+
+

@@ -303,14 +303,14 @@ void writeFile(char* filename, char* extension, uint8_t* data, uint32_t size){
 	if(clustersNeeded == 0) return;
 	uint16_t headCluster = findFreeClusterCount(clustersNeeded);
 	uint16_t curClust = headCluster;
-	uint16_t prevClust = 0;
 
 	struct File file;
 	memset(&file, 0, sizeof(struct File));
 
-	memcpy(file.filename, filename, 8);
-	memcpy(file.extension, extension, 3);
-
+	memset(file.filename, ' ', 8);
+	memset(file.extension, ' ', 3);
+	for(int i = 0; i < 8 && filename[i]; i++) file.filename[i] = filename[i];
+	for(int i = 0; i < 3 && extension[i]; i++) file.extension[i] = extension[i];
 	file.attributes = 0x20; // anything not 0x01 is writeable 
 	//all time stuff is left as 0 for now as i have not implemented RTC stuff
 
@@ -515,8 +515,7 @@ void makeDirectory(char* dirName){
 		print("\nParent Cluster");
 		print_hex16(currentCluster);
 		struct File newDirectory[64];
-		disk_read_cluster(currentCluster, (uint8_t*)newDirectory);
-
+		memset((uint8_t*)newDirectory, 0, sizeof(newDirectory));
 		struct File here = {0};
 		here.filename[0] = '.';
 		here.attributes = 0x04;
@@ -536,7 +535,7 @@ void makeDirectory(char* dirName){
 
 	} else {
 		struct File currentDirectory[64];
-		disk_read_cluster(currentCluster, (uint8_t*)currentDirectory);
+		memset((uint8_t*)currentDirectory, 0, sizeof(currentDirectory));
 		for(uint32_t e = 0; e < 64; e++){
 			struct File* entry = &currentDirectory[e];
 			if(entry->filename[0] == 0){

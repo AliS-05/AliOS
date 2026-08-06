@@ -108,22 +108,35 @@ void cmd_ls(){
 
 
 void cmd_makefile(char* input_buffer){
-	//write /games/test    .txt hello world!
+	//write /games/test.txt hello world!
 	token(input_buffer, ' ');
 
-	char* path = token(NULL, '.');
-	char* extension = token(NULL, ' ');
-	const char* data = extension + strlen(extension) + 1;
+	char *path = token(NULL, ' ');
+
+	char* dot = path;
+	while (*dot && *dot != '.')
+		dot++;
+
+	if (*dot == '\0') {
+		print("Bad filename\n");
+		return;
+	}
+
+	*dot = '\0';
+	char* extension = dot + 1;	
+
+	char *data = token(NULL, '\0');
 
 	int saved = currentCluster;
-	char* filename = parsePath(path);
-	if(!filename){
+	char *filename = parsePath(path);
+
+	if (!filename) {
 		print("Path not found\n");
 		currentCluster = saved;
 		return;
 	}
 
-	writeFile(filename, extension, (uint8_t*)data, strlen(data));
+	writeFile(filename, extension, (uint8_t *)data, strlen(data));
 	currentCluster = saved;
 }
 
@@ -376,10 +389,27 @@ void cmd_tftp(char* command){
 }
 
 void cmd_mkdir(char* command){
-	// mkdir games
 	token(command, ' ');
-	const char* dirname = token(NULL, ' ');
+
+	char* path = token(NULL, ' ');
+	if(!path){
+		print("Usage: mkdir <directory>\n");
+		return;
+	}
+
+	int saved = currentCluster;
+
+	char* dirname = parsePath(path);
+
+	if(!dirname){
+		print("Path not found\n");
+		currentCluster = saved;
+		return;
+	}
+
 	makeDirectory(dirname);
+
+	currentCluster = saved;
 }
 
 void cmd_cd(char* input_buffer){

@@ -89,7 +89,7 @@ void listfiles_dir(){
 	for(uint32_t e = 0; e < 64; e++){
 		struct File* entry = &directory[e];
 		if(entry->filename[0] == 0){
-			return; //NOTE im not sure if this should be return or continue
+			return; 
 		} else if ((uint8_t)entry->filename[0] == 0xE5){
 			continue;
 		}else{

@@ -117,6 +117,12 @@ void init_fat16_filesystem(){
 
 //clusterStatus should be 0x0000 (free cluster), a 16 bit hex number for the next cluster in the chain or 0xFFFF for end of chain
 void updateFatTables(uint16_t cluster, uint16_t clusterStatus){
+
+	if(cluster < 2 || cluster >= 5101){
+		print("BAD CLUSTER IN updateFatTables\n");
+		return;
+	}
+
 	uint16_t fatTable[256];
 
 	//fat 1
@@ -183,13 +189,12 @@ char* parsePath(char* path){
 	return comp;
 }
 
-//helper function that returns the sector in which the desired file is stored on disk
 int findFileRoot(const char* filename, const char* ext, struct File* file){
 	struct File rootSector[16]; 
 	for(uint16_t s = 0; s < 32; s++){ //reading each sector of root
 		disk_read_sector(ROOTSECTOR + s, (uint8_t*)rootSector);
 		for(uint32_t e = 0; e < 16; e++){ //e = entry ie file
-			if(!memcmp(rootSector[e].filename, (void*)filename, 8) && !memcmp(rootSector[e].extension, (void*)ext, 3)){
+			if(!memcmp(rootSector[e].filename, filename, 8) && (!ext || !memcmp(rootSector[e].extension, ext, 3))){
 				*file = rootSector[e];
 				return s;
 			}
@@ -198,6 +203,20 @@ int findFileRoot(const char* filename, const char* ext, struct File* file){
 	return -1;
 }
 
+//helper function that returns the sector in which the desired file is stored on disk
+boolean findDirRoot(const char* dirname, struct File* Directory){
+	struct File rootSector[16]; 
+	for(uint16_t s = 0; s < 32; s++){ //reading each sector of root
+		disk_read_sector(ROOTSECTOR + s, (uint8_t*)rootSector);
+		for(uint32_t e = 0; e < 16; e++){ //e = entry ie file
+			if(!memcmp(rootSector[e].filename, dirname, 8)){
+				memcpy((uint8_t*)Directory, (uint8_t*)&rootSector[e], sizeof(struct File));
+				return true;
+			}
+		}
+	}
+	return false;
+}
 
 
 uint16_t findFreeCluster(){
@@ -300,7 +319,7 @@ boolean findFileDirectory(const char* filename, const char* extension, struct Fi
 	disk_read_cluster(currentCluster, (uint8_t*)dir);
 	for(uint16_t e = 0; e < 64; e++){
 		struct File* entry = &dir[e];
-		if(!memcmp(file->filename, entry->filename, 8) && !memcmp(file->extension, entry->extension, 3)){
+		if(!memcmp(entry->filename, filename, 8) && (!extension || !memcmp(entry->extension, extension, 3))){	
 			memcpy((uint8_t*)file, (uint8_t*)entry, sizeof(struct File));
 			return true;
 		}
@@ -412,6 +431,7 @@ void deleteFile(const char* filename, const char* extension){
 	//remove file from root directory
 
 	struct File file;
+	memset(&file, 0, sizeof(struct File));
 	if(currentCluster == 0){
 		print("DELETING IN ROOT\n");
 		uint32_t rootSector = findFileRoot(filename, extension, &file);
@@ -449,12 +469,22 @@ void deleteFile(const char* filename, const char* extension){
 		disk_read_cluster(currentCluster, (uint8_t*)currentDirectory);
 		for(uint32_t e = 0; e < 64; e++){
 			struct File* entry = &currentDirectory[e];
-			if(!(memcmp(entry->filename, filename, strlen(filename))) && !(memcmp(entry->extension, extension, strlen(extension)))){
+			if(!(memcmp(entry->filename, filename, strlen(filename))) && (!extension ||  !(memcmp(entry->extension, extension, strlen(extension))))){
 				//file found mark as deleted
 				print("FOUND FILE\n");
 				memset(entry->filename, 0xE5, 8);
 				memcpy((uint8_t*)&currentDirectory[e], (uint8_t*)entry, sizeof(struct File));
 				disk_write_cluster(currentCluster, (uint8_t*)currentDirectory);
+
+				//free up clusters in fatTable 
+				uint16_t curClust = entry->cluster;
+				uint16_t prevClust = 0;
+				while(curClust < 0xFFF8){
+					uint16_t next = getNextCluster(curClust);
+					updateFatTables(curClust, 0x0000);
+					curClust = next;
+				}
+
 				return;
 			} 
 		}
@@ -530,12 +560,12 @@ void makeDirectory(char* dirName){
 		memset((uint8_t*)newDirectory, 0, sizeof(newDirectory));
 		struct File here = {0};
 		here.filename[0] = '.';
-		here.attributes = 0x04;
+		here.attributes = 0x10;
 		here.cluster = currentCluster;
 
 		struct File parent = {0};
 		memcpy(parent.filename, "..", 2);
-		parent.attributes = 0x04;
+		parent.attributes = 0x10;
 		parent.cluster = parentCluster;
 
 		memcpy((uint8_t*)&newDirectory[0], (uint8_t*)&here, sizeof(struct File));
@@ -569,16 +599,15 @@ void makeDirectory(char* dirName){
 		print("\nParent Cluster");
 		print_hex16(currentCluster);
 		struct File newDirectory[64];
-		disk_read_cluster(currentCluster, (uint8_t*)newDirectory);
-
+		memset((uint8_t*)newDirectory, 0, sizeof(newDirectory));
 		struct File here = {0};
 		here.filename[0] = '.';
-		here.attributes = 0x04;
+		here.attributes = 0x10;
 		here.cluster = currentCluster;
 
 		struct File parent = {0};
 		memcpy(parent.filename, "..", 2);
-		parent.attributes = 0x04;
+		parent.attributes = 0x10;
 		parent.cluster = parentCluster;
 
 		memcpy((uint8_t*)&newDirectory[0], (uint8_t*)&here, sizeof(struct File));
@@ -665,16 +694,75 @@ void printWorkingDirectory(){
 }
 
 
-//void deleteDirectory(const char* dirname){
-//	struct File dir;
-//	if(findFileDirectory(
-//}
 
 
+void deleteDirectory(const char* dirname){
 
+	if((char)dirname[0] == '.'){
+		return;
+	}
 
+	struct File dir;
+	uint16_t clusterSave = currentCluster;
+	if(currentCluster == 0){
+		if(findDirRoot(dirname, &dir)){
+			//recursively free clusters
+			struct File currentDirectory[64];
+			currentCluster = dir.cluster;
+			disk_read_cluster(dir.cluster, (uint8_t*)currentDirectory);
+			for(uint32_t e = 0; e < 64; ++e){
+				struct File* entry = &currentDirectory[e];
+				
+				if(entry->filename[0] == 0){ 
+					break;
+				}
 
+				if((uint8_t)entry->filename[0] == 0xE5){
+					continue;
+				}
 
+				if(entry->attributes == 0x10){
+					deleteDirectory(entry->filename);
+				} else {
+					deleteFile(entry->filename, entry->extension);		
+				}
 
+			}
+			//delete from root
+			currentCluster = clusterSave; //restore cluster
+			deleteFile(dirname, 0); //delete the actual directory eg 'games'
+		}
+		else {
+			print("DIR NOT FOUND NO DELETE\n");
+			return;
+		}
+	} else {
+		if(findFileDirectory(dirname, 0, &dir)){
+			//found the directory , read its cluster, then loop over each file
+			// if attribute == 0x10 recursive call otherwise just deleteFile
+			struct File currentDirectory[64];
+			currentCluster = dir.cluster;
+			disk_read_cluster(dir.cluster, (uint8_t*)currentDirectory);
+			for(uint32_t e = 0; e < 64; ++e){
+				struct File* entry = &currentDirectory[e];
+				if(entry->filename[0] == 0){ 
+					break;
+				}
+				if((uint8_t)entry->filename[0] == 0xE5){
+					continue;
+				}
+				if(entry->attributes == 0x10){
+					deleteDirectory(entry->filename);
+				} else {
+					deleteFile(entry->filename, entry->extension);		
+				}
 
+			}
+			currentCluster = clusterSave;
+			deleteFile(dirname, 0);
+		} else {
+			print("Directory not found, no delete happening\n");
+		}
+	}
+}
 

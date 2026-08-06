@@ -1,0 +1,88 @@
+src/fs/fat16.c: In function ‘findDirRoot’:
+src/fs/fat16.c:206:60: warning: passing argument 2 of ‘memcmp’ discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+  206 |                         if(!memcmp(rootSector[e].filename, dirname, 8)){
+      |                                                            ^~~~~~~
+In file included from src/fs/fat16.c:4:
+include/core/memory.h:11:30: note: expected ‘void *’ but argument is of type ‘const char *’
+   11 | int memcmp(void* mem1, void* mem2, size_t n);
+      |                        ~~~~~~^~~~
+src/fs/fat16.c:207:33: error: cannot convert to a pointer type
+  207 |                                 memcpy((uint8_t*)Directory, (uint8_t*)rootSector[e], sizeof(struct File));
+      |                                 ^~~~~~
+src/fs/fat16.c: In function ‘findFileDirectory’:
+src/fs/fat16.c:311:39: warning: unused parameter ‘filename’ [-Wunused-parameter]
+  311 | boolean findFileDirectory(const char* filename, const char* extension, struct File* file){
+      |                           ~~~~~~~~~~~~^~~~~~~~
+src/fs/fat16.c:311:61: warning: unused parameter ‘extension’ [-Wunused-parameter]
+  311 | boolean findFileDirectory(const char* filename, const char* extension, struct File* file){
+      |                                                 ~~~~~~~~~~~~^~~~~~~~~
+src/fs/fat16.c: In function ‘readFile’:
+src/fs/fat16.c:381:54: warning: passing argument 2 of ‘memcmp’ discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+  381 |                         if(!(memcmp(entry->filename, filename, strlen(filename)))){
+      |                                                      ^~~~~~~~
+include/core/memory.h:11:30: note: expected ‘void *’ but argument is of type ‘const char *’
+   11 | int memcmp(void* mem1, void* mem2, size_t n);
+      |                        ~~~~~~^~~~
+src/fs/fat16.c:393:54: warning: passing argument 2 of ‘memcmp’ discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+  393 |                         if(!(memcmp(entry->filename, filename, strlen(filename))) && !(memcmp(entry->extension, ext, strlen(ext)))){
+      |                                                      ^~~~~~~~
+include/core/memory.h:11:30: note: expected ‘void *’ but argument is of type ‘const char *’
+   11 | int memcmp(void* mem1, void* mem2, size_t n);
+      |                        ~~~~~~^~~~
+src/fs/fat16.c:393:113: warning: passing argument 2 of ‘memcmp’ discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+  393 |                         if(!(memcmp(entry->filename, filename, strlen(filename))) && !(memcmp(entry->extension, ext, strlen(ext)))){
+      |                                                                                                                 ^~~
+include/core/memory.h:11:30: note: expected ‘void *’ but argument is of type ‘const char *’
+   11 | int memcmp(void* mem1, void* mem2, size_t n);
+      |                        ~~~~~~^~~~
+src/fs/fat16.c: In function ‘deleteFile’:
+src/fs/fat16.c:450:42: warning: unused variable ‘prevClust’ [-Wunused-variable]
+  450 |                                 uint16_t prevClust = 0;
+      |                                          ^~~~~~~~~
+src/fs/fat16.c:465:54: warning: passing argument 2 of ‘memcmp’ discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+  465 |                         if(!(memcmp(entry->filename, filename, strlen(filename))) && !(memcmp(entry->extension, extension, strlen(extension)))){
+      |                                                      ^~~~~~~~
+include/core/memory.h:11:30: note: expected ‘void *’ but argument is of type ‘const char *’
+   11 | int memcmp(void* mem1, void* mem2, size_t n);
+      |                        ~~~~~~^~~~
+src/fs/fat16.c:465:113: warning: passing argument 2 of ‘memcmp’ discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+  465 |                         if(!(memcmp(entry->filename, filename, strlen(filename))) && !(memcmp(entry->extension, extension, strlen(extension)))){
+      |                                                                                                                 ^~~~~~~~~
+include/core/memory.h:11:30: note: expected ‘void *’ but argument is of type ‘const char *’
+   11 | int memcmp(void* mem1, void* mem2, size_t n);
+      |                        ~~~~~~^~~~
+src/fs/fat16.c: In function ‘getFileSize’:
+src/fs/fat16.c:488:54: warning: passing argument 2 of ‘memcmp’ discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+  488 |                         if(!(memcmp(entry->filename, filename, strlen(filename))) && !(memcmp(entry->extension, ext, strlen(ext)))){
+      |                                                      ^~~~~~~~
+include/core/memory.h:11:30: note: expected ‘void *’ but argument is of type ‘const char *’
+   11 | int memcmp(void* mem1, void* mem2, size_t n);
+      |                        ~~~~~~^~~~
+src/fs/fat16.c:488:113: warning: passing argument 2 of ‘memcmp’ discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+  488 |                         if(!(memcmp(entry->filename, filename, strlen(filename))) && !(memcmp(entry->extension, ext, strlen(ext)))){
+      |                                                                                                                 ^~~
+include/core/memory.h:11:30: note: expected ‘void *’ but argument is of type ‘const char *’
+   11 | int memcmp(void* mem1, void* mem2, size_t n);
+      |                        ~~~~~~^~~~
+src/fs/fat16.c: In function ‘writeRoot’:
+src/fs/fat16.c:502:21: warning: unused variable ‘rootSector’ [-Wunused-variable]
+  502 |         struct File rootSector[16];
+      |                     ^~~~~~~~~~
+src/fs/fat16.c: In function ‘makeDirectory’:
+src/fs/fat16.c:519:21: warning: variable ‘numFiles’ set but not used [-Wunused-but-set-variable]
+  519 |                 int numFiles = 0;
+      |                     ^~~~~~~~
+src/fs/fat16.c: In function ‘changeDirectory’:
+src/fs/fat16.c:622:56: warning: passing argument 2 of ‘memcmp’ discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+  622 |                         if(memcmp(rootDir[e].filename, filename, strlen(filename)) == 0){
+      |                                                        ^~~~~~~~
+include/core/memory.h:11:30: note: expected ‘void *’ but argument is of type ‘const char *’
+   11 | int memcmp(void* mem1, void* mem2, size_t n);
+      |                        ~~~~~~^~~~
+src/fs/fat16.c:634:55: warning: passing argument 2 of ‘memcmp’ discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+  634 |                         if(memcmp(curDir[e].filename, filename, strlen(filename)) == 0){
+      |                                                       ^~~~~~~~
+include/core/memory.h:11:30: note: expected ‘void *’ but argument is of type ‘const char *’
+   11 | int memcmp(void* mem1, void* mem2, size_t n);
+      |                        ~~~~~~^~~~
+make: *** [Makefile:66: build/fs/fat16.o] Error 1

@@ -106,99 +106,76 @@ void cmd_ls(){
 	listfiles_dir();
 }
 
-
 void cmd_makefile(char* input_buffer){
-	//write /games/test.txt hello world!
-	token(input_buffer, ' ');
+	//expected input something like
+	//write test.txt hello world!
 
-	char *path = token(NULL, ' ');
+	token(input_buffer, ' ');//write
 
-	char* dot = path;
-	while (*dot && *dot != '.')
-		dot++;
+	const char* filename = token(NULL, '.'); //test
+	const char* extension = token(NULL, ' '); //txt
 
-	if (*dot == '\0') {
-		print("Bad filename\n");
+	if(filename == NULL){
+		print("Error finding file to delete");
 		return;
 	}
 
-	*dot = '\0';
-	char* extension = dot + 1;	
-
-	char *data = token(NULL, '\0');
-
-	int saved = currentCluster;
-	char *filename = parsePath(path);
-
-	if (!filename) {
-		print("Path not found\n");
-		currentCluster = saved;
+	if(!extension){
+		print("Please provide the file extension\n");
 		return;
 	}
 
-	writeFile(filename, extension, (uint8_t *)data, strlen(data));
-	currentCluster = saved;
+	//inputbuffer offset since token null terminates after each token
+	// + 1 to skip null terminator
+	const char* data = input_buffer + strlen("write\0") + 1 + strlen(filename) + 1 + strlen(extension) + 1;//hello
+
+	writeFile(filename, extension, (uint8_t*)data, strlen(data));
+	return;
 }
 
-
-
 void cmd_delfile(char* input_buffer){
-	//del /games/test    .txt
+	//del test.txt
 	token(input_buffer, ' ');
+	const char* filename = token(NULL, '.');
+	const char* extension = token(NULL, ' ');
 
-	char* path = token(NULL, '.');
-	char* extension = token(NULL, ' ');
-
-	int saved = currentCluster;
-	char* filename = parsePath(path);
 	if(!filename || !extension){
 		print("Error finding file to delete");
-		currentCluster = saved;
 		return;
 	}
-
 	deleteFile(filename, extension);
-	currentCluster = saved;
 }
 
 void cmd_readfile(char* input_buffer){
-	token(input_buffer, ' ');
 
-	char* path = token(NULL, '.');
-	char* extension = token(NULL, ' ');
+	token(input_buffer, ' ');
+	const char* filename = token(NULL, '.');
+	const char* extension = token(NULL, ' ');
+	if(filename == NULL || extension == NULL){
+		print("Bad filename, type <filename>.<ext>");
+		return;
+	}
+
+	//read will just print 25 bytes as a default ig
 	const char* size = token(NULL, ' ');
 
-	int saved = currentCluster;
-	char* filename = parsePath(path);
-	if(!filename || !extension){
-		print("Error finding file to read");
-		currentCluster = saved;
-		return;
-	}
-
 	uint8_t* fileData = readFile(filename, extension);
-	uint32_t fsize = getFileSize(filename, extension);
-	currentCluster = saved;
-
-	if(!fileData){
-		print("FILE NOT FOUND\n");
-		return;
-	}
-
 	int requestedSize = 0;
 	if(size)
 		requestedSize = atoi(size);
+	uint32_t fsize = getFileSize(filename, extension);
 	if(requestedSize == 0){
-		for(uint32_t i = 0; i < fsize; i++){
+		for(uint32_t i = 0; i < fsize; i++){ //making sure not to read garbage data
 			putChar((unsigned char)fileData[i]);
 		}
-	} else {
+	} else{
 		for(uint32_t i = 0; i < requestedSize && i < fsize; i++){
 			putChar((unsigned char)fileData[i]);
 		}
 	}
 	free((void*)fileData);
- }
+	return;
+}
 
 
 void cmd_assemble(char* input_buffer){
@@ -389,55 +366,39 @@ void cmd_tftp(char* command){
 }
 
 void cmd_mkdir(char* command){
+	// mkdir games
+	// mkdir games/subdir
 	token(command, ' ');
-
-	char* path = token(NULL, ' ');
-	if(!path){
-		print("Usage: mkdir <directory>\n");
+	const char* dirname = token(NULL, ' ');
+	int save = currentCluster;
+	char* path = parsePath((char*)dirname);
+	if(!path || !*path){
+		print("BAD PATH\n");
+		currentCluster = save;
 		return;
 	}
-
-	int saved = currentCluster;
-
-	char* dirname = parsePath(path);
-
-	if(!dirname){
-		print("Path not found\n");
-		currentCluster = saved;
-		return;
-	}
-
-	makeDirectory(dirname);
-
-	currentCluster = saved;
+	makeDirectory(path);
+	currentCluster = save;
 }
 
-void cmd_cd(char* input_buffer){
-	//cd /games/sub     - directory names are not padded, so split on space
-	token(input_buffer, ' ');
-
-	char* path = token(NULL, ' ');
-	if(!path){
-		print("Path not found\n");
-		return;
-	}
-
-	if(path[0] == '/' && path[1] == 0){     //cd /
-		currentCluster = 0;
-		return;
-	}
-
-	char* filename = parsePath(path);
-	if(!filename){
-		print("Path not found\n");
-		return;
-	}
-
-	changeDirectory(filename);
+void cmd_cd(char* command){
+	token(command, ' ');
+	const char* dirname = token(NULL, ' ');
+	changeDirectory(parsePath(dirname));
 }
 
-void cmd_pwd(){
-	printWorkingDirectory();
+void cmd_rmdir(char* command){
+	token(command, ' ');
+	const char* dirname = token(NULL, ' ');
+	int save = currentCluster;
+	char* path = parsePath((char*)dirname);
+	if(!path || !*path){
+		print("BAD PATH\n");
+		currentCluster = save;
+		return;
+	}
+	deleteDirectory(path);
+	currentCluster = save;
 }
 
 void parse_command() {
@@ -483,8 +444,8 @@ void parse_command() {
 		cmd_mkdir(input_buffer);
 	} else if (strncmp(input_buffer, "cd", 2) == 0){
 		cmd_cd(input_buffer);
-	} else if (strncmp(input_buffer, "pwd", 3) == 0){
-		cmd_pwd();
+	} else if (strncmp(input_buffer, "rmdir", 5) == 0){
+		cmd_rmdir(input_buffer);
 	}
 	else {
 		print(unknown_response);

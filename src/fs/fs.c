@@ -51,6 +51,8 @@ void listfiles_fat16(){
 		for(uint32_t e = 0; e < 16; e++){
 			struct File* entry = &rootSector[e];
 			if(entry->filename[0] == 0){
+				return;
+			} else if ((uint8_t)entry->filename[0] == 0xE5){
 				continue;
 			} else{
 				if((entry->attributes == 0x10) || (entry->attributes == 0x04)){
@@ -88,7 +90,9 @@ void listfiles_dir(){
 		struct File* entry = &directory[e];
 		if(entry->filename[0] == 0){
 			return; //NOTE im not sure if this should be return or continue
-		} else{
+		} else if ((uint8_t)entry->filename[0] == 0xE5){
+			continue;
+		}else{
 			if ((entry->attributes & 0x10) || (entry->attributes & 0x04)) {
 				char filename[9];
 

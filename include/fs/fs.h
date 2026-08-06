@@ -36,4 +36,5 @@ void writeFile(const char* filename, const char* extension, uint8_t* data, uint3
 uint8_t* readFile(const char* filename, const char* ext);
 uint32_t getFileSize(const char* filename, const char* ext);
 void deleteFile(const char* filename, const char* extension);
+char* parsePath(char* path);
 #endif

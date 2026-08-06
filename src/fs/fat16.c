@@ -20,7 +20,7 @@ uint16_t fat1[(SECTORSIZE * FAT_TABLE_SIZE) / sizeof(uint16_t)];
 uint16_t fat2[(SECTORSIZE * FAT_TABLE_SIZE) / sizeof(uint16_t)];
 
 
-char currentDirectoryString[64];
+char currentDirectoryString[256];
 int currentCluster = 0;
 
 void initBPB(struct BootSector* b){
@@ -135,6 +135,54 @@ void updateFatTables(uint16_t cluster, uint16_t clusterStatus){
 	return;
 }
 
+
+char* parsePath(char* path){
+	if(path[0] == '/'){
+		currentCluster = 0;
+		path++;
+	}
+
+	char* comp = path;
+	for(char* p = path; *p; p++){
+		if(*p != '/') continue;
+		*p = 0;
+
+		if(*comp){
+			boolean found = false;
+
+			if(currentCluster == 0){
+				struct File sector[16];
+				for(uint16_t s = 0; s < 32 && !found; s++){
+					disk_read_sector(ROOTSECTOR + s, (uint8_t*)sector);
+					for(int e = 0; e < 16; e++){
+						if(memcmp(sector[e].filename, comp, strlen(comp)) == 0){
+							currentCluster = sector[e].cluster;
+							found = true;
+							break;
+						}
+					}
+				}
+			} else {
+				struct File dir[64];
+				disk_read_cluster(currentCluster, (uint8_t*)dir);
+				for(int e = 0; e < 64; e++){
+					if(memcmp(dir[e].filename, comp, strlen(comp)) == 0){
+						currentCluster = dir[e].cluster;
+						found = true;
+						break;
+					}
+				}
+			}
+
+			if(!found) return NULL;
+		}
+
+		comp = p + 1;
+	}
+
+	return comp;
+}
+
 //helper function that returns a pointer to a File struct with the name and extension passed in
 int findFileRoot(const char* filename, const char* ext, struct File* file){
 	struct File rootSector[16]; 
@@ -227,6 +275,8 @@ void addFileDirectory(struct File* file){
 }
 
 
+
+
 //returns the File struct that matches filename and extension from the root table
 //new function so other functions may not use this, if it aint broke dont fix it
 struct File* getFileEntry(const char* filename, const char* extension){
@@ -284,18 +334,48 @@ void writeFile(char* filename, char* extension, uint8_t* data, uint32_t size){
 	}
 }
 
-
+//expects a buffer of struct File rootDir[512];
+void readRoot(uint8_t* buffer){
+	struct File rootSector[16]; 
+	for(uint16_t s = 0; s < 32; s++){ //reading each sector of root
+		disk_read_sector(ROOTSECTOR + s, (uint8_t*)rootSector);
+		memcpy(buffer + (s * SECTORSIZE), (uint8_t*)rootSector, SECTORSIZE);
+	}
+}
 
 //returns pointer to uint8 buffer found by findFileRoot NOT the File struct
 uint8_t* readFile(const char* filename, const char* ext){
 	struct File file;
 	memset(&file, 0, sizeof(struct File));
-	findFileRoot(filename, ext, &file);
-	if(file.filename[0] == 0){
-		print("Failed to find file\n");
-		return NULL;
+	print("READING FILE\n");
+	if(currentCluster == 0){
+		struct File rootDir[512];
+		readRoot((uint8_t*)rootDir);
+		for(uint16_t e = 0; e < 512; e++){
+			struct File* entry = &rootDir[e];
+			if(!(memcmp(entry->filename, filename, strlen(filename)))){
+				memcpy((uint8_t*)&file, (uint8_t*)entry, sizeof(struct File));
+				print("FOUDN FILE IN LOOP BREAKING\n");
+				break;
+			}
+		}
+		
+	} else {
+		struct File currentDirectory[64];
+		disk_read_cluster(currentCluster, (uint8_t*)currentDirectory);
+		for(uint32_t e = 0; e < 64; e++){
+			struct File* entry = &currentDirectory[e];
+			if(!(memcmp(entry->filename, filename, strlen(filename))) && !(memcmp(entry->extension, ext, strlen(ext)))){
+				//file found mark as deleted
+				print("FOUND FILE\n");
+				memcpy((uint8_t*)&file, (uint8_t*)entry, sizeof(struct File));
+				break;
+			} 
+		}
 	}
+
 	if(file.fileSize){
+		print("FILE FOUND\n");
 		//find clusters needed
 		int clustersNeeded = ceil_div(file.fileSize, SECTORSIZE * SECTORS_PER_CLUSTER);
 		if(clustersNeeded == 0) clustersNeeded++;
@@ -309,6 +389,7 @@ uint8_t* readFile(const char* filename, const char* ext){
 		}
 		return fileData;
 	}else{
+		print("FILE NOT FOUND\n");
 		return NULL;
 	}
 }
@@ -317,56 +398,80 @@ uint8_t* readFile(const char* filename, const char* ext){
 
 void deleteFile(const char* filename, const char* extension){
 	//remove file from root directory
+
 	struct File file;
-	uint32_t rootSector = findFileRoot(filename, extension, &file);
-	if(file.filename[0] == 0){ 
-		print("File to delete not found\n");
-		return;
-	}
-	
-	
-	struct File rootDir[16];
-	//memset(rootDir, 0, SECTORSIZE);
-	disk_read_sector(ROOTSECTOR + rootSector, (uint8_t*)rootDir);
-	for(uint32_t e = 0; e < 16; e++){ //e = entry ie file
-		struct File* entry = &rootDir[e];
-		if(!memcmp(file.filename, entry->filename, 8) && !memcmp(file.extension, entry->extension, 3)){
-			//0xE5 means deleted
-			memset(entry->filename, 0xE5, 8);
-			//delete from root sector (only file name)
-			disk_write_sector(ROOTSECTOR + rootSector, (uint8_t*)rootDir);
-			
-			//free up clusters in fatTable 
-			uint16_t curClust = file.cluster;
-			uint16_t prevClust = 0;
-			while(curClust < 0xFFF8){
-				uint16_t next = getNextCluster(curClust);
-				updateFatTables(curClust, 0x0000);
-				curClust = next;
-			}
-			break;
+	if(currentCluster == 0){
+		print("DELETING IN ROOT\n");
+		uint32_t rootSector = findFileRoot(filename, extension, &file);
+		if(file.filename[0] == 0){ 
+			print("File to delete not found\n");
+			return;
 		}
+		
+		
+		struct File rootDir[16];
+		//memset(rootDir, 0, SECTORSIZE);
+		disk_read_sector(ROOTSECTOR + rootSector, (uint8_t*)rootDir);
+		for(uint32_t e = 0; e < 16; e++){ //e = entry ie file
+			struct File* entry = &rootDir[e];
+			if(!memcmp(file.filename, entry->filename, 8) && !memcmp(file.extension, entry->extension, 3)){
+				//0xE5 means deleted
+				memset(entry->filename, 0xE5, 8);
+				//delete from root sector (only file name)
+				disk_write_sector(ROOTSECTOR + rootSector, (uint8_t*)rootDir);
+				
+				//free up clusters in fatTable 
+				uint16_t curClust = file.cluster;
+				uint16_t prevClust = 0;
+				while(curClust < 0xFFF8){
+					uint16_t next = getNextCluster(curClust);
+					updateFatTables(curClust, 0x0000);
+					curClust = next;
+				}
+				return;
+			}
+		}
+	} else {
+		print("DELETING IN CUR DIR\n");
+		struct File currentDirectory[64];
+		disk_read_cluster(currentCluster, (uint8_t*)currentDirectory);
+		for(uint32_t e = 0; e < 64; e++){
+			struct File* entry = &currentDirectory[e];
+			if(!(memcmp(entry->filename, filename, strlen(filename))) && !(memcmp(entry->extension, extension, strlen(extension)))){
+				//file found mark as deleted
+				print("FOUND FILE\n");
+				memset(entry->filename, 0xE5, 8);
+				memcpy((uint8_t*)&currentDirectory[e], (uint8_t*)entry, sizeof(struct File));
+				disk_write_cluster(currentCluster, (uint8_t*)currentDirectory);
+				return;
+			} 
+		}
+		print("FILE NOT FOUND\n");
 	}
 }
 
 //this function gives you the actual File struct so you can access attributes such as file size 
 uint32_t getFileSize(const char* filename, const char* ext){
 	struct File file;
-	findFileRoot(filename, ext, &file);
+	if(currentCluster == 0){
+		findFileRoot(filename, ext, &file);
+	} else {
+		struct File currentDirectory[64];
+		disk_read_cluster(currentCluster, (uint8_t*)currentDirectory);
+		for(uint32_t e = 0; e < 64; e++){
+			struct File* entry = &currentDirectory[e];
+			if(!(memcmp(entry->filename, filename, strlen(filename))) && !(memcmp(entry->extension, ext, strlen(ext)))){
+				memcpy((uint8_t*)&file, (uint8_t*)entry, sizeof(struct File));
+			} 
+		}
+	}
 	if(file.filename[0] == 0){
 		return 0;
 	}
 	return file.fileSize;
 }
 
-//expects a buffer of struct File rootDir[512];
-void readRoot(uint8_t* buffer){
-	struct File rootSector[16]; 
-	for(uint16_t s = 0; s < 32; s++){ //reading each sector of root
-		disk_read_sector(ROOTSECTOR + s, (uint8_t*)rootSector);
-		memcpy(buffer + (s * SECTORSIZE), (uint8_t*)rootSector, SECTORSIZE);
-	}
-}
+
 
 void writeRoot(uint8_t* buffer){
 	struct File rootSector[16]; 
@@ -477,43 +582,72 @@ void makeDirectory(char* dirName){
 }
 
 
-
 void changeDirectory(const char* filename){
-	//cd games
-	//for files in dir, if file.filename == filename curCluster = file.cluster
-	print("Changing into: ");
-	print(filename);
-	print("\n");
+	struct File entry;
+	boolean found = false;
+
+	memset((uint8_t*)&entry, 0, sizeof(struct File));
 
 	if(currentCluster == 0){
 		struct File rootDir[512];
 		readRoot((uint8_t*)rootDir);
 		for(uint32_t e = 0; e < 512; e++){
-			struct File* entry = &rootDir[e];
-			if(memcmp(entry->filename, filename, strlen(filename)) == 0){
-				print("CurClust was: ");
-				print_hex16(currentCluster);
-				currentCluster = entry->cluster;
-				print("CurClust is: ");
-				print_hex16(currentCluster);
-			} 
+			if(rootDir[e].filename[0] == 0x00) break;
+			if((uint8_t)rootDir[e].filename[0] == 0xE5) continue;
+			if(memcmp(rootDir[e].filename, filename, strlen(filename)) == 0){
+				memcpy((uint8_t*)&entry, (uint8_t*)&rootDir[e], sizeof(struct File));
+				found = true;
+				break;
+			}
 		}
 	} else {
-
 		struct File curDir[64];
 		disk_read_cluster(currentCluster, (uint8_t*)curDir);
 		for(uint32_t e = 0; e < 64; e++){
-			struct File* entry = &curDir[e];
-			if(memcmp(entry->filename, filename, strlen(filename)) == 0){
-				//dir found
-				//i think we just need to update the current cluster and thats it
-				currentCluster = entry->cluster;
-				//NOTE this is the funciton that should update pwd
+			if(curDir[e].filename[0] == 0x00) break;
+			if((uint8_t)curDir[e].filename[0] == 0xE5) continue;
+			if(memcmp(curDir[e].filename, filename, strlen(filename)) == 0){
+				memcpy((uint8_t*)&entry, (uint8_t*)&curDir[e], sizeof(struct File));
+				found = true;
+				break;
 			}
 		}
 	}
+
+	if(!found){
+		print("Directory not found\n");
+		return;
+	}
+
+	if(!(entry.attributes & 0x10) && filename[0] != '.'){
+		print("Not a directory\n");
+		return;
+	}
+
+	currentCluster = entry.cluster;
+
+	if(filename[0] == '.' && filename[1] == 0){
+		return;                                         
+	}
+
+	if(filename[0] == '.' && filename[1] == '.' && filename[2] == 0){
+		int len = strlen(currentDirectoryString);       
+		while(len > 0 && currentDirectoryString[len - 1] != '/') len--;
+		if(len > 0) len--;                              
+		currentDirectoryString[len] = 0;
+		return;
+	}
+
+	strcat(currentDirectoryString, "/");
+	strcat(currentDirectoryString, filename);
 }
 
 
 
-
+void printWorkingDirectory(void){
+		if(currentDirectoryString[0] == '\0'){
+			print("/");
+		} else {
+			print(currentDirectoryString);
+		}
+}

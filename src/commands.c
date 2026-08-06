@@ -17,7 +17,7 @@ int writeIndexAnchor = 0;
 
 extern volatile uint8_t enter_editor_flag;
 extern char terminalScrollBuffer[1000][80];
-extern program_running;
+extern int program_running;
 char* global_source;
 
 
@@ -401,6 +401,11 @@ void cmd_rmdir(char* command){
 	currentCluster = save;
 }
 
+void cmd_pwd(){
+	printWorkingDirectory();
+}
+
+
 void parse_command() {
 	strcpy(commandHistoryBuffer[writeIndexAnchor], input_buffer);
 	writeIndexAnchor++;
@@ -444,6 +449,8 @@ void parse_command() {
 		cmd_mkdir(input_buffer);
 	} else if (strncmp(input_buffer, "cd", 2) == 0){
 		cmd_cd(input_buffer);
+	} else if (strncmp(input_buffer, "pwd", 3) == 0){
+		cmd_pwd();
 	} else if (strncmp(input_buffer, "rmdir", 5) == 0){
 		cmd_rmdir(input_buffer);
 	}

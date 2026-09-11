@@ -19,7 +19,11 @@ int currentAddress = 0x200000;
 //basically the main.c file, calls all other phases of the assembler
 void assemble_buffer(char* buffer){
 	source = buffer;
-	Token tok;
+        curPos = 0;
+        line = 1;
+        currentTokenIndex = 0;
+        currentAddress = 0x200000;
+        Token tok;
 	//hardcode 2048 token limit, should be fine for this scope
 	Token* tokenArray = (Token*)malloc(sizeof(Token) * 2048);   
 	InstructionVector instVec;
@@ -38,19 +42,22 @@ void assemble_buffer(char* buffer){
 	line = 1;
 	currentTokenIndex = 0;
 	print("Starting parsing phase..\n");
-	parseTokenArray(tokenArray, &instVec);
+	SymbolTable table;
+	symbolTableInit(&table);
+
+	parseTokenArray(tokenArray, &instVec, &table);
 
 	free(tokenArray);
 	
-	SymbolTable table;
-	symbolTableInit(&table);
-	
+		
 	print("Constructing symbol table\n");
-	// loop over instructionVector looking for INST_LABEL's and filling
-	// in addresses
+	//loop over instructionVector looking for INST_LABEL's and filling
+	//in addresses
 	for(int i = 0; i < instVec.size; i++){
 		if(instVec.data[i].mnemonic == INST_LABEL){
-			symbolTablePush(&table, instVec.data[i].labelName ,instVec.data[i].address);
+			symbolTablePush(&table, instVec.data[i].labelName, instVec.data[i].address);
+		} else if (instVec.data[i].mnemonic == DIRECTIVE){
+			symbolTablePush(&table, instVec.data[i].labelName, instVec.data[i].address);
 		}
 	}
 	

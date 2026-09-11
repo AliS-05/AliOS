@@ -102,6 +102,16 @@ Token nextToken() {
 		        tok.type = REGISTER;
 		        tok.strValue = strdup(buffer);
 		        return tok;
+		} 
+		//directives branch (dq, db, etc)
+		else if(!strcmp(buffer, "dq") ||
+			!strcmp(buffer, "db") ||
+			!strcmp(buffer, "global") ||
+			!strcmp(buffer, "section") ||
+			!strcmp(buffer, "origin")
+		){
+			tok.type = DIRECTIVE;
+			tok.strValue = strdup(buffer);
 		}
 		//else identifier
 		tok.type = IDENTIFIER;
@@ -112,7 +122,7 @@ Token nextToken() {
 	// Number ie decimal or hex 0x
 	if (isDigit(c)) {
 	long value = 0;
-
+	//hex numbers
 	if (c == '0' && source[curPos+1] == 'x') {
 		curPos += 2;
 		while (isDigit(source[curPos]) || (source[curPos] >= 65 && source[curPos] <=70) || (source[curPos] >= 97 && source[curPos] <=102)){ //if is digit or between a-f or A-F

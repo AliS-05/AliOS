@@ -147,7 +147,6 @@ void cmd_delfile(char* input_buffer){
 }
 
 void cmd_readfile(char* input_buffer){
-
 	token(input_buffer, ' ');
 	const char* filename = token(NULL, '.');
 	const char* extension = token(NULL, ' ');
@@ -230,6 +229,7 @@ void cmd_run(char* input_buffer){
 	print("Program Finished: ");
 	char buf[32];
 	ntos(ret,buf,10);
+	//print(buf); 
 }
 
 void cmd_edit(char* input_buffer){
@@ -393,7 +393,7 @@ void cmd_rmdir(char* command){
 	int save = currentCluster;
 	char* path = parsePath((char*)dirname);
 	if(!path || !*path){
-		print("BAD PATH\n");
+		print("Path not allowed\n");
 		currentCluster = save;
 		return;
 	}

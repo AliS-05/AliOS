@@ -31,6 +31,7 @@ void ByteVectorWrite32(ByteVector* vec, int value) {
 	ByteVectorPush(vec, (value >> 24) & 0xFF);
 }
 
+
 int getRegisterCode(const char* reg) {
 	if(!strcmp(reg, "eax")) return 0;
 	if(!strcmp(reg, "ecx")) return 1;
@@ -110,6 +111,9 @@ void encodeInstruction(Instruction* inst, SymbolTable* table, ByteVector* byteVe
 	switch(inst->mnemonic) {
 		case INST_LABEL: {
 			break;
+		}
+		case INST_DIRECTIVE: {
+			 break;
 		}
 		case INST_MOV: {
 			encodeMove(inst, byteVector);
@@ -316,6 +320,17 @@ void encodeInstruction(Instruction* inst, SymbolTable* table, ByteVector* byteVe
 		}
 		case INST_NOP: {
 			ByteVectorPush(byteVector, 0x90);
+			break;
+		}
+		case INST_INT8: {
+			ByteVectorPush(byteVector, 0xCD);
+			//NEEDS to be 8 bits
+			uint8_t shiftedValue = inst->operand1.intValue && 0xFF;
+			ByteVectorPush(byteVector, shiftedValue);
+			break;
+		}
+		case INST_INT3: {
+			ByteVectorPush(byteVector, 0xCC);
 			break;
 		}
 		default: {

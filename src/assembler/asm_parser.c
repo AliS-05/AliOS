@@ -44,6 +44,10 @@ int instructionSize(Instruction* i){
 		case INST_LABEL:
 			return 0;
 			break;
+		case INST_DIRECTIVE: 
+			if(){
+
+			}
 		// C3
 		case INST_RET:
 			i->size = 1;
@@ -118,6 +122,16 @@ int instructionSize(Instruction* i){
 		case INST_JNE:
 			i->size = 6;
 			return 6;
+		case INST_INT8:
+			//CD imm8
+			//one byte for instruction one byte for ISR number
+			i->size = 2;
+			return 2;
+		case INST_INT3:
+			//CC 
+			//only one byte for instruction
+			i->size = 1;
+			return 1;
 		default:
 		case INST_NOP:
 			i->size = 1;
@@ -143,6 +157,8 @@ MnemonicType strToInstructionType(const char* str) {
 	if (!strcmp(str, "je"))   return INST_JE;
 	if (!strcmp(str, "jne"))  return INST_JNE;
 	if (!strcmp(str, "nop"))  return INST_NOP;
+	if (!strcmp(str, "int8"))  return INST_INT8;
+	if (!strcmp(str, "int3"))  return INST_INT3;
 
 	return INST_INVALID;
 }
@@ -163,6 +179,8 @@ const char* mnemonicTypeToStr(MnemonicType type){
 		case INST_JE:   return "je";
 		case INST_JNE:  return "jne";
 		case INST_NOP:  return "nop";
+		case INT_INT8:  return "int8";
+		case INT_INT3:  return "int3";
 		default:        return "invalid";
 	    }
 }
@@ -258,7 +276,39 @@ Operand parseOperand(TokVector* vec, int* pos){
 	return op;
 }
 
-Instruction parseInstruction(TokVector* vec){
+void directive_handler(TokVector* vec){
+	//handle myVar db 0 == {IDENTIFIER DIRECTIVE NUMBER NEWLINE}
+	//we can do a hacky thing and use the Instruction struct but change how we interpret the fields in the struct
+	//i need to do this because we have to create a Instruction struct *now* to add to the INstruction Vector,
+	//which we then use to create the symbol table. i want to use the symbol table to store offsets for both labels
+	//AND variables.
+	// so for example the instruction has our variable name, operand one can be the string value of the directive
+	// operand 2 can be the initial value desired. 
+	//the important part is that the *size* of the instruction will represent
+
+	//ok scratch all that lets just pass the symbol table directly and emit directive instructions that will emit one explicit byte during codegen. 
+	//much more likely to be the correct solution and less error prone. 
+	//but how do i return multiple instruction structs... ?
+	if(vec->size >= 4 && !strcmp(vec->data[1].strValue, "db")){
+		instruction.mnemonic = INST_DIRECTIVE;
+		instruction.labelName = vec->data[0].strValue;
+		instruction.address
+		Operand op1;
+		Operand op2;
+		op1.type = DIRECTIVE;
+		op1.strValue = strdup(vec->data[1].strValue);
+		
+		op2.type = NUMBER;
+		op2.intType = vec->data[2].intValue;
+		
+		size_t i = 3;
+		while(i < vec->size){
+			
+		}
+	}
+}
+
+Instruction parseInstruction(TokVector* vec, SymbolTable* symbolTable){
 	char buf[32];
 	// basically only looking for important stuff
 	// mnemonics, register, immediates
@@ -272,8 +322,11 @@ Instruction parseInstruction(TokVector* vec){
 	if(vec->size == 0){
 		return instruction;
 	}
-	//i have no idea what this is rereading it
-	//sayinhg if there are 2 tokens and the first oh its skipping start: i think
+
+	//LABELS AND DIRECTIVES, DB, DQ FAMILY
+
+	//if a line starts with a label, skip it, we add to symbol table in next pass
+	//NOTE should this be 3 ? vec would be {LABEL COLON NEWLINE} no? i mean it works so i wont touch it just leaving a note
 	if(vec->size == 2 && vec->data[0].type == IDENTIFIER && vec->data[1].type == COLON){
 		instruction.mnemonic = INST_LABEL;
 		instruction.labelName = vec->data[0].strValue;
@@ -281,14 +334,26 @@ Instruction parseInstruction(TokVector* vec){
 		print(vec->data[0].strValue); 
 		print("Address: ");
 		print(ntos(currentAddress, buf, 10));
+		return instruction;
+	}
+	//Directives
+	// for db it should be defined like label db 0
+	//creates a DIRECTIVE instruction that codegen will use to emit single bytes along with symbol table filling in
+	if(vec->size == 4 && vec->data[0].type == IDENTIFIER && vec->data[1].type == INST_DIRECTIVE){
+		instruction.mnemonic = INST_DIRECTIVE;
+		instruction.labelName = vec->data[0].strValue;
+		Operand op;
+		op.type = DIRECTIVE;
+		op.intValue = vec->data[2].intValue;
 
-		return instruction; // skip adding to instruction vector
+		instruction.operand1 = op;
+
+		return instruction;
 	}
-	//directives
-	if(vec->data[0].type == IDENTIFIER && ((!strcmp(vec->data[0].strValue, "global")) ||(!strcmp(vec->data[0].strValue, "section")))){
-		return instruction; //another skip not an instruction
-	}
+
+	//above is the basic variable case, more complex variable declarations should go here in the future
 	
+
 	if(vec->data[0].type != IDENTIFIER){ //error not a label directive or mnemonic
 		print("Error on line: ");
 		print(ntos(vec->data[0].line, buf, 10));
@@ -318,7 +383,7 @@ Instruction parseInstruction(TokVector* vec){
 	return instruction;
 }
 
-void parseLine(Token* tokenArray, int* index, InstructionVector* instVec){
+void parseLine(Token* tokenArray, int* index, InstructionVector* instVec, SymbolTable* symbolTable){
 	TokVector tokVec;
 	tokenVecInit(&tokVec);
 	boolean modrmNeeded = false;
@@ -331,12 +396,8 @@ void parseLine(Token* tokenArray, int* index, InstructionVector* instVec){
 	}
 	// vector should contain something like {MOV EAX COMMA 5 SEMICOLON NEWLINE}
 	// or is empty
-	
-	
-	
-
 	if(tokVec.size > 0) {
-		Instruction inst = parseInstruction(&tokVec);
+		Instruction inst = parseInstruction(&tokVec, &symbolTable);
 		if(inst.mnemonic != INST_INVALID){
 			inst.address = currentAddress;
 			currentAddress += instructionSize(&inst);
@@ -350,10 +411,10 @@ void parseLine(Token* tokenArray, int* index, InstructionVector* instVec){
 	tokenVecFree(&tokVec);
 }
 
-void parseTokenArray(Token* tokenArray, InstructionVector* instVec){
+void parseTokenArray(Token* tokenArray, InstructionVector* instVec, SymbolTable* symbolTable){
 	int index = 0;
 	while(tokenArray[index].type != TOK_EOF){
-		parseLine(tokenArray, &index, instVec);	
+		parseLine(tokenArray, &index, instVec, &symbolTable);	
 	}
 
 }

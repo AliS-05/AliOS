@@ -110,9 +110,11 @@ Token nextToken() {
 			!strcmp(buffer, "section") ||
 			!strcmp(buffer, "origin")
 		){
+			print("DIRECTIVE FOUND IN LEXER");
 			tok.type = DIRECTIVE;
 			tok.strValue = strdup(buffer);
 		}
+		print("DIRECTIVE SKIPPED");
 		//else identifier
 		tok.type = IDENTIFIER;
 		tok.strValue = strdup(buffer);

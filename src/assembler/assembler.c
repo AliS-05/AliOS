@@ -45,7 +45,7 @@ void assemble_buffer(char* buffer){
 	SymbolTable table;
 	symbolTableInit(&table);
 
-	parseTokenArray(tokenArray, &instVec, &table);
+	parseTokenArray(tokenArray, &instVec /*, &table*/);
 
 	free(tokenArray);
 	

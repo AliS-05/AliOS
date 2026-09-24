@@ -17,6 +17,9 @@ typedef enum {
 	INST_CMP,
 	INST_JE,
 	INST_JNE,
+	INST_DIRECTIVE,
+	INST_INT8,
+	INST_INT3,
 	INST_NOP
 } MnemonicType;
 

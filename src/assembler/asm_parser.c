@@ -339,16 +339,33 @@ Instruction parseInstruction(TokVector* vec, SymbolTable* symbolTable){
 	//Directives
 	// for db it should be defined like label db 0
 	//creates a DIRECTIVE instruction that codegen will use to emit single bytes along with symbol table filling in
-	if(vec->size == 4 && vec->data[0].type == IDENTIFIER && vec->data[1].type == INST_DIRECTIVE){
+	if(vec->size == 4 && vec->data[0].type == IDENTIFIER && vec->data[1].type == DIRECTIVE){
 		instruction.mnemonic = INST_DIRECTIVE;
 		instruction.labelName = vec->data[0].strValue;
-		Operand op;
-		op.type = DIRECTIVE;
-		op.intValue = vec->data[2].intValue;
+		Operand op1;
+		Operand op2;
+		op1.type = DIRECTIVE;
+		op1.strValue = strdup(vec->data[1].strValue);
+		
+		op2.type = NUMBER;
+		op2.intType = vec->data[2].intValue;
 
-		instruction.operand1 = op;
+		instruction.operand1 = op1;
+		instruction.operand2 = op2;
 
 		return instruction;
+	//db 0 , dq 0
+	} else if(vec->size >= 2 && vec->data[0].type == DIRECTIVE && vec->data[1].type == NUMBER){
+		instruction.mnemonic = INST_DIRECTIVE;
+		instruction.labelName = strdup("");
+		Operand op1;
+		Operand op2;
+		op1.type = DIRECTIVE;
+		op1.strValue = strdup(vec->data[0].strValue);
+		op2.type = NUMBER;
+		op2.intValue = vec->data[1].intValue;
+
+		instruction.operand1 = op1;
 	}
 
 	//above is the basic variable case, more complex variable declarations should go here in the future

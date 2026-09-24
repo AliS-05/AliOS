@@ -113,7 +113,16 @@ void encodeInstruction(Instruction* inst, SymbolTable* table, ByteVector* byteVe
 			break;
 		}
 		case INST_DIRECTIVE: {
-			 break;
+			//
+			if(inst->operand1.type == DIRECTIVE && !strcmp(inst->operand1.strValue, "db")){
+				ByteVectorPush(byteVector, inst->operand2.intValue);
+				break;
+			}
+			if(inst->operand1.type == DIRECTIVE && !strcmp(inst->operand1.strValue, "dq")){
+				ByteVectorWrite32(byteVector, inst->operand2.intValue);
+				break;
+			}
+			break;
 		}
 		case INST_MOV: {
 			encodeMove(inst, byteVector);

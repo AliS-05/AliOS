@@ -203,6 +203,20 @@ void printInstruction(Instruction* i){
 	print("Instruction{ ");
 	print(mnemonicTypeToStr(i->mnemonic));
 	print(" }\n");
+
+	if(i->operandCount >= 1){
+		if(i->operand1.type == NUMBER){
+			print(" Operand 1 { ");
+			print(ntos(i->operand1.intValue, buf, 10));
+			print(buf);
+			print(" }\n");
+		} else{
+			print(" Operand 1 { ");
+			print(i->operand1.strValue);
+			print(" }\n");
+		}
+	}
+
 	if (i->operandCount >= 2)
 	{
 		if (i->operand2.type == NUMBER)
@@ -219,21 +233,6 @@ void printInstruction(Instruction* i){
 			print(" }\n");
 		}
 	}
-
-	if(i->operandCount >= 1){
-		if(i->operand1.type == NUMBER){
-			print(" Operand 1 { ");
-			print(ntos(i->operand1.intValue, buf, 10));
-			print(buf);
-			print(" }\n");
-		} else{
-			print(" Operand 1 { ");
-			print(i->operand1.strValue);
-			print(" }\n");
-		}
-	}
-
-	
 	print("Size of Instruction: ");
 	print(ntos(i->size, buf , 10));
 	print("\n");
@@ -356,7 +355,7 @@ Instruction parseInstruction(TokVector* vec /*, SymbolTable* symbolTable*/){
 	//Directives
 	// for db it should be defined like label db 0
 	//creates a DIRECTIVE instruction that codegen will use to emit single bytes along with symbol table filling in
-	if(vec->size >= 2 && vec->data[0].type == IDENTIFIER && vec->data[1].type == DIRECTIVE){
+	if((vec->size >= 2) && (vec->data[0].type == IDENTIFIER) && (vec->data[1].type == DIRECTIVE)){
 		print("New variable directive\n");
 		instruction.mnemonic = INST_DIRECTIVE;
 		instruction.labelName = vec->data[0].strValue;
@@ -373,7 +372,7 @@ Instruction parseInstruction(TokVector* vec /*, SymbolTable* symbolTable*/){
 
 		return instruction;
 	//db 0 , dq 0
-	} else if(vec->size >= 2 && vec->data[0].type == DIRECTIVE && vec->data[1].type == NUMBER){
+	} else if((vec->size >= 2) && (vec->data[0].type == DIRECTIVE) && (vec->data[1].type == NUMBER)){
 		print("Regular Directive");
 		instruction.mnemonic = INST_DIRECTIVE;
 		instruction.labelName = strdup("");
@@ -385,6 +384,9 @@ Instruction parseInstruction(TokVector* vec /*, SymbolTable* symbolTable*/){
 		op2.intValue = vec->data[1].intValue;
 
 		instruction.operand1 = op1;
+		instruction.operand2 = op2;
+
+		return instruction;
 	}
 
 	//above is the basic variable case, more complex variable declarations should go here in the future

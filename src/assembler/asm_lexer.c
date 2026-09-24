@@ -113,6 +113,7 @@ Token nextToken() {
 			print("DIRECTIVE FOUND IN LEXER");
 			tok.type = DIRECTIVE;
 			tok.strValue = strdup(buffer);
+			return tok;
 		}
 		print("DIRECTIVE SKIPPED");
 		//else identifier

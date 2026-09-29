@@ -2,6 +2,7 @@
 #include <core/structures.h>
 #include <assembler/vector.h>
 #include <assembler/symbol_table.h>
+
 typedef struct ByteVector{
 	uint8_t* data;
 	int size;

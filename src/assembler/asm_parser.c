@@ -280,7 +280,7 @@ Operand parseOperand(TokVector* vec, int* pos){
 	if(t.type == LBRACKET){
 		(*pos)++; //skip [
 		op.type = MEMORY; // dont want it to stay LBRACKET
-		op.strValue = vec->data[*pos].strValue; //copying register value
+		op.strValue = t.strValue; //copying register / label value
 		(*pos)++; //done with register now sitting at ] which gets skipped below
 	}
 	else if(t.type == NUMBER){
@@ -343,6 +343,7 @@ Instruction parseInstruction(TokVector* vec /*, SymbolTable* symbolTable*/){
 
 	//if a line starts with a label, skip it, we add to symbol table in next pass
 	//NOTE should this be 3 ? vec would be {LABEL COLON NEWLINE} no? i mean it works so i wont touch it just leaving a note
+	//changed from == 2 to >= 2
 	if(vec->size >= 2 && vec->data[0].type == IDENTIFIER && vec->data[1].type == COLON){
 		instruction.mnemonic = INST_LABEL;
 		instruction.labelName = vec->data[0].strValue;
@@ -390,8 +391,6 @@ Instruction parseInstruction(TokVector* vec /*, SymbolTable* symbolTable*/){
 	}
 
 	//above is the basic variable case, more complex variable declarations should go here in the future
-	
-
 	if(vec->data[0].type != IDENTIFIER){ //error not a label directive or mnemonic
 		print("Error on line: ");
 		print(ntos(vec->data[0].line, buf, 10));
@@ -401,6 +400,7 @@ Instruction parseInstruction(TokVector* vec /*, SymbolTable* symbolTable*/){
 	}
 	instructionPos++;
 	instruction.mnemonic = strToInstructionType(vec->data[0].strValue);
+
 	// verifying there are more tokens and getting next operand
 	if(instructionPos < vec->size){
 		instruction.operand1 = parseOperand(vec, &instructionPos);

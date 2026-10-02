@@ -51,9 +51,11 @@ int instructionSize(Instruction* i){
 		case INST_DIRECTIVE: 
 			print("DIRECTIVE FOUND");
 			if(!strcmp(i->operand1.strValue, "db")){
+				i->size = 1;
 				return 1;
 				break;
 			} else if(!strcmp(i->operand1.strValue, "dq")){
+				i->size = 4;
 				return 4;
 				break;
 			}

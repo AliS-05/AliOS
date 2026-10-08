@@ -130,7 +130,7 @@ idt_start:
 	db 0, 10001110b
 	dw 0x0000
 	;start of 2C, want 0x80
-	times 54 dq 0 ;start of 0x80
+	times (0x80 - 0x2C) dq 0 ;start of 0x80
 	dw syscall_handler, 0x08
 	db 0, 10001110b
 	dw 0x0000
@@ -169,7 +169,6 @@ syscall_handler:
 	; taking a page out of linux's book we can use the registers to specify arguments and functions
 	; so we can use eax to store what function we want to call, and the rest of the general purpose registers to store other information
 	; lets start with something easy and visual that wont require a bss or data section. the color command comes to mind
-	; actually i think i just need a data section
 	push help_response
 	call print
 	add esp, 4

@@ -355,7 +355,7 @@ void encodeInstruction(Instruction* inst, SymbolTable* table, ByteVector* byteVe
 		case INST_INT8: {
 			ByteVectorPush(byteVector, 0xCD);
 			//NEEDS to be 8 bits
-			uint8_t shiftedValue = inst->operand1.intValue && 0xFF;
+			uint8_t shiftedValue = inst->operand1.intValue & 0xFF;
 			ByteVectorPush(byteVector, shiftedValue);
 			break;
 		}

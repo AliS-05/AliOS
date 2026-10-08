@@ -169,12 +169,22 @@ syscall_handler:
 	; taking a page out of linux's book we can use the registers to specify arguments and functions
 	; so we can use eax to store what function we want to call, and the rest of the general purpose registers to store other information
 	; lets start with something easy and visual that wont require a bss or data section. the color command comes to mind
-	push help_response
-	call print
-	add esp, 4
+	cmp eax, 1
+	je syscall_print
 
-	iretd
+	syscall_unknown:
+		push unknown_syscall
+		call print
+		add esp, 4
+		iretd
 
+	;syntax is eax holds 0x01 ebx holds the base address of a string
+	syscall_print:
+		push ebx
+		call print
+		add esp, 4
+		iretd
+	
 keyboard_handler:
 pushad
         ;cld
@@ -524,6 +534,7 @@ section .data
 	shell_prompt_len equ $-shell_prompt
 	help_response db "Supported Commands: clear, reboot, echo, calc", 0
 	unknown_response db "Unknown Command. Try typing 'help'", 0
+	unknown_syscall db "Unknown syscall", 0
 
 	shift_pressed db 0
 	ctrl_pressed db 0

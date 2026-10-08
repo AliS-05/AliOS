@@ -64,6 +64,7 @@ add [eax], 5
 
 #### Example Program
 Here is a program that uses multiple registers, memory dereferencing, labels, loops, and comparisons to paint the screen all red.
+
 <img width="197" height="262" alt="image" src="https://github.com/user-attachments/assets/915b02e3-2bf6-4ed4-90c7-210eb92b2331" />
 
 And the results:
@@ -71,7 +72,7 @@ And the results:
 <img width="721" height="465" alt="image" src="https://github.com/user-attachments/assets/1233b862-8fbc-4bcb-81e1-4115c6693073" />
 
 
-## Variables
+#### Variables
 
 The assembler now supports named variables using `db` and `dq` directives, with automatic address resolution through the symbol table.
 
@@ -97,6 +98,39 @@ This program loads the value `99` from memory into EAX and returns it to the she
 
 **Note:** `mov eax, [myVar]` reads 4 bytes because EAX is a 32-bit register. When using `db`, ensure enough bytes are allocated for the intended memory access.
 
+#### System Calls
+
+AliOS now supports software interrupts through `int 0x80`, allowing assembly programs to invoke kernel functions directly.
+
+- Uses interrupt vector `0x80`
+- Follows a register-based calling convention inspired by Linux.
+- `eax` specifies the system call number.
+- Other general-purpose registers are used to pass arguments.
+- Allows programs assembled and executed entirely within AliOS to interact with kernel functionality.
+
+##### Example: Hello World
+
+```asm
+mov eax, 1
+mov ebx, myStr
+int8 0x80
+ret
+
+myStr db 72
+db 69
+db 76
+db 76
+db 79
+db 10
+db 0
+```
+Yes you must manually type the ascii byte by byte.
+This program passes the address of a null-terminated string through `ebx` and invokes system call `1` to print `HELLO` to the terminal.
+
+|  Function   |  EAX   | Arguments |
+| Print String| `1`    | `ebx` holds a pointer to the *null-terminated* string |
+
+Additional system calls are planned to expose more kernel functionality to user-written assembly programs.
 
 ### E1000 Driver + Network Stack: 
 

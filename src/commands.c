@@ -229,7 +229,7 @@ void cmd_run(char* input_buffer){
 	print("Program Finished: ");
 	char buf[32];
 	ntos(ret,buf,10);
-	//print(buf); 
+	print(buf); 
 }
 
 void cmd_edit(char* input_buffer){

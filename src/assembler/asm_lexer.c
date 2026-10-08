@@ -60,7 +60,7 @@ Token nextToken() {
 			tok.type = COLON;
 		        return tok;
 
-		case '[': // dereferencing not supported even though i check for it
+		case '[': 
 			curPos++;
 			tok.type = LBRACKET;
 			return tok;

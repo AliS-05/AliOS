@@ -1,7 +1,7 @@
 #pragma once
 #include <assembler/asm_token.h>
 #include <assembler/vector.h>
-
+#include <assembler/symbol_table.h>
 
 typedef enum {
 	INST_INVALID = 0,
@@ -30,6 +30,7 @@ typedef struct {
 		int intValue; // immediate value / memory address
 	};
 	int line;
+	boolean memoryLabel;
 } Operand;
 
 typedef struct Instruction {
@@ -39,7 +40,7 @@ typedef struct Instruction {
 	int operandCount;
 	int size; // in bytes
 	int address;
-	char* labelName; 
+	char* labelName;
 } Instruction;
 
 
@@ -50,7 +51,7 @@ Token peek(Token* t, int index);
 void expect(Token* tokenArray, int* index, TokenType expectedType);
 Operand parseOperand(TokVector* vec, int* pos);
 Instruction parseInstruction(TokVector* vec);
-void parseLine(Token* tokenArray, int* index, InstructionVector* instVec);
-void parseTokenArray(Token* tokenArray, InstructionVector* instVec);
+void parseLine(Token* tokenArray, int* index, InstructionVector* instVec, SymbolTable* symbolTable);
+void parseTokenArray(Token* tokenArray, InstructionVector* instVec, SymbolTable* symbolTable);
 
 

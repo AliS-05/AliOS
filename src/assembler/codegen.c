@@ -55,30 +55,32 @@ uint8_t getMod(int mod, int reg, int rm) {
 void encodeMove(SymbolTable* table, Instruction* inst, ByteVector* byteVector){
 	// mov reg, [mem]  = 8B
 	if(inst->operand1.type == REGISTER && inst->operand2.type == MEMORY){
-		//mov reg, [label]
-		if(symbolTableLookup(table, inst->operand2.strValue) != -1){
-			//mov reg, [myVar]
-			int offset = symbolTableLookup(table, inst->operand2.strValue);
-			int res = offset - (inst->address + 6); //opcode + modrm + 32bit displacement
-			int dst = getRegisterCode(inst->operand1.strValue);
-			int modrm = (0 << 8) || (dst << 5) || (0b101); //0x05
-			ByteVectorPush(byteVector, 0x8B);
-			ByteVectorPush(byteVector, modrm);
-			ByteVectorWrite32(byteVector, res);
-		} else {
-			//8B is RM op1 = ModRM:reg, op2 = ModRM:r/m
-			int dst = getRegisterCode(inst->operand1.strValue);
-			int src = getRegisterCode(inst->operand2.strValue);
-			ByteVectorPush(byteVector, 0x8B);
-			ByteVectorPush(byteVector, getMod(0b00, dst, src));
-			return;
-		}
-	//mov reg, label
-	}else if(inst->operand1.type == REGISTER && symbolTableLookup(table, inst->operand2.strValue) != -1){
-		int offset = symbolTableLookup(table, inst->operand2.strValue);
-		int res = offset - (inst->address + 6); //opcode + modrm + 32bit displacement
+		//8B is RM op1 = ModRM:reg, op2 = ModRM:r/m
 		int dst = getRegisterCode(inst->operand1.strValue);
-		ByteVectorPush(byteVector, 0xB8);
+		int src = getRegisterCode(inst->operand2.strValue);
+		ByteVectorPush(byteVector, 0x8B);
+		ByteVectorPush(byteVector, getMod(0b00, dst, src));
+		return;
+	}
+	//mov reg, [label]
+	if(inst->operand1.type == REGISTER && inst->operand2.type == IDENTIFIER && inst->operand2.memoryLabel == true){
+		// mov reg, [myVar]
+		int offset = symbolTableLookup(table, inst->operand2.strValue);
+		int res = offset /*- (inst->address + 6) */; //opcode + modrm + 32bit displacement
+		int dst = getRegisterCode(inst->operand1.strValue);
+		int modrm = getMod(0b00, dst, 0b101);
+		//int modrm = (0 << 8) | (dst << 5) | (0b101); //0x05
+		ByteVectorPush(byteVector, 0x8B);
+		ByteVectorPush(byteVector, modrm);
+		ByteVectorWrite32(byteVector, res);
+
+	//mov reg, label
+	}
+	if(inst->operand1.type == REGISTER && inst->operand2.type == IDENTIFIER && inst->operand2.memoryLabel == false){
+		int offset = symbolTableLookup(table, inst->operand2.strValue);
+		int res = offset /*- (inst->address + 6) */; //opcode + modrm + 32bit displacement
+		int dst = getRegisterCode(inst->operand1.strValue);
+		ByteVectorPush(byteVector, 0xB8 + dst);
 		ByteVectorWrite32(byteVector, res);
 	}
 	// mov [mem], reg = 89

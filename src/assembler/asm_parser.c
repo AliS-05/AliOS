@@ -11,7 +11,7 @@
 extern long line;
 extern long currentAddress;
 
-int instructionSize(Instruction* i){
+int instructionSize(Instruction* i, SymbolTable* table){
 	if(!i) return 0;
 	switch(i->mnemonic){
 		case INST_INVALID:
@@ -26,6 +26,19 @@ int instructionSize(Instruction* i){
 			} else if (i->operand1.type == REGISTER && i->operand2.type == REGISTER){
 				i->size = 2;
 				return 2;
+			} else if(i->operand1.type == REGISTER && i->operand2.type == MEMORY){
+					i->size = 2;
+					return 2;
+			}
+			//mov eax, [myLabel]
+			else if(i->operand1.type == REGISTER && i->operand2.type == IDENTIFIER && i->operand2.memoryLabel == true){
+				i->size = 6;
+				return 6;
+			}
+			//mov eax, myLabel
+			else if(i->operand1.type == REGISTER && i->operand2.type == IDENTIFIER && i->operand2.memoryLabel == false){
+				i->size = 5;
+				return 5;
 			} else if(i->operand1.type == MEMORY){
 				if(i->operand2.type == NUMBER){
 					//C7 case, opcode + modrm + imm
@@ -38,11 +51,12 @@ int instructionSize(Instruction* i){
 					i->size = 2;
 					return 2;
 				}
-			} else if(i->operand2.type == MEMORY){
-				//8B opcode, mov ebx, [eax]
-				i->size = 2;
-				return 2;
-			}
+			} 
+		//	else if(i->operand2.type == MEMORY){
+		//		//8B opcode, mov ebx, [eax]
+		//		i->size = 2;
+		//		return 2;
+		//	}
 			break;
 		case INST_LABEL:
 			print("LABEL FOUND");
@@ -59,6 +73,7 @@ int instructionSize(Instruction* i){
 				return 4;
 				break;
 			}
+			break;
 		// C3
 		case INST_RET:
 			i->size = 1;
@@ -274,20 +289,29 @@ void expect(Token* tokenArray, int* index, TokenType expectedType){
 }
 
 Operand parseOperand(TokVector* vec, int* pos){
-	Operand op;
+	Operand op = {0};
 	Token t = vec->data[*pos]; //t is current Token
 	op.type = t.type;
 	op.line = t.line;
 	
 	if(t.type == LBRACKET){
 		(*pos)++; //skip [
-		op.type = MEMORY; // dont want it to stay LBRACKET
-		op.strValue = t.strValue; //copying register / label value
-		(*pos)++; //done with register now sitting at ] which gets skipped below
+		if(vec->data[*pos].type == IDENTIFIER){
+			//[myLabel]
+			op.type = IDENTIFIER;
+			op.strValue  = vec->data[*pos].strValue; 
+			op.memoryLabel = true;
+		}else{
+			op.type = MEMORY; // dont want it to stay LBRACKET
+			op.strValue = vec->data[*pos].strValue; //copying register
+		}
+		(*pos)++; //done with inner token now sitting at ] which gets skipped below
 	}
 	else if(t.type == NUMBER){
 		op.intValue = t.intValue;
-	} else{
+
+	} 
+	else{
 		op.strValue = t.strValue;
 	}
 	(*pos)++;
@@ -423,7 +447,7 @@ Instruction parseInstruction(TokVector* vec /*, SymbolTable* symbolTable*/){
 	return instruction;
 }
 
-void parseLine(Token* tokenArray, int* index, InstructionVector* instVec /*, SymbolTable* symbolTable*/){
+void parseLine(Token* tokenArray, int* index, InstructionVector* instVec, SymbolTable* symbolTable){
 	TokVector tokVec;
 	tokenVecInit(&tokVec);
 	boolean modrmNeeded = false;
@@ -440,7 +464,7 @@ void parseLine(Token* tokenArray, int* index, InstructionVector* instVec /*, Sym
 		Instruction inst = parseInstruction(&tokVec /*, &symbolTable*/);
 		if(inst.mnemonic != INST_INVALID){
 			inst.address = currentAddress;
-			currentAddress += instructionSize(&inst);
+			currentAddress += instructionSize(&inst, symbolTable);
 			instVecPush(instVec, inst);
 			printInstruction(&inst);
 		}
@@ -451,10 +475,10 @@ void parseLine(Token* tokenArray, int* index, InstructionVector* instVec /*, Sym
 	tokenVecFree(&tokVec);
 }
 
-void parseTokenArray(Token* tokenArray, InstructionVector* instVec /*, SymbolTable* symbolTable*/){
+void parseTokenArray(Token* tokenArray, InstructionVector* instVec, SymbolTable* symbolTable){
 	int index = 0;
 	while(tokenArray[index].type != TOK_EOF){
-		parseLine(tokenArray, &index, instVec /*, &symbolTable*/);	
+		parseLine(tokenArray, &index, instVec, symbolTable);	
 	}
 
 }

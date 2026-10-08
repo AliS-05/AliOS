@@ -22,7 +22,7 @@ void symbolTableFree(SymbolTable* table) {
 	free(table->data);
 }
 
-void symbolTablePush(SymbolTable* vec, const char* name, int address){
+void symbolTablePush(SymbolTable* vec, const char* name, uint32_t address){
 	if(vec->size >= vec->capacity){
 		vec->capacity *= 2;
 		vec->data = realloc(vec->data, sizeof(Symbol) * vec->capacity);
@@ -32,7 +32,6 @@ void symbolTablePush(SymbolTable* vec, const char* name, int address){
 	
 	vec->size++;
 }
-
 
 int symbolTableLookup(SymbolTable* table, const char* name) {
 	for (int i = 0; i < table->size; i++) {

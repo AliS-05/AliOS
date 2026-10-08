@@ -1,5 +1,5 @@
 #pragma once
-
+#include <core/structures.h>
 typedef struct Symbol{
 	char* name;
 	int address;
@@ -13,7 +13,7 @@ typedef struct SymbolTable{
 
 
 void symbolTableInit(SymbolTable* vec);
-void symbolTablePush(SymbolTable* vec, const char* name, int address);
+void symbolTablePush(SymbolTable* vec, const char* name, uint32_t address);
 int symbolTableLookup(SymbolTable* vec, const char* name);
 void symbolTableFree(SymbolTable* vec);
 void printSymbolTable(SymbolTable* vec);

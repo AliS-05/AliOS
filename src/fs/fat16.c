@@ -378,7 +378,6 @@ void readRoot(uint8_t* buffer){
 uint8_t* readFile(const char* filename, const char* ext){
 	struct File file;
 	memset(&file, 0, sizeof(struct File));
-	print("READING FILE\n");
 	if(currentCluster == 0){
 		struct File rootDir[512];
 		readRoot((uint8_t*)rootDir);
@@ -386,7 +385,6 @@ uint8_t* readFile(const char* filename, const char* ext){
 			struct File* entry = &rootDir[e];
 			if(!(memcmp(entry->filename, filename, strlen(filename)))){
 				memcpy((uint8_t*)&file, (uint8_t*)entry, sizeof(struct File));
-				print("FOUDN FILE IN LOOP BREAKING\n");
 				break;
 			}
 		}
@@ -398,7 +396,6 @@ uint8_t* readFile(const char* filename, const char* ext){
 			struct File* entry = &currentDirectory[e];
 			if(!(memcmp(entry->filename, filename, strlen(filename))) && !(memcmp(entry->extension, ext, strlen(ext)))){
 				//file found mark as deleted
-				print("FOUND FILE\n");
 				memcpy((uint8_t*)&file, (uint8_t*)entry, sizeof(struct File));
 				break;
 			} 
@@ -406,7 +403,6 @@ uint8_t* readFile(const char* filename, const char* ext){
 	}
 
 	if(file.fileSize){
-		print("FILE FOUND\n");
 		//find clusters needed
 		int clustersNeeded = ceil_div(file.fileSize, SECTORSIZE * SECTORS_PER_CLUSTER);
 		if(clustersNeeded == 0) clustersNeeded++;
@@ -433,7 +429,6 @@ void deleteFile(const char* filename, const char* extension){
 	struct File file;
 	memset(&file, 0, sizeof(struct File));
 	if(currentCluster == 0){
-		print("DELETING IN ROOT\n");
 		uint32_t rootSector = findFileRoot(filename, extension, &file);
 		if(file.filename[0] == 0){ 
 			print("File to delete not found\n");
@@ -464,14 +459,12 @@ void deleteFile(const char* filename, const char* extension){
 			}
 		}
 	} else {
-		print("DELETING IN CUR DIR\n");
 		struct File currentDirectory[64];
 		disk_read_cluster(currentCluster, (uint8_t*)currentDirectory);
 		for(uint32_t e = 0; e < 64; e++){
 			struct File* entry = &currentDirectory[e];
 			if(!(memcmp(entry->filename, filename, strlen(filename))) && (!extension ||  !(memcmp(entry->extension, extension, strlen(extension))))){
 				//file found mark as deleted
-				print("FOUND FILE\n");
 				memset(entry->filename, 0xE5, 8);
 				memcpy((uint8_t*)&currentDirectory[e], (uint8_t*)entry, sizeof(struct File));
 				disk_write_cluster(currentCluster, (uint8_t*)currentDirectory);
@@ -527,10 +520,7 @@ void makeDirectory(char* dirName){
 	//then to make a directory we just find an empty 'slot' and create a new file in that slot. 
 	//if there are no slots then the directory / cluster is full.
 	// add new clusters once i get there
-	print("Making Directory: ");
-	print(dirName);
-	print("\n");
-
+	
 	Directory newDir = {0};
 	if(currentCluster == 0){
 		int numFiles = 0;
@@ -546,16 +536,11 @@ void makeDirectory(char* dirName){
 				newDir.cluster = findFreeCluster();
 				memcpy((uint8_t*)&rootDir[e], (uint8_t*)&newDir, sizeof(Directory));
 				writeRoot((uint8_t*)rootDir);
-				print("Found free cluster and wrote dir\n");
 				break;
 			} 
 		}
-		print("Current Cluster: ");
-		print_hex16(currentCluster);
 		uint16_t parentCluster = currentCluster;
 		currentCluster = newDir.cluster;
-		print("\nParent Cluster");
-		print_hex16(currentCluster);
 		struct File newDirectory[64];
 		memset((uint8_t*)newDirectory, 0, sizeof(newDirectory));
 		struct File here = {0};
@@ -572,7 +557,6 @@ void makeDirectory(char* dirName){
 		memcpy((uint8_t*)&newDirectory[1], (uint8_t*)&parent, sizeof(struct File));
 		
 		disk_write_cluster(currentCluster, (uint8_t*)newDirectory);
-		print("Wrote final cluster\n");
 		currentCluster = parentCluster; //dont leave us in the newly created dir
 
 	} else {
@@ -592,12 +576,8 @@ void makeDirectory(char* dirName){
 			} 
 		}
 		//without error handling we have now successfully created a new directory with its own cluster. lets add '.' and '..'
-		print("Current Cluster: ");
-		print_hex16(currentCluster);
 		uint16_t parentCluster = currentCluster;
 		currentCluster = newDir.cluster;
-		print("\nParent Cluster");
-		print_hex16(currentCluster);
 		struct File newDirectory[64];
 		memset((uint8_t*)newDirectory, 0, sizeof(newDirectory));
 		struct File here = {0};
@@ -614,7 +594,6 @@ void makeDirectory(char* dirName){
 		memcpy((uint8_t*)&newDirectory[1], (uint8_t*)&parent, sizeof(struct File));
 
 		disk_write_cluster(currentCluster, (uint8_t*)newDirectory);
-		print("Wrote final cluster\n");
 		currentCluster = parentCluster; //dont leave us in the newly created dir
 
 	}
@@ -733,7 +712,7 @@ void deleteDirectory(const char* dirname){
 			deleteFile(dirname, 0); //delete the actual directory eg 'games'
 		}
 		else {
-			print("DIR NOT FOUND NO DELETE\n");
+			print("Directory not found, no delete happening\n");
 			return;
 		}
 	} else {
@@ -762,6 +741,7 @@ void deleteDirectory(const char* dirname){
 			deleteFile(dirname, 0);
 		} else {
 			print("Directory not found, no delete happening\n");
+			return;
 		}
 	}
 }

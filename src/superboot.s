@@ -85,19 +85,19 @@
         test ax, ax
         jz .done
         push ax
-        mov ch, [cur_cyl]       ; low 8 bits — fine, we never leave cylinder 0 at these sizes
+        mov ch, [cur_cyl]       
         mov dh, [cur_head]
         mov dl, [boot_drive]
         mov bx, [cur_seg]
         mov es, bx
         xor bx, bx
-        mov ah, 0x02            ; al already holds the count
+        mov ah, 0x02            
         int 0x13
         jc disk_error
         pop ax
         sub [remaining], ax
         mov cx, ax
-        shl cx, 5               ; sectors -> paragraphs (x32)
+        shl cx, 5               
         add [cur_seg], cx
   .done:
         ret

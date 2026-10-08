@@ -129,10 +129,18 @@ idt_start:
 	dw nic_slave_irq, 0x08
 	db 0, 10001110b
 	dw 0x0000
+	;start of 2C, want 0x80
+	times 54 dq 0 ;start of 0x80
+	dw syscall_handler, 0x08
+	db 0, 10001110b
+	dw 0x0000
 
-	times (256-24) dq 0
+	times (256-99) dq 0 ;seemingly works fine
 
-	times 256 dq 0
+	; was 
+	;times (256-24) dq 0
+	;times 256 dq 0
+
 idt_end:
 
 idtr:
@@ -156,6 +164,18 @@ nic_slave_irq:
 	out 0x20, al
 	iretd
 
+syscall_handler:
+	; ok so now the assembler can call software interrupts with INT 0x80
+	; taking a page out of linux's book we can use the registers to specify arguments and functions
+	; so we can use eax to store what function we want to call, and the rest of the general purpose registers to store other information
+	; lets start with something easy and visual that wont require a bss or data section. the color command comes to mind
+	; actually i think i just need a data section
+	push help_response
+	call print
+	add esp, 4
+
+	iretd
+
 keyboard_handler:
 pushad
         ;cld
@@ -163,7 +183,7 @@ pushad
         mov ds, ax
         mov es, ax
 
-        cmp byte [program_running], 1   ;program owns the keyboard — don't drain port 0x60
+        cmp byte [program_running], 1 
         je .done
 
         mov edi, [cursor_pos] ;saving cursor pos in register

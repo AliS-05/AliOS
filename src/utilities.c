@@ -267,6 +267,7 @@ boolean isalnum(char c){
 	return false;
 }
 
+
 uintptr_t stoh(const char* str){ //string to hex
 	uintptr_t res = 0;
 	while(*str == ' ') str++;

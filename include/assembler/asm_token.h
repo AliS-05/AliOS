@@ -4,7 +4,8 @@
 typedef enum {
 	TOK_EOF,
 	NEWLINE,
-	IDENTIFIER,
+	DIRECTIVE,
+	IDENTIFIER, //aka label
 	REGISTER,
 	NUMBER,
 	COMMA,

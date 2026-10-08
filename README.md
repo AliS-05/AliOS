@@ -40,7 +40,7 @@ A minimal x86 operating system built from scratch in C and assembly, featuring a
 
 No variables / data section, use memory pointers or push & pop
 Ex
-```
+```asm
 mov eax, 0x300000
 mov [eax], 0x12345678 ;(store an int in memory)
 add [eax], 5
@@ -70,6 +70,32 @@ And the results:
 
 <img width="721" height="465" alt="image" src="https://github.com/user-attachments/assets/1233b862-8fbc-4bcb-81e1-4115c6693073" />
 
+
+## Variables
+
+The assembler now supports named variables using `db` and `dq` directives, with automatic address resolution through the symbol table.
+
+- Declare variables using `myVar db 99`.
+- Reference variable addresses directly with `mov eax, myVar`.
+- Dereference variables using `mov eax, [myVar]`.
+- Variables can be declared alongside instructions without requiring a separate `.data` section.
+- Note that although a `.data` section is NOT supported, you should define all variables at the end of the program so the CPU doesn't try to execute data binary as instructions.
+
+**Example:**
+
+```asm
+mov eax, [myVar]
+ret
+
+myVar db 99
+db 0
+db 0
+db 0
+```
+
+This program loads the value `99` from memory into EAX and returns it to the shell.
+
+**Note:** `mov eax, [myVar]` reads 4 bytes because EAX is a 32-bit register. When using `db`, ensure enough bytes are allocated for the intended memory access.
 
 
 ### E1000 Driver + Network Stack: 

@@ -1,14 +1,14 @@
 # *AliOS* 
 A minimal x86 operating system built from scratch in C and assembly, featuring an x86 assembler, FAT16 filesystem, text editor, and network stack for writing, running programs, and interacting with other machines on your network entirely within the OS.
 ## Features
-### Core System
+### Main Features
 
 - Custom Bootloader - x86 bootloader written in assembly
 - Protected Mode Kernel - 32-bit kernel in C
 - Keyboard Driver - PS/2 keyboard scancodes to ascii 
 - Memory Management - Custom malloc, realloc, and free implementation
 - ATA Disk Driver - Reads and writes sectors
-- Fat16 Filesystem
+- FAT16 Filesystem
 - 32-bit x86 Assembler
 - E1000 Network Adapter Driver + Network Stack
 
@@ -16,8 +16,8 @@ A minimal x86 operating system built from scratch in C and assembly, featuring a
 
 *FAT16 Implementation* 
 - Read, write, create, and delete files
-- Disk Operations: Sector read/write
-- File Execution:  Load and run binary programs from disk
+- Create and delete directories. 
+- Load and run binary programs from disk
 
 ### Dev Tools
 
@@ -31,36 +31,82 @@ A minimal x86 operating system built from scratch in C and assembly, featuring a
 
 ### x86 Assembler:
 - Two-pass assembler built into the shell 
-- Write assembly code in the editor 
-- Support eax,ebx,ecx, and edx registers
-- Supports memory dereferencing but **NOT** offsets (\[eax\] is fine but not \[eax+4\])
+- Write assembly code in the editor
 - Assemble into machine code
 - Run generated binaries
+- Support eax, ebx, ecx, edx, esi, edi, ebp, esp
+- Supports memory dereferencing but **NOT** offsets (\[eax\] is fine but not \[eax+4\]) (and only for eax, ebx, ecx, edx)
+- Supports labels : `myLabel:` 
+
+No variables / data section, use memory pointers or push & pop
+Ex
+```
+mov eax, 0x300000
+mov [eax], 0x12345678 ;(store an int in memory)
+add [eax], 5
+```
+
+#### Supported Instructions
+- `mov` : `mov eax, 99`
+- `add` : `add eax, 2`
+- `sub` : `sub eax, 2`
+- `cmp` : `cmp [ebx], 5`
+- `je`  : `je myLabel`
+- `jne` : `jne myLabel`
+- `push`: `push ecx`
+- `pop` : `pop edx`
+- `jmp` : `jmp myLabel`
+- `call` : `call fibonacci`
+- `ret` : `ret`
+- `nop` : `nop`
+
+**NOTE** esi, edi, ebp must be pushed and popped since they are callee-saved registers. Shell will crash otherwise, even if the program runs successfully.
+
+#### Example Program
+Here is a program that uses multiple registers, memory dereferencing, labels, loops, and comparisons to paint the screen all red.
+<img width="197" height="262" alt="image" src="https://github.com/user-attachments/assets/915b02e3-2bf6-4ed4-90c7-210eb92b2331" />
+
+And the results:
+
+<img width="721" height="465" alt="image" src="https://github.com/user-attachments/assets/1233b862-8fbc-4bcb-81e1-4115c6693073" />
+
+
 
 ### E1000 Driver + Network Stack: 
-**Requires Setup Script**
+
+**Requires Setup Script, see "Build and Run"**
 - Sends ARP requests and handles ARP replies, storing IP + MAC address combinations in a vector
-- ICMP Protocol, ping machines on the subnet and outside of the subnetkj. Also replies to ping requests
+- ICMP Protocol, ping machines on the subnet and outside of the subnet. Also replies to ping requests
 - UDP Protocol, send and receive UDP packets. Demultiplexes based on incoming port.
 - DNS Protocol, allows you to ping domains such as google.com, storing resolved IP addresses in a resolution table.
 - TFTP Protocol, allows you to transfer files from a TFTP server to the OS.
+  
 ### Game
 
+
 *Snake* - It's Snake but written in x86 assembly
+
+Use `run snake   .bin` (snake<space><space><space>)
 
 <img width="731" height="468" alt="image" src="https://github.com/user-attachments/assets/8c59f2ab-c269-4c80-bbca-590dc928c638" />
 
 
-
-
 ### Shell Commands
+
 *Filesystem*:
+**NOTE** filenames must be padded to 8 bytes and extension 3 bytes.
+Type all filesystem commands with spaces to pad if needed and do not exceed 8.3
+Example: `write hello<space><space><space>.txt hello world!` 
 
 - `ls` - Lists files
 - `write <file.ext> <data>` - Create file with data
 - `read <file.ext> <bytes>` - Read file contents
 - `del <file.ext>` - Delete file
 - `edit <file.ext>` - Open text editor
+- `mkdir [path/] <dirname>` - Create a new directory
+- `rmdir [path/] <dirname>` - Recursively deletes a directory
+- `pwd` - Prints working directory
+- `cd <dirname> ` - Changes Directory
 
 *Execution*:
 
@@ -81,7 +127,8 @@ A minimal x86 operating system built from scratch in C and assembly, featuring a
 
 *Networking*:
 - `ping <ip|domain name>` - Ping an IP or Domain Name
-
+- `tftp <ip> <filename>` - Downloads a file from a tftp server (Use 10.0.2.1 to download from a tftp on your host machine)
+  
 ## *Prerequisites*
 
 - nasm - Assembler
@@ -98,34 +145,23 @@ make run          # Boot in QEMU
 ```
 
 ## Architecture
-
-*Disk Layout (FAT16):*
-
-Sector 0      : Boot sector
-Sector 1-20   : FAT table 1
-Sector 21-40  : FAT table 2
-Sector 41-72  : Root directory (512 entries)
-Sector 73+    : Data area (clusters)
-
 *Technical Details*
 
 - Architecture: x86 32-bit protected mode
 - Filesystem: FAT16
 - Execution Model: Single tasking (DOS-Like)
-- Lines of Code: ~5500
+- Lines of Code: 6212
 
 ## Known Limitations
 
-- No directories still (on the way soon.)
-- Assembler only supports 4 registers and no offsets in dereferencing
-- No virtual memory
-- No multithreading / concurrency
+- File names *do not* automatically pad, you must type the 8.3 FAT16 format manually
+- No linker that allows assembler to call kernel functions
 
 ## Planned
-- RPC protocol
 - DHCP
 - Includes for the assembler
-- Improving the assembler to be able to support more registers and offsetting.
+- Debugger
+
 
 ## What I Learned
 What started as a simple project to learn x86 assembly 

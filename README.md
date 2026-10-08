@@ -127,7 +127,8 @@ db 0
 Yes you must manually type the ascii byte by byte.
 This program passes the address of a null-terminated string through `ebx` and invokes system call `1` to print `HELLO` to the terminal.
 
-|  Function   |  EAX   | Arguments |
+|  Function   |  eax   | Arguments |
+|-------------|--------|-----------|
 | Print String| `1`    | `ebx` holds a pointer to the *null-terminated* string |
 
 Additional system calls are planned to expose more kernel functionality to user-written assembly programs.
